@@ -1,0 +1,9 @@
+The functions and other source code contained within the gmx_lib files were taken from the GROMACS 2018 molecular simulation package. 
+This code is used to provide basic definitions needed to use the xdr filereaders and provide additional capabilities such as least squares 
+fitting and the interpretation of PDB files.
+
+The source code code contained here is licensed under the GNU Lesser General Public License version 2.1. See text at the top of each file. 
+
+Changes made to source code include:  
+ - removed print statements that require the gmx_fatal function. These could be implemented back at some point. 
+ 
