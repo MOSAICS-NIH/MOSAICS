@@ -1,4 +1,9 @@
 
+#ifdef __APPLE__
+#  define off64_t off_t
+#  define fopen64 fopen
+#endif
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                          //
 // This is a class for reading index files                                                                  //

@@ -6,6 +6,11 @@
 #include "gmx_lib/gmx_fit.h"
 #include "gmx_lib/gmx_pdb.h"
 
+#ifdef __APPLE__
+#  define off64_t off_t
+#  define fopen64 fopen
+#endif
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                           //
 // This function converts a string into an array of chars for use with c-based functions                     //
@@ -1628,7 +1633,6 @@ void lsq_fit(int dimension,int b_lsq,int num_atoms,vector <int> lsq_index_vec,re
 class Trajectory
 {
     private:
-        const char * argv[];                          //The command line arguments
         enum Switch block_parallel;                   //Controlls the parallelization scheme
         FILE *in_file;                                //File for working with the input trajectory file
         FILE *out_file;                               //File for writing the output trajectory file
@@ -1833,6 +1837,8 @@ class Trajectory
         void        workload_lipid();                                                                   //prints the workload distribution for lipids
         void        parallelize_by_water(int num_waters_1);                                             //distribute workload by waters
         void        workload_water();                                                                   //prints the workload distribution for waters
+
+        const char * argv[];                          //The command line arguments
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2473,7 +2479,6 @@ double Trajectory::build()
     //                                                                                                          //
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////
     int64_t pos_ary[frames];      //array to hold frame position data
-    init_liarray(pos_ary,frames);
 
     //copy trajectory frame position data to array
     if(world_rank == 0)
