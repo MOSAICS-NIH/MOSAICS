@@ -1,0 +1,5 @@
+#lipid_type  #map_1  #map_2  #filename
+POPE         GL1     GL2     gl_12.crd
+POPG         GL1     GL2     gl_12.crd
+DLPE         GL1     GL2     gl_12.crd
+DLPG         GL1     GL2     gl_12.crd
