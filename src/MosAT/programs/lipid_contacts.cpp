@@ -351,7 +351,7 @@ int main(int argc, const char * argv[])
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //check file extensions                                                                                     
     check_extension_mpi(s.world_rank,"-crd",p.param_file_name,".crd");
-    check_extension_mpi(s.world_rank,"-lc",p.lc_file_name,".dx");
+    check_extension_mpi(s.world_rank,"-lc",p.lc_file_name,".dat");
 
     if(p.b_lf_pdb == 1)
     {
