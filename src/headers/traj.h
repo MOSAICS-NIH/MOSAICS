@@ -985,7 +985,7 @@ void read_frame(FILE **in_file,matrix box,int *num_atoms,vector<int> &atom_nr,ve
         //read in the trajectory frame
         *status_trr = read_trr(trr_r, *num_atoms, step, time, &lambda, box, r, v, f,bBox,bV,bF);
 
-        if(*status_xtc != 0) //could not read the frame
+        if(*status_trr != 0) //could not read the frame
         {
             //note: we could get a cleaner exit here if we were willing to add a communication step. 
             printf("An MPI core with world rank %d was unable to read trajectory frame %d. Perhaps there is something wrong with the trajectory or .info file? Attempting to terminate analysis. \n",world_rank,get_global_frame(world_frames,world_rank,current_frame));
