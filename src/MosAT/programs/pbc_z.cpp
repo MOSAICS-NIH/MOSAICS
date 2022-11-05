@@ -235,6 +235,12 @@ int main(int argc, const char * argv[])
     //print info about the water
     traj.get_sol_stats();
 
+    //print memory estimate for jump record
+    int   size = traj.get_ef_frames()*(traj.atoms()-traj.sol.size());
+    double mem = 4.0*(double)size/1000000.0;
+    printf("Estimated memory for jump record: %f MB \n",mem); 
+ 
+    //allocate memory for jump record
     iv2d jump_record(traj.get_ef_frames(),iv1d(traj.atoms()-traj.sol.size(),0));
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
