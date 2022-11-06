@@ -182,6 +182,7 @@ void print_lipid_info(Trajectory &traj,system_variables &s,program_variables &p,
         string info_file_name = add_tag(p.k_file_name,tag);
 
         printf("Writing lipid information to %s. \n\n",info_file_name.c_str());
+        fflush(stdin);
 
         //check if header information has been printed
         FILE *info_file = fopen(info_file_name.c_str(), "w");
@@ -310,7 +311,7 @@ void analyze_diagram(Trajectory &traj,system_variables &s,program_variables &p,
                         }
                         freq = freq/((double)(2*p.range + 1));
 
-                        if(freq >= 0.5) //lipid takes the grid point
+                        if(freq >= 0.5 && (p.dump == 0 || traj.current_frame < traj.get_ef_frames()-1) ) //lipid takes the grid point or last frame dump
                         {
                             bound[ef_x][j][k] = bound[ef_x][j][k] + 1;
                         }
@@ -360,6 +361,7 @@ double get_dwell_times(Trajectory &traj,system_variables &s,program_variables &p
     if(s.world_rank == 0)
     {
         printf("Computing residence times.\n");
+        fflush(stdin);
     }
 
     //reset counter for printing progress + time estimates
@@ -396,6 +398,7 @@ double get_dwell_times(Trajectory &traj,system_variables &s,program_variables &p
 
         //report progress
         time_stats(s.t,&s.counter,traj.current_frame,traj.get_ef_frames(),s.world_rank);
+        fflush(stdin);
     }
     //compute and return time spent in function
     return (clock() - s.t)/CLOCKS_PER_SEC; 
@@ -428,6 +431,7 @@ double finalize_analysis(Trajectory &traj,system_variables &s,program_variables 
        string rho_file_name = add_tag(p.k_file_name,"_rho");
 
        printf("\nWriting rho to %s. \n\n",rho_file_name.c_str());
+       fflush(stdin);
 
        //exclude insignificant data and write grid data to file
        double avg_rho_t = get_average_rho(rho_t);
@@ -438,6 +442,7 @@ double finalize_analysis(Trajectory &traj,system_variables &s,program_variables 
     if(s.world_rank == 0)
     {
         printf("Writing binding events files.\n");
+        fflush(stdin);
     }
 
     //write binding events files
@@ -459,6 +464,7 @@ double finalize_analysis(Trajectory &traj,system_variables &s,program_variables 
                 if(binding_events_file == NULL)
                 {
                     printf("failure opening %s for writing. \n",binding_events_file_name.c_str());
+                    fflush(stdin);
                 }
                 else
                 {
@@ -489,6 +495,7 @@ double finalize_analysis(Trajectory &traj,system_variables &s,program_variables 
         if(s.world_rank == 0)
         {
             printf("\nRemoving voronoi diagram files. \n");
+            fflush(stdin);
 
             for(traj.current_frame=0; traj.current_frame<traj.get_ef_frames(); traj.current_frame++) //loop over traj frames
             {
@@ -503,6 +510,7 @@ double finalize_analysis(Trajectory &traj,system_variables &s,program_variables 
                 else
                 {
                     printf("\nUnable to delete file %s.\n",voronoi_file_name.c_str());
+                    fflush(stdin);
                     fclose(test_file);
                 }
             }
@@ -574,6 +582,7 @@ int main(int argc, const char * argv[])
     add_argument_mpi_i(argc,argv,"-v_prot", &p.v_prot,                    "Include protein atoms in voronoi diagram? (0:no 1:yes)",                       s.world_rank, nullptr,      0);
     add_argument_mpi_d(argc,argv,"-c_dist", &p.c_dist,                    "Distance cutoff for counting protein atoms in voronoi diagram (nm)",           s.world_rank, nullptr,      0);
     add_argument_mpi_i(argc,argv,"-clean",  &p.b_clean,                   "Remove voronoi diagrams after writing binding events files? (0:no 1:yes)",     s.world_rank, nullptr,      0);
+    add_argument_mpi_i(argc,argv,"-dump",   &p.dump,                      "Dump bound lipids on last frame? (0:no 1:yes)",                                s.world_rank, nullptr,      0);
     conclude_input_arguments_mpi(argc,argv,s.world_rank,s.program_name);
 
     //create a trajectory
@@ -713,6 +722,7 @@ int main(int argc, const char * argv[])
         update_density(traj,s,p,rho_t,param);
 
         time_stats(s.t,&s.counter,traj.current_frame,traj.get_num_frames(),s.world_rank);
+        fflush(stdin);
     }
 
     //log time spent in main loop
