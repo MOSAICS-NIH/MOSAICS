@@ -297,6 +297,7 @@ int main(int argc, const char * argv[])
             if(world_rank == 0)
             {
                 printf("Writing grid data. Working on frame %d \n",i);
+                fflush(stdin);
             }
 
             int this_frame = (int)(i/stride);

@@ -980,6 +980,19 @@ void Binding_events::get_blobs(string base_file_name_i,int my_xi,int my_xf,int m
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
+    // Back up header info in case a gridpoint (last one examined in get_blobs) has no be file this info could   //
+    // be lost                                                                                                   //
+    //                                                                                                           //
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    int ef_frames_store  = ef_frames;
+    int ef_dt_store      = ef_dt;
+    int num_lipids_store = num_lipids;
+    int num_g_x_store    = num_g_x;
+    int num_g_y_store    = num_g_y;
+    int APS_store        = APS;
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //                                                                                                           //
     // Report estimated memory requirement                                                                       //
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1056,8 +1069,24 @@ void Binding_events::get_blobs(string base_file_name_i,int my_xi,int my_xf,int m
                     }
                 }
             }
+            else
+            {
+                num_g_y = num_g_y_store;
+            }
         }
     }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //                                                                                                           //
+    // Restore the header info                                                                                   //
+    //                                                                                                           //
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ef_frames  = ef_frames_store;
+    ef_dt      = ef_dt_store;
+    num_lipids = num_lipids_store;
+    num_g_x    = num_g_x_store;
+    num_g_y    = num_g_y_store;
+    APS        = APS_store;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1099,22 +1128,30 @@ void Binding_events::write_blobs_frame(string out_file_name)
 
     FILE *out_file = fopen(out_file_name.c_str(),"w");
 
-    for(j=0; j<num_g_y; j++) //loop over y-dimension
+    if(out_file == NULL)
     {
-        for(k=0; k<num_g_x; k++) //loop over x-dimension
-        {
-            if(blob_nan_frame[j][k] == 0)
-            {
-                fprintf(out_file," %10d",blob_frame[j][k]);
-            }
-            else //data excluded
-            {
-                fprintf(out_file," %10s ","NaN");
-            }
-        }
-        fprintf(out_file,"\n");
+        printf("failure writing %s. Make sure there is enough disc space available and that the target directory exists. \n",out_file_name.c_str());
+        fflush(stdin);
     }
-    fclose(out_file);
+    else
+    {
+        for(j=0; j<num_g_y; j++) //loop over y-dimension
+        {
+            for(k=0; k<num_g_x; k++) //loop over x-dimension
+            {
+                if(blob_nan_frame[j][k] == 0)
+                {
+                    fprintf(out_file," %10d",blob_frame[j][k]);
+                }
+                else //data excluded
+                {
+                    fprintf(out_file," %10s ","NaN");
+                }
+            }
+            fprintf(out_file,"\n");
+        }
+        fclose(out_file);
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
