@@ -29,6 +29,7 @@ struct program_variables
     int jump_count;                               //How many jumps detected?
 
     //add program variables here
+    int    i;                                     //Standard variable used in loops
     double cutoff;                                //Percentage of the box an atom must move by to be counted as a jump
 };
 
@@ -54,6 +55,7 @@ void initialize_program_variables(program_variables *p)
     p->b_sf_pdb   = 0;
     p->b_record   = 0;
     p->jump_count = 0;
+    p->i          = 0;
 
     //here we set the program description
     p->program_description = "PBC_Z is a program designed to fix periodic boundary problems, specifically the jumping of lipids across the z-axis due to membrane bending/fluctuations. PBC_Z works by checking lipids in each frame for jumps by comparing the z-coordinate to that from the previous frame. If the difference is too big (compared to the box size) a jump is assumed.";

@@ -90,7 +90,10 @@ void fix_pbc_z(Trajectory &traj,system_variables &s,program_variables &p,int jum
                 }
                
                 //record the jump state 
-                jump_record[traj.get_frame_global()][count] = jump[i];
+                if(p.b_record == 1)
+                {
+                    jump_record[traj.get_frame_global()][count] = jump[i];
+                }
 
                 //update prev coord
                 prev_z[i] = traj.r[i][2];
@@ -235,13 +238,22 @@ int main(int argc, const char * argv[])
     //print info about the water
     traj.get_sol_stats();
 
-    //print memory estimate for jump record
-    int   size = traj.get_ef_frames()*(traj.atoms()-traj.sol.size());
-    double mem = 4.0*(double)size/1000000.0;
-    printf("Estimated memory for jump record: %f MB \n",mem); 
- 
     //allocate memory for jump record
-    iv2d jump_record(traj.get_ef_frames(),iv1d(traj.atoms()-traj.sol.size(),0));
+    iv2d jump_record;
+    if(p.b_record == 1)
+    {
+        //print memory estimate for jump record
+        int   size = traj.get_ef_frames()*(traj.atoms()-traj.sol.size());
+        double mem = 4.0*(double)size/1000000.0;
+        printf("Estimated memory for jump record: %f MB \n\n",mem);
+
+        jump_record.resize(traj.get_ef_frames());
+        for(p.i=0; p.i<traj.get_ef_frames(); p.i++)
+        {
+            jump_record[p.i].resize(traj.atoms()-traj.sol.size(),0);
+        }
+    }
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     //print info about the worlk load distribution
