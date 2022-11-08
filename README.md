@@ -11,11 +11,19 @@ MOSAICS is a collection of tools for characterizing membrane structure and dynam
 ## Installation instructions
 Here we provide a brief overview of the installation process. We note that a more detailed description is provided in the user manual.
 ```
-   *$* cd MOSAICS
-   *$* mkdir build
-   *$* export MPI_CPP_COMP="mpic++"
-   *$* export CPP_COMP="g++"   
-   *$* sh install_commands
+ cd MOSAICS
+ mkdir build
+ export MPI_CPP_COMP="mpic++"
+ export CPP_COMP="g++"   
+ sh install_commands
+```
+
+Alternatively, the user can try the following CMake recipe:
+```
+ cd MOSAICS
+ mkdir build
+ cmake src/MosAT/programs/ -S . -B build/
+ cmake --build build/
 ```
 
 ## Getting started
