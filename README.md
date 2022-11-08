@@ -16,6 +16,6 @@ The source code to MOSAICS is organized as follows:
 ## License
 MOSAICS is licensed under the BSD-3-clause license, and additional details may be found in the "LICENSE" file; see also for licensing info for code sourced from GROMACS and MDTraj.  
 
-##Citing MOSAICS
+## Citing MOSAICS
 Please cite Bernhardt N, Faraldo-Gómez JD, MOSAICS: A Software Suite for Analysis of Membrane Structure and Dynamics in Simulated Trajectories, Biophysical Journal (2022), doi: https:// doi.org/10.1016/j.bpj.2022.11.005.
 
