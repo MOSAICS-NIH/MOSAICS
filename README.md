@@ -55,3 +55,6 @@ Please cite Bernhardt N, Faraldo-Gómez JD, MOSAICS: A Software Suite for Analys
     author = {Nathan Bernhardt and José D. Faraldo-Gómez},
 }
 ```
+
+## Feedback
+Please report bugs identified within the source code and other errors like typos found in the user manual using the [issues](https://github.com/MOSAICS-NIH/MOSAICS/issues) feature. Other comments and suggestions are always welcome. Thank you for your help. 
