@@ -3,12 +3,12 @@
 MOSAICS is a collection of tools for characterizing membrane structure and dynamics within simulated trajectories. These tools are programmed in C++ and use the MOSAICS Analysis Template (MosAT) for reading trajectory data. 
 
 ## Getting started
-Installation instructions and documentation for using the tools can be found in mosaics_user_manual.pdf. Note that we provide a sample trajectory in the "examples/membrane_thickness/" folder so the user can reproduce much of the analysis shown in the user manual. Example input files, such as selection cards and parameter files, are also included in the "examples/" folder. We also include scripts, mainly used for ploting data, in the "scripts/" folder.
+Installation instructions and documentation for using the tools can be found in the user manual, i.e., "mosaics_user_manual.pdf". Note that we provide a sample trajectory in the "examples/membrane_thickness/" folder so the user can reproduce much of the analysis shown in the user manual. Example input files, such as selection cards and parameter files, are also included in the "examples/" folder. We also include scripts, mainly used for ploting data, in the "scripts/" folder.
 
 ## Code layout
 The MOSAICS source code is organized as follows: 
 - Source code for MosAT-based tools is located in "src/MosAT/" 
-- Source code for non-MosAT-based tools is located in" src/other_tools/" 
+- Source code for non-MosAT-based tools is located in "src/other_tools/" 
 - Header files encompassing the MOSAICS library are located in "src/headers/" 
 - Files sourced from MDTraj that are used for reading GROMACS trajectories are located in "src/xdr/"
 - Routines sourced from the GROMACS MD simulation package are located in "src/gmx_lib/"   
