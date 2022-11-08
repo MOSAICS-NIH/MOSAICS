@@ -19,6 +19,7 @@ MOSAICS is licensed under the BSD-3-clause license, and additional details may b
 ## Citing MOSAICS
 Please cite Bernhardt N, Faraldo-Gómez JD, MOSAICS: A Software Suite for Analysis of Membrane Structure and Dynamics in Simulated Trajectories, Biophysical Journal (2022), doi: https:// doi.org/10.1016/j.bpj.2022.11.005.
 
+#### BibTeX
 ```
 @article{BERNHARDT2022,
     title = {MOSAICS: A Software Suite for Analysis of Membrane Structure and Dynamics in Simulated Trajectories},
