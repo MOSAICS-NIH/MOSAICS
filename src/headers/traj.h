@@ -1019,6 +1019,9 @@ void read_frame(FILE **in_file,matrix box,int *num_atoms,vector<int> &atom_nr,ve
     {
         *box_dimension = 9;
     }
+
+    //set the precision (needed if out_f is xtc)
+    *prec = 1000.0;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1091,7 +1094,7 @@ void write_frame_gro(matrix box,int num_atoms,vector<int> &atom_nr,vector<int> &
         //account for the maxium allowed resid and atom id
         adjusted_atom_nr = atom_nr[i-2]%99999;
         adjusted_res_nr = res_nr[i-2]%99999;
- 
+
         //The first line is text, the second gives number of atoms and the last gives the box
         if(i == 0) //title
         {
@@ -1109,14 +1112,7 @@ void write_frame_gro(matrix box,int num_atoms,vector<int> &atom_nr,vector<int> &
             }
             else if(box_dimension == 9)
             {
-                for(j=0; j<3; j++)
-                {
-                    for(k=0; k<3; k++)
-                    {
-                        fprintf(*out_file,"  %8.5ff\n",box[i][j]);
-                    }
-                }
-                fprintf(*out_file,"\n");
+                fprintf(*out_file,"  %8.5f  %8.5f  %8.5f  %8.5f  %8.5f  %8.5f  %8.5f  %8.5f  %8.5f\n",box[XX][XX],box[XX][YY],box[XX][ZZ],box[YY][XX],box[YY][YY],box[YY][ZZ],box[ZZ][XX],box[ZZ][YY],box[ZZ][ZZ]);
             }
         }
         else //atom
@@ -1279,6 +1275,9 @@ void finalize_traj(int world_rank,XDRFILE *xd_r,XDRFILE *xd_w,string out_file_na
                 out_file_name_tmp.pop_back();
                 out_file_name_tmp = out_file_name_tmp + "_" + to_string(i) + ".gro";
 
+                //report progress
+                printf("Working on %s \n",out_file_name_tmp.c_str());
+
                 //open tmp file for reading
                 FILE *out_file_tmp = fopen64(out_file_name_tmp.c_str(), "r");
                 if(out_file_tmp == NULL)
@@ -1321,6 +1320,9 @@ void finalize_traj(int world_rank,XDRFILE *xd_r,XDRFILE *xd_w,string out_file_na
                 out_file_name_tmp.pop_back();
                 out_file_name_tmp = out_file_name_tmp + "_" + to_string(i) + ".pdb";
 
+                //report progress
+                printf("Working on %s \n",out_file_name_tmp.c_str());
+
                 //open tmp file for reading
                 FILE *out_file_tmp = fopen64(out_file_name_tmp.c_str(), "r");
                 if(out_file_tmp == NULL)
@@ -1355,6 +1357,9 @@ void finalize_traj(int world_rank,XDRFILE *xd_r,XDRFILE *xd_w,string out_file_na
                 out_file_name_tmp.pop_back();
                 out_file_name_tmp.pop_back();
                 out_file_name_tmp = out_file_name_tmp + "_" + to_string(i) + ".xtc";
+
+                //report progress
+                printf("Working on %s \n",out_file_name_tmp.c_str());
 
                 //open temp file for reading
                 xd_r = xdrfile_open(cname(out_file_name_tmp), "r");
@@ -1413,6 +1418,9 @@ void finalize_traj(int world_rank,XDRFILE *xd_r,XDRFILE *xd_w,string out_file_na
                 out_file_name_tmp.pop_back();
                 out_file_name_tmp.pop_back();
                 out_file_name_tmp = out_file_name_tmp + "_" + to_string(i) + ".trr";
+
+                //report progress
+                printf("Working on %s \n",out_file_name_tmp.c_str());
 
                 //open temp file for reading
                 trr_r = xdrfile_open(cname(out_file_name_tmp), "r");
