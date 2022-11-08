@@ -1,6 +1,6 @@
 ## About MOSAICS
 
-MOSAICS is a collection of tools for characterizing membrane structure and dynamics within simulated trajectories of molecular systems. These tools focus on the efficient computation of spatially resolved time-averaged lipid observables like the membrane thickness, lipid tilt angle, residence time, etc. However, other types of analysis are possible; see "mosaics_user_manual.pdf" for details. To ensure peak performance, we have programmed MOSAICS in C++ and implemented a trajectory reading framework called the MOSAICS Analysis Template, or MosAT for short. MosAT reads **individual** trajectory snapshots into memory, thus reducing memory requirements and enabling the analysis of **very large** trajectory files. MosAT is also programmed to distribute the workload across available computing cores. As such, each MOSAICS tool is **fully parallelized**.    
+MOSAICS is a collection of tools for characterizing membrane **structure** and **dynamics** within simulated trajectories of molecular systems. These tools focus on the efficient computation of **spatially resolved time-averaged** lipid observables like the membrane thickness, lipid tilt angle, residence time, etc. However, other types of analysis are possible; see "mosaics_user_manual.pdf" for details. To ensure peak performance, we have programmed MOSAICS in C++ and implemented a trajectory reading framework called the MOSAICS Analysis Template, or MosAT for short. MosAT reads **individual** trajectory snapshots into memory, thus reducing memory requirements and enabling the analysis of **very large** trajectory files. MosAT is also programmed to distribute the workload across available computing cores. As such, each MOSAICS tool is **fully parallelized**.    
 
 ## Software/hardware requirements
 - A computing cluster
@@ -27,7 +27,7 @@ Alternatively, the user can try the following CMake recipe:
 ```
 
 ## Getting started
-Detailed instructions for using each tool can be found in the user manual, i.e., "mosaics_user_manual.pdf". Note that we provide a sample trajectory in the "examples/membrane_thickness/" folder so the user can reproduce much of the analysis shown in the user manual. Example input files, such as selection cards and parameter files, are also included in the "examples/" folder. We also include scripts, mainly used for ploting data, in the "scripts/" folder.
+Detailed instructions for using each tool can be found in the user manual, i.e., "mosaics_user_manual.pdf". Note that we provide a sample trajectory in the "examples/membrane_thickness/" folder so the user can reproduce much of the analysis shown in the user manual. Example input files, such as selection cards and parameter files, are also included in the "examples/" folder. We also include scripts, mainly used for ploting grid data, in the "scripts/" folder.
 
 ## Code layout
 The MOSAICS source code is organized as follows: 
