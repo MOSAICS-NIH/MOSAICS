@@ -8,8 +8,16 @@ MOSAICS is a collection of tools for characterizing membrane structure and dynam
 - A c++ compiler like g++
 - A c++ compiler with MPI support like mpic++ 
 
+## Installation instructions
+Here we provide a brief overview of the installation process. However, a more detailed description is provided in the user manual.
+    $ cd MOSAICS
+    $ mkdir build
+    $ export MPI_CPP_COMP="mpic++"
+    $ export CPP_COMP="g++"   
+    $ sh install_commands
+
 ## Getting started
-Installation instructions and documentation for using the tools can be found in the user manual, i.e., "mosaics_user_manual.pdf". Note that we provide a sample trajectory in the "examples/membrane_thickness/" folder so the user can reproduce much of the analysis shown in the user manual. Example input files, such as selection cards and parameter files, are also included in the "examples/" folder. We also include scripts, mainly used for ploting data, in the "scripts/" folder.
+Detailed instructions for using each tool can be found in the user manual, i.e., "mosaics_user_manual.pdf". Note that we provide a sample trajectory in the "examples/membrane_thickness/" folder so the user can reproduce much of the analysis shown in the user manual. Example input files, such as selection cards and parameter files, are also included in the "examples/" folder. We also include scripts, mainly used for ploting data, in the "scripts/" folder.
 
 ## Code layout
 The MOSAICS source code is organized as follows: 
