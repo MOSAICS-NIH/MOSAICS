@@ -138,9 +138,9 @@ void lip_h_bonds(Trajectory &traj,system_variables &s,program_variables &p,Index
 
                             for(m=0; m<bonds[donor].size(); m++) //loop over bonds 
                             {
-                                if(traj.atom_name[bonds[donor][o]-1].at(0) == 'H') //atom is a hydrogen
+                                if(traj.atom_name[bonds[donor][m]-1].at(0) == 'H') //atom is a hydrogen
                                 {
-                                    h = bonds[donor][o]-1;
+                                    h = bonds[donor][m]-1;
 
                                     for(o=0; o<traj.prot.size(); o++) //loop over protein atoms
                                     {
