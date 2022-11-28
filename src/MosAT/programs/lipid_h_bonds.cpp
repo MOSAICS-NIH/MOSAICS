@@ -19,11 +19,11 @@ using namespace std;
 #include "headers/switch.h"                                  //This defines a switch (on, off)
 #include "headers/file_reader.h"                             //This has basic routines for reading text files
 #include "headers/vector_mpi.h"                              //This has routines for collecting vector data
-#include "headers/mosat_routines.h"                         //This is where most of the functions called in main are located
+#include "headers/mosat_routines.h"                          //This is where most of the functions called in main are located
 #include "headers/file_naming.h"                             //This has routines for added tags to an existing file name    
 #include "headers/file_naming_mpi.h"                         //This has routines for added tags to an existing file name (mpi)
 #include "headers/command_line_args_mpi.h"                   //This has routines for adding command line arguments
-#include "MosAT/program_variables/pv_lipid_h_bonds.h"       //This has the variables specific to the analysis program
+#include "MosAT/program_variables/pv_lipid_h_bonds.h"        //This has the variables specific to the analysis program
 #include "headers/array.h"                                   //This has routines used for working with arrays
 #include "headers/performance.h"                             //This has a class for logging performance data
 #include "headers/index.h"                                   //This has a class for working with index files
@@ -34,6 +34,7 @@ using namespace std;
 #include "headers/grid.h"                                    //This has routines used for working with a grid
 #include "headers/protein.h"                                 //This has routines used for working with protein data
 #include "headers/force_serial.h"                            //This has routines used for forcing the code to run on a single mpi process
+#include "headers/atom_select.h"                             //This has routines used for making atom selections using a selection text
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                           //
@@ -90,10 +91,206 @@ int check_h_bond(Trajectory &traj,program_variables &p,int acceptor,int donor,in
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                           //
+// This function counts the number of atoms for each lipid type                                              //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void count_lipid_atoms(Trajectory &traj,system_variables &s,program_variables &p,sv1d &types,iv1d &types_count)
+{
+    int i = 0;                      //standard variable used in loops
+    int j = 0;                      //standard variable used in loops
+    int k = 0;                      //standard variable used in loops
+
+    for(i=0; i<types.size(); i++) //loop over lipid types
+    {
+        for(j=0; j<traj.target_leaflet.size(); j++) //loop over target leaflet atoms
+        {
+            //get the first and last atom of the current lipid
+            int min = traj.t_lip_start(j);
+            int max = traj.t_lip_end(j);
+
+            //jump to the next lipid
+            j = traj.next_target_lipid(j);
+
+            if(strcmp(traj.res_name[min].c_str(), types[i].c_str()) == 0) //lipid type is correct
+            {
+                types_count[i] = max - min + 1;
+                goto next_type;
+            }
+        }
+        next_type:;
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function get the atom names for each lipid type                                                      //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void name_lip_atoms(Trajectory &traj,system_variables &s,program_variables &p,sv1d &types,sv2d &atom_names_lip)
+{
+    int i = 0;                      //standard variable used in loops
+    int j = 0;                      //standard variable used in loops
+    int k = 0;                      //standard variable used in loops
+
+    for(i=0; i<types.size(); i++) //loop over lipid types
+    {
+        for(j=0; j<traj.target_leaflet.size(); j++) //loop over target leaflet atoms
+        {
+            //get the first and last atom of the current lipid
+            int min = traj.t_lip_start(j);
+            int max = traj.t_lip_end(j);
+
+            //jump to the next lipid
+            j = traj.next_target_lipid(j);
+
+            if(strcmp(traj.res_name[min].c_str(), types[i].c_str()) == 0) //lipid type is correct
+            {
+                for(k=min; k<=max; k++) //loop over current lipid atoms
+                {
+                    atom_names_lip[i][k-min] = traj.atom_name[k];
+                }
+                goto next_type;
+            }
+        }
+        next_type:;
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function records the statistics for the b-bonds                                                      //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void store_h_bond(Trajectory &traj,system_variables &s,program_variables &p,int acceptor,int donor,sv1d &types,
+                  iv1d &p_atom_id,sv1d &l_atom_type,dv2d &freq,vector <vector <rvec*>> &coords,string current_lip_t,
+                  int min,int max,iv1d &types_count)
+{
+    int i               = 0;       //standard variable used in loops
+    int j               = 0;       //standard variable used in loops
+    int new_bond        = 1;       //tells whether the h-bond is new or not
+    int duplicate_index = 0;       //stores the index for the current h-bond assuming it is already on the list
+
+    int    this_p_atom_id   = traj.atom_nr[acceptor];
+    string this_l_atom_type = traj.atom_name[donor];
+
+    //check for a new h-bond 
+    for(i=0; i<p_atom_id.size(); i++) //loop over current h-bonds
+    {
+        if(p_atom_id[i] == this_p_atom_id && strcmp(l_atom_type[i].c_str(), this_l_atom_type.c_str()) == 0)
+        {
+            new_bond        = 0;
+            duplicate_index = i;
+            goto lp_end;
+        } 
+    }
+    lp_end:;
+
+    if(new_bond == 1)
+    {
+        //update the p_atom_nr
+        p_atom_id.push_back(this_p_atom_id);
+
+        //update the l_atom_type
+        l_atom_type.push_back(this_l_atom_type);
+
+        //update the frequency
+        dv1d this_freq(types.size(),0.0);
+        for(i=0; i<types.size(); i++) //loop over the types
+        {
+            if(strcmp(types[i].c_str(), current_lip_t.c_str()) == 0)
+            {
+                this_freq[i] = 1.0;
+            }
+        }
+        freq.push_back(this_freq);
+
+        //update coords
+        vector <rvec*> this_coords; 
+ 
+        for(i=0; i<types.size(); i++) //loop over lipid types 
+        {
+            int size_lip  = types_count[i];
+            int size_prot = traj.prot.size();
+            int this_size = size_prot + size_lip;
+            rvec *this_r;
+            this_r = (rvec *)calloc(this_size , sizeof(*this_r));
+
+            if(strcmp(types[i].c_str(), current_lip_t.c_str()) == 0) //lipid type is correct
+            {
+                //store protein coords
+                for(j=0; j<size_prot; j++) //loop over protein atoms
+                {
+                    this_r[j][0] = traj.r[traj.prot[j]-1][0];
+                    this_r[j][1] = traj.r[traj.prot[j]-1][1];
+                    this_r[j][2] = traj.r[traj.prot[j]-1][2];
+                }
+
+                //store lipid coords
+                int count = 0;
+                for(j=min; j<=max; j++) //loop over lipid atoms
+                {
+                    this_r[size_prot+count][0] = traj.r[j][0];
+                    this_r[size_prot+count][1] = traj.r[j][1];
+                    this_r[size_prot+count][2] = traj.r[j][2];
+                    count++;
+                }
+            }
+            else //lipid type is not correct. store zeros for coords
+            {
+                //store protein coords
+                for(j=0; j<this_size; j++) //loop over protein atoms
+                {
+                    this_r[j][0] = 0.0;
+                    this_r[j][1] = 0.0;
+                    this_r[j][2] = 0.0;
+                }
+            }
+
+            //store coords
+            this_coords.push_back(this_r);
+        }
+            
+        //store coords
+        coords.push_back(this_coords);
+    }
+    else 
+    {
+        //update frequency and add the coordinates
+        for(i=0; i<types.size(); i++) //loop over lipid types 
+        {
+            if(strcmp(types[i].c_str(), current_lip_t.c_str()) == 0)
+            {
+                freq[duplicate_index][i] = freq[duplicate_index][i] + 1.0; 
+
+                //add protein coords
+                for(j=0; j<traj.prot.size(); j++) //loop over protein atoms
+                {
+                    coords[duplicate_index][i][j][0] = coords[duplicate_index][i][j][0] + traj.r[traj.prot[j]-1][0];
+                    coords[duplicate_index][i][j][1] = coords[duplicate_index][i][j][1] + traj.r[traj.prot[j]-1][1];
+                    coords[duplicate_index][i][j][2] = coords[duplicate_index][i][j][2] + traj.r[traj.prot[j]-1][2];
+                }
+
+                int count = 0;
+                for(j=min; j<=max; j++) //loop over lipid atoms
+                {
+                    coords[duplicate_index][i][traj.prot.size()+count][0] = coords[duplicate_index][i][traj.prot.size()+count][0] + traj.r[j][0];
+                    coords[duplicate_index][i][traj.prot.size()+count][1] = coords[duplicate_index][i][traj.prot.size()+count][1] + traj.r[j][1];
+                    coords[duplicate_index][i][traj.prot.size()+count][2] = coords[duplicate_index][i][traj.prot.size()+count][2] + traj.r[j][2];
+                    count++;
+                }
+            }
+        }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
 // This function computes the number of lipid-prot h-bonds and adds it to the grid                           //
 //                                                                                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void lip_h_bonds(Trajectory &traj,system_variables &s,program_variables &p,Index &param,Index &lip_a,Index &lip_d,Index &prot_a,Index &prot_d,iv2d &bonds,Grid &hb)
+void lip_h_bonds(Trajectory &traj,system_variables &s,program_variables &p,Index &param,Index &lip_a,Index &lip_d,
+                 Index &prot_a,Index &prot_d,iv2d &bonds,Grid &hb,sv1d &types,iv1d &p_atom_id,sv1d &l_atom_type,
+                 dv2d &freq,vector <vector <rvec*>> &coords,iv1d &types_count,dv1d &b_factor_freq,iv1d &refined_sel)
 {
     int    i        = 0;                      //standard variable used in loops
     int    j        = 0;                      //standard variable used in loops
@@ -148,10 +345,21 @@ void lip_h_bonds(Trajectory &traj,system_variables &s,program_variables &p,Index
                                         {
                                             if(strcmp(traj.atom_name[traj.prot[o]-1].c_str(), prot_a.index_s[q].c_str()) == 0) //atom is an acceptor protein atom
                                             {
-                                                acceptor = traj.prot[o]-1;
+                                                if(refined_sel[traj.prot[o]-1] == 1)
+                                                {
+                                                    acceptor = traj.prot[o]-1;
 
-                                                //check for h-bond
-                                                contacts = contacts + check_h_bond(traj,p,acceptor,donor,h);
+                                                    //check for h-bond
+                                                    int result = check_h_bond(traj,p,acceptor,donor,h);
+
+                                                    contacts = contacts + result;
+ 
+                                                    if(result == 1)
+                                                    {
+                                                        store_h_bond(traj,s,p,acceptor,donor,types,p_atom_id,l_atom_type,freq,coords,traj.res_name[k],min,max,types_count);
+                                                        b_factor_freq[acceptor] = b_factor_freq[acceptor] + 1.0/traj.get_ef_frames();
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -171,22 +379,34 @@ void lip_h_bonds(Trajectory &traj,system_variables &s,program_variables &p,Index
  
                             for(m=0; m<traj.prot.size(); m++) //loop over protein atoms
                             {
-                                for(n=0; n<prot_d.index_s.size(); n++) //loop over donor protein atoms
+                                if(refined_sel[traj.prot[m]-1] == 1)
                                 {
-                                    if(strcmp(traj.atom_name[traj.prot[m]-1].c_str(), prot_d.index_s[n].c_str()) == 0) //atom is a donor protein atom
+                                    for(n=0; n<prot_d.index_s.size(); n++) //loop over donor protein atoms
                                     {
-                                        donor = traj.prot[m]-1;
-
-                                        for(o=0; o<bonds[donor].size(); o++) //loop over bonds 
+                                        if(strcmp(traj.atom_name[traj.prot[m]-1].c_str(), prot_d.index_s[n].c_str()) == 0) //atom is a donor protein atom
                                         {
-                                            if(traj.atom_name[bonds[donor][o]-1].at(0) == 'H') //atom is a hydrogen
+                                            donor = traj.prot[m]-1;
+
+                                            for(o=0; o<bonds[donor].size(); o++) //loop over bonds 
                                             {
-                                                //printf("HBOND acceptor %5s %5s donor %5s %5s bond %5s \n",traj.atom_name[acceptor].c_str(),traj.res_name[acceptor].c_str(),traj.atom_name[donor].c_str(),traj.res_name[donor].c_str(),traj.atom_name[bond.index_i[o+1]-1].c_str());
+                                                if(refined_sel[bonds[donor][o]-1] == 1)
+                                                {
+                                                    if(traj.atom_name[bonds[donor][o]-1].at(0) == 'H') //atom is a hydrogen
+                                                    {
+                                                        h = bonds[donor][o]-1;
 
-                                                h = bonds[donor][o]-1;
+                                                        //check for h-bond
+                                                        int result = check_h_bond(traj,p,acceptor,donor,h);
+                                                        
+                                                        contacts = contacts + result;
 
-                                                //check if h-bond
-                                                contacts = contacts + check_h_bond(traj,p,acceptor,donor,h);
+                                                        if(result == 1)
+                                                        {
+                                                            store_h_bond(traj,s,p,donor,acceptor,types,p_atom_id,l_atom_type,freq,coords,traj.res_name[k],min,max,types_count);
+                                                            b_factor_freq[donor] = b_factor_freq[donor] + 1.0/traj.get_ef_frames();
+                                                        }
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -236,8 +456,15 @@ void lip_h_bonds(Trajectory &traj,system_variables &s,program_variables &p,Index
 // Collect the contacts and compute the average                                                              //
 //                                                                                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-double finalize_analysis(Trajectory &traj,system_variables &s,program_variables &p,Grid &hb)
+double finalize_analysis(Trajectory &traj,system_variables &s,program_variables &p,Grid &hb,sv1d &types,iv1d &p_atom_id,
+                         sv1d &l_atom_type,dv2d &freq,vector <vector <rvec*>> &coords,iv1d &types_count,sv2d &atom_names_lip,
+                         dv1d &b_factor_freq)
 {
+    int    i        = 0;                      //standard variable used in loops
+    int    j        = 0;                      //standard variable used in loops
+    int    k        = 0;                      //standard variable used in loops
+    int    l        = 0;                      //standard variable used in loops
+
     MPI_Barrier(MPI_COMM_WORLD);
 
     //record time when beginning analysis
@@ -264,6 +491,432 @@ double finalize_analysis(Trajectory &traj,system_variables &s,program_variables 
 
     //compute standard deviation
     hb.get_stdev(p.b_stdev,p.b_clean,traj);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //                                                                                                           //
+    // Analyze h-bonds statistics                                                                                //
+    //                                                                                                           //
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //collect p_atom_id
+    if(s.world_size > 0)
+    {
+        if(s.world_rank == 0)
+        {
+            printf("\nCollecting H-bond statistics data. \n");
+        }
+
+        for(i=1; i<s.world_size; i++)
+        {
+            if(s.world_rank == 0)
+            {
+                printf("Working on rank %d. \n",i);
+            }
+
+            iv1d this_p_atom_id(0,0);             //holds the p_atom_id data received
+            sv1d this_l_atom_type(0,"");          //holds the l_atom_type data received
+            dv2d this_freq(0,dv1d(0,0.0));        //holds the freq data received
+            vector <vector <rvec*>> this_coords;  //holds the coords data received
+
+            //collect p_atom_id
+            if(s.world_rank == 0)
+            { 
+                int size = 0;
+                MPI_Recv(&size, 1, MPI_INT, i, 13, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+                int rcv[size];            
+                MPI_Recv(rcv, size, MPI_INT, i, 13, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+                for(j=0; j<size; j++) //loop over received atom_ids 
+                {
+                    this_p_atom_id.push_back(rcv[j]);
+                }
+            }
+            else if(s.world_rank == i)
+            {
+                int size = p_atom_id.size(); 
+                MPI_Send(&size, 1, MPI_INT, 0, 13, MPI_COMM_WORLD);
+                int snd[size];
+                for(j=0; j<size; j++)
+                {
+                    snd[j] = p_atom_id[j];
+                }
+                MPI_Send(snd, size, MPI_INT, 0, 13, MPI_COMM_WORLD);
+            }
+
+            //collect l_atom_type
+            if(s.world_rank == 0)
+            {
+                int size = 0;
+                MPI_Recv(&size, 1, MPI_INT, i, 13, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+                for(j=0; j<size; j++) //loop over each string in list
+                {
+                    int string_size = 0;
+                    MPI_Recv(&string_size, 1, MPI_INT, i, 13, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                    char this_string[string_size];
+                    MPI_Recv(this_string, string_size, MPI_CHAR, i, 13, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                    
+                    string current_string = "";
+                    for(k=0; k<string_size; k++) //loop over current string
+                    {
+                        current_string = current_string + this_string[k];
+                    }
+
+                    this_l_atom_type.push_back(current_string);
+                }
+            }
+            else if(s.world_rank == i)
+            {
+                int size = l_atom_type.size();
+                MPI_Send(&size, 1, MPI_INT, 0, 13, MPI_COMM_WORLD);
+
+                for(j=0; j<size; j++) //loop over each string in list
+                {
+                    int string_size = l_atom_type[j].length();
+                    MPI_Send(&string_size, 1, MPI_INT, 0, 13, MPI_COMM_WORLD);
+                    char this_string[string_size];
+                    
+                    for(k=0; k<string_size; k++) //loop over current string
+                    {
+                        this_string[k] = l_atom_type[j][k];
+                    }
+                    MPI_Send(this_string, string_size, MPI_CHAR, 0, 13, MPI_COMM_WORLD);
+                }
+            }
+
+            //collect freq
+            if(s.world_rank == 0)
+            {
+                int size_x = 0;
+                int size_y = 0;
+                MPI_Recv(&size_x, 1, MPI_INT, i, 13, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                MPI_Recv(&size_y, 1, MPI_INT, i, 13, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                double this_freq_ary[size_x][size_y];
+                MPI_Recv(this_freq_ary, size_x*size_y, MPI_DOUBLE, i, 13, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+                for(j=0; j<size_x; j++) //loop over the h-bonds
+                {
+                    dv1d current_freq(size_y,0.0);
+                    for(k=0; k<size_y; k++) //loop over the lipid types
+                    {
+                        current_freq[k] = this_freq_ary[j][k];
+                    }
+                    this_freq.push_back(current_freq);
+                }
+            }
+            else if(s.world_rank == i)
+            {
+                int size_x = freq.size(); 
+                int size_y = types.size();
+                int size   = size_x*size_y;
+                MPI_Send(&size_x, 1, MPI_INT, 0, 13, MPI_COMM_WORLD);
+                MPI_Send(&size_y, 1, MPI_INT, 0, 13, MPI_COMM_WORLD);
+                double this_freq[size_x][size_y];
+                for(j=0; j<size_x; j++) //loop over the h-bonds
+                {
+                    for(k=0; k<size_y; k++) //loop over the lipid types
+                    {
+                        this_freq[j][k] = freq[j][k];
+                    }
+                }
+                MPI_Send(this_freq, size, MPI_DOUBLE, 0, 13, MPI_COMM_WORLD);
+            }
+
+            //collect coords
+            int my_size = coords.size();
+            int world_size[s.world_size];
+            MPI_Allgather(&my_size, 1, MPI_INT, world_size, 1, MPI_INT,MPI_COMM_WORLD);
+
+            //for(j=0; j<coords.size(); j++) //loop over h-bonds 
+            for(j=0; j<world_size[i]; j++) //loop over current cores h-bonds
+            {
+                vector <rvec*> this_bond_coords(0);
+
+                for(k=0; k<types.size(); k++) //loop over lipid types
+                {
+                    if(s.world_rank == 0)
+                    {
+                        int num_atoms = 0; 
+                        MPI_Recv(&num_atoms, 1, MPI_INT, i, 13, MPI_COMM_WORLD, MPI_STATUS_IGNORE); 
+                        double current_coords[num_atoms][3];
+                        MPI_Recv(current_coords, num_atoms*3, MPI_DOUBLE, i, 13, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+ 
+                        rvec *current_coords_rvec;
+                        current_coords_rvec = (rvec *)calloc(num_atoms , sizeof(*current_coords_rvec));
+                        for(l=0; l<num_atoms; l++) //loop over atoms
+                        {
+                            current_coords_rvec[l][0] = current_coords[l][0];
+                            current_coords_rvec[l][1] = current_coords[l][1];
+                            current_coords_rvec[l][2] = current_coords[l][2];
+                        }
+                        this_bond_coords.push_back(current_coords_rvec);
+                    }
+                    else if(s.world_rank == i)
+                    {
+                        int num_atoms = traj.prot.size() + types_count[k];
+                        MPI_Send(&num_atoms, 1, MPI_INT, 0, 13, MPI_COMM_WORLD);
+                        double current_coords[num_atoms][3];
+                        for(l=0; l<num_atoms; l++) //loop over atoms
+                        {
+                            current_coords[l][0] = coords[j][k][l][0];
+                            current_coords[l][1] = coords[j][k][l][1];
+                            current_coords[l][2] = coords[j][k][l][2];
+                        }
+                        MPI_Send(current_coords, num_atoms*3, MPI_DOUBLE, 0, 13, MPI_COMM_WORLD);
+                    }
+                }
+                if(s.world_rank == 0) 
+                {
+                    this_coords.push_back(this_bond_coords);
+                }
+            }
+
+            //add new h-bond data to the list
+            if(s.world_rank == 0)
+            {
+                for(j=0; j<this_p_atom_id.size(); j++) //loop over new h-bonds
+                {
+                    int new_bond = 1;
+                    int pos      = -1;
+
+                    for(k=0; k<p_atom_id.size(); k++) //loop over old h-bonds
+                    {
+                        if(p_atom_id[k] == this_p_atom_id[j] && strcmp(l_atom_type[k].c_str(), this_l_atom_type[j].c_str()) == 0)
+                        {
+                            new_bond = 0; 
+                            pos = k;                           
+                        }
+                    }
+
+                    if(new_bond == 1)
+                    {
+                        p_atom_id.push_back(this_p_atom_id[j]);
+                        l_atom_type.push_back(this_l_atom_type[j]);
+                        freq.push_back(this_freq[j]);
+
+                        vector <rvec*> current_bond_coords;
+                        for(k=0; k<types.size(); k++) //loop over lipid types
+                        {
+                            int num_atoms = traj.prot.size()+types_count[k];
+                            rvec *this_r;
+                            this_r = (rvec *)calloc(num_atoms , sizeof(*this_r));
+                            for(l=0; l<num_atoms; l++) //loop over atoms
+                            {
+                                this_r[l][0] = this_coords[j][k][l][0];
+                                this_r[l][1] = this_coords[j][k][l][1];
+                                this_r[l][2] = this_coords[j][k][l][2];
+                            }
+                            current_bond_coords.push_back(this_r);
+                        }
+                        coords.push_back(current_bond_coords);
+                    }
+                    else
+                    {
+                        for(k=0; k<types.size(); k++) //loop over lipid types
+                        {
+                            freq[pos][k] = freq[pos][k] + this_freq[j][k];  
+                        }
+                        for(k=0; k<types.size(); k++) //loop over lipid types
+                        {
+                            for(l=0; l<traj.prot.size()+types_count[k]; l++) //loop over atoms
+                            {
+                                coords[pos][k][l][0] = coords[pos][k][l][0] + this_coords[j][k][l][0];
+                                coords[pos][k][l][1] = coords[pos][k][l][1] + this_coords[j][k][l][1];
+                                coords[pos][k][l][2] = coords[pos][k][l][2] + this_coords[j][k][l][2];
+                            }
+                        } 
+                    }
+                }
+            }
+        }
+    }
+
+    if(s.world_rank == 0)
+    {
+        printf("\nNormalizing data and writing output files. \n\n");
+
+        //normalize coords
+        int size_prot = traj.prot.size();
+        for(i=0; i<p_atom_id.size(); i++) //loop over h-bonds
+        {
+            for(j=0; j<types.size(); j++) //loop over lipid types 
+            {
+                int size_lip  = types_count[j];
+                int size_prot = traj.prot.size();
+                int this_size = size_prot + size_lip;
+
+                if(freq[i][j] > 0.0)
+                {
+                    for(k=0; k<this_size; k++) //loop over atoms
+                    {
+                        coords[i][j][k][0] = coords[i][j][k][0]/freq[i][j];
+                        coords[i][j][k][1] = coords[i][j][k][1]/freq[i][j];
+                        coords[i][j][k][2] = coords[i][j][k][2]/freq[i][j];
+                    }
+                }
+            }
+        }
+
+        //write coords to pdb
+        for(i=0; i<types.size(); i++) //loop over lipid types 
+        {
+            int size_lip  = types_count[i];
+            int size_prot = traj.prot.size();
+            int this_size = size_prot + size_lip;
+
+            //allocate memory for shuffling data
+            iv1d order(p_atom_id.size(),0);
+            dv1d order_freq(p_atom_id.size(),0.0);
+            for(j=0; j<p_atom_id.size(); j++) //loop over h-bonds
+            {
+                order[j] = j;
+                order_freq[j] = freq[j][i];
+            }
+
+            //shuffle data by the freq value
+            int b_swap = 0;
+            for(b_swap=1; b_swap > 0; )
+            {
+                b_swap = 0;
+                for(j=0; j<p_atom_id.size()-1; j++)
+                {
+                    if(order_freq[j] < order_freq[j+1])
+                    {
+                        int order_freq_tmp = order_freq[j];
+                        int order_tmp      = order[j];
+                        order_freq[j]      = order_freq[j+1];
+                        order[j]           = order[j+1];
+                        order_freq[j+1]    = order_freq_tmp; 
+                        order[j+1]         = order_tmp;
+                        b_swap             = 1; 
+                    }
+                }
+            }
+
+            //allocate memory to store info needed for writing out a pdb
+            iv1d    this_atom_nr(this_size,0);                  //atom number used in pdb file
+            iv1d    this_res_nr(this_size,1);                   //res number used in pdb file
+            sv1d    this_atom_name(this_size);                  //atom name used in pdb file
+            sv1d    this_res_name(this_size,types[i]);          //res name used in pdb file
+            dv1d    this_beta(this_size,1.0);                   //beta factor used in pdb file
+            dv1d    this_weight(this_size,1.0);                 //weight used ub  pdb file
+            sv1d    this_element(this_size,"ele");              //element collumn used in pdb file
+            cv1d    this_chain_id(this_size,'A');               //chain id used in pdb file
+
+            //set the atom number
+            for(j=0; j<this_size; j++) //loop over atoms
+            {
+                this_atom_nr[j] = j+1;
+            }
+
+            //set the atom names
+            for(j=0; j<traj.prot.size(); j++) //loop over protein atoms 
+            {
+                this_atom_name[j] = traj.atom_name[traj.prot[j]-1];
+            }
+            for(j=0; j<types_count[i]; j++) //loop over lipid atoms
+            {
+                this_atom_name[traj.prot.size()+j] = atom_names_lip[i][j];
+            }
+
+            //set the residue names
+            for(j=0; j<traj.prot.size(); j++) //loop over protein atoms
+            {
+                this_res_name[j] = traj.res_name[traj.prot[j]-1];
+            }
+            for(j=0; j<types_count[i]; j++) //loop over lipid atoms
+            {
+                this_res_name[traj.prot.size()+j] = types[i];
+            }
+
+            //set residue numbers
+            for(j=0; j<traj.prot.size(); j++) //loop over protein atoms
+            {
+                this_res_nr[j] = traj.res_nr[traj.prot[j]-1];
+            }
+            for(j=0; j<types_count[i]; j++) //loop over lipid atoms
+            {
+                this_res_nr[traj.prot.size()+j] = this_res_nr[traj.prot.size()-1] + 1;
+            }        
+
+            //open pdb file
+            FILE *pdb_file;
+            string tag = "_" + types[i] + ".pdb";
+            string pdb_file_name = chop_and_add_tag(p.lphb_file_name,tag.c_str()); 
+            pdb_file = fopen(pdb_file_name.c_str(), "w");
+            if(pdb_file == NULL)
+            {
+                printf("failure opening %s. Make sure the file exists. \n",pdb_file_name.c_str());
+            }
+            else
+            {
+                for(j=0; j<p_atom_id.size(); j++) //loop over h-bonds
+                {
+                    if(freq[order[j]][i] > 0.0)
+                    {
+                        //set B-factor to the freq
+                        for(k=0; k<traj.prot.size()+types_count[i]; k++) //loop over protein atoms
+                        {
+                            this_beta[k] = freq[order[j]][i]/traj.get_ef_frames();
+                        }
+
+                        //write the average coords to a pdb file
+                        write_frame_pdb(traj.ibox,this_size,this_atom_nr,this_res_nr,this_res_name,this_atom_name,coords[order[j]][i],traj.title,s.world_rank,&pdb_file,this_beta,this_weight,this_element,this_chain_id,j);
+                    }
+                }
+                
+                //close file
+                fclose(pdb_file);
+            }
+
+            //report frequency data
+            FILE *freq_file;
+            string freq_tag = "_" + types[i] + "_freq.dat";
+            string freq_file_name = chop_and_add_tag(p.lphb_file_name,freq_tag.c_str());
+            freq_file = fopen(freq_file_name.c_str(), "w");
+            if(freq_file == NULL)
+            {
+                printf("failure opening %s. Make sure the file exists. \n",freq_file_name.c_str());
+            }
+            else
+            {
+                fprintf(freq_file," %12s %12s %-s \n","h-bond","frequency","pymol_selection");
+                for(j=0; j<p_atom_id.size(); j++) //loop over h-bonds
+                {
+                    string select_tag = "select hb, name " + l_atom_type[order[j]] + " or (resid " + to_string(traj.res_nr[p_atom_id[order[j]]-1]) + " and name " + traj.atom_name[p_atom_id[order[j]]-1] + " )";
+                    fprintf(freq_file," %12d %12f %-s \n",j+1,freq[order[j]][i]/traj.get_ef_frames(),select_tag.c_str());
+                }
+                fclose(freq_file);
+            }
+        }
+    }
+
+    //write h-bond frequencies for each protein atom to the b-factor
+    if(s.world_rank == 0)
+    {
+        printf("Writing h-bond frequency data for each protein atom. \n");
+    }
+
+    //collect B-factor data, i.e., the h-bond frequency for each protein atom
+    collect_and_sum_dv1d(s.world_size,s.world_rank,b_factor_freq);
+
+    if(s.world_rank == 0)
+    {
+        //open pdb file for writing
+        FILE *b_factor_file;
+        string b_factor_tag = "_freq.pdb";
+        string b_factor_file_name = chop_and_add_tag(p.lphb_file_name,b_factor_tag.c_str());
+        b_factor_file = fopen(b_factor_file_name.c_str(), "w");
+        if(b_factor_file == NULL)
+        {
+            printf("failure opening %s. Make sure the file exists. \n",b_factor_file_name.c_str());
+        }
+        else
+        {
+            write_frame_pdb(traj.ibox,traj.atoms(),traj.atom_nr,traj.res_nr,traj.res_name,traj.atom_name,traj.r,traj.title,s.world_rank,&b_factor_file,b_factor_freq,traj.weight,traj.element,traj.chain_id,1);
+            fclose(b_factor_file);
+        }
+    }
 
     MPI_Barrier(MPI_COMM_WORLD);
 
@@ -336,6 +989,7 @@ int main(int argc, const char * argv[])
     add_argument_mpi_i(argc,argv,"-stdev",  &p.b_stdev,                   "Compute the STDEV and STEM? (0:no 1:yes)",                     s.world_rank, nullptr,      0);
     add_argument_mpi_i(argc,argv,"-clean",  &p.b_clean,                   "Remove single frame files? (0:no 1:yes)",                      s.world_rank, nullptr,      0);
     add_argument_mpi_i(argc,argv,"-test",   &p.b_test,                    "Print info for checking hydrogen bonds? (0:no 1:yes)",         s.world_rank, nullptr,      0);
+    add_argument_mpi_s(argc,argv,"-sel",    p.selection_text_file_name,   "Selection card with the atom selection text (sel)",            s.world_rank, &p.b_sel_text,0);
     conclude_input_arguments_mpi(argc,argv,s.world_rank,s.program_name);
 
     //create a trajectory
@@ -384,6 +1038,10 @@ int main(int argc, const char * argv[])
     if(p.b_sf_param == 1)
     {
         check_extension_mpi(s.world_rank,"-sf_prm",p.solvent_finder_param_name,".prm");
+    }
+    if(p.b_sel_text == 1)
+    {
+        check_extension_mpi(s.world_rank,"-sel",p.selection_text_file_name,".sel");
     }
 
     //create index objects
@@ -481,6 +1139,67 @@ int main(int argc, const char * argv[])
        }
     }
 
+    //allocate memory to hold h-bond stats
+    sv1d types = param.get_column_s(3,0);           //stores the lipid types being analyzed
+    iv1d types_count(types.size(),0);               //stores the number of atoms for each lipid type
+    iv1d p_atom_id(0,0);                            //stores the protein atom id for each h-bond
+    sv1d l_atom_type(0);                            //stores the lipid atom type for each h-bond 
+    dv2d freq(0,dv1d(types.size(),0.0));            //stores the frequency that the h-bond occurs in the trajectory
+    vector <vector <rvec*>> coords;                 //stores the atomic coordinates of the protein and a lipid
+
+    //count the atoms in each lipid type
+    count_lipid_atoms(traj,s,p,types,types_count);
+
+    //allocate memory to store atom names for lipids and protein
+    sv2d atom_names_lip(0,sv1d(0));
+    for(i=0; i<types.size(); i++) //loop over lipid types 
+    {
+        sv1d this_atom_names(types_count[i],"");
+        atom_names_lip.push_back(this_atom_names);
+    }
+
+    //get lipid atom names
+    name_lip_atoms(traj,s,p,types,atom_names_lip);
+
+    dv1d b_factor_freq(traj.atoms(),0.0); //store the number of times a protein atom formed an h-bond as b-factor
+
+    //create object to hold protein atom refinement
+    iv1d refined_sel(traj.atoms(),0);
+
+    //create a object to hold an atom selection
+    Selection this_sel;
+
+    if(p.b_sel_text == 1)
+    {
+        //create index to hold the atom selection text
+        Index selection_text;
+
+        //read the index files
+        selection_text.get_index(p.selection_text_file_name);
+
+        //select the atoms
+        this_sel.get_selection(traj,selection_text.index_s);
+
+        //generate pdb file name for highlighting the selection 
+        string pdb_filename = chop_and_add_tag(p.selection_text_file_name,".pdb");
+
+        //highlight the selected atoms
+        this_sel.highlight_sel(traj,pdb_filename);
+
+        //refine the selection
+        for(i=0; i<this_sel.sel.size(); i++) //loop over selected atoms
+        {
+            refined_sel[this_sel.sel[i]-1] = 1; 
+        }
+    }
+    else 
+    {
+        for(i=0; i<traj.prot.size(); i++) //loop over protein atoms
+        {
+            refined_sel[traj.prot[i]-1] = 1;
+        }
+    }
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     //print info about the worlk load distribution
@@ -497,7 +1216,7 @@ int main(int argc, const char * argv[])
 
         traj.do_fit();
 
-        lip_h_bonds(traj,s,p,param,lip_a,lip_d,prot_a,prot_d,bonds,hb);
+        lip_h_bonds(traj,s,p,param,lip_a,lip_d,prot_a,prot_d,bonds,hb,types,p_atom_id,l_atom_type,freq,coords,types_count,b_factor_freq,refined_sel);
 
         traj.set_beta_lf();
 
@@ -510,7 +1229,7 @@ int main(int argc, const char * argv[])
     perf.log_time((clock() - s.t)/CLOCKS_PER_SEC,"Main Loop");
 
     //collect contacts from mpi processes and compute the average
-    perf.log_time(finalize_analysis(traj,s,p,hb),"Fin Ana");
+    perf.log_time(finalize_analysis(traj,s,p,hb,types,p_atom_id,l_atom_type,freq,coords,types_count,atom_names_lip,b_factor_freq),"Fin Ana");
 
     //splice temporary traj file together (log time spent)
     perf.log_time(traj.finalize_trajectory(),"Finalize Trajectory");
