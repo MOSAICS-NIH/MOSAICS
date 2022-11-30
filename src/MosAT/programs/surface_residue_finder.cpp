@@ -19,11 +19,11 @@ using namespace std;
 #include "headers/switch.h"                                     //This defines a switch (on, off)
 #include "headers/file_reader.h"                                //This has basic routines for reading text files
 #include "headers/vector_mpi.h"                                 //This has routines for collecting vector data
-#include "headers/mosat_routines.h"                            //This is where most of the functions called in main are located
+#include "headers/mosat_routines.h"                             //This is where most of the functions called in main are located
 #include "headers/file_naming.h"                                //This has routines for added tags to an existing file name    
 #include "headers/file_naming_mpi.h"                            //This has routines for added tags to an existing file name (mpi)
 #include "headers/command_line_args_mpi.h"                      //This has routines for adding command line arguments
-#include "MosAT/program_variables/pv_surface_residue_finder.h" //This has the variables specific to the analysis program
+#include "MosAT/program_variables/pv_surface_residue_finder.h"  //This has the variables specific to the analysis program
 #include "headers/performance.h"                                //This has a class for logging performance data
 #include "headers/array.h"                                      //This has routines used for working with arrays
 #include "headers/index.h"                                      //This has a class for working with index files
@@ -36,13 +36,15 @@ using namespace std;
 #include "headers/force_serial.h"                               //This has routines used for forcing the code to run on a single mpi process
 #include "headers/param.h"                                      //This has routines used for reading complex parameter data
 #include "headers/histo.h"                                      //This has routines used for binning data and making a histogram
+#include "headers/atom_select.h"                                //This has routines used for making atom selections using a selection text
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                           //
 // This function counts how many lipids make contact with each protein residue.                              //
 //                                                                                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void protein_surface(Trajectory &traj,system_variables &s,program_variables &p,Param &param,int contacts_sum[],iv1d &surface_count)
+void protein_surface(Trajectory &traj,system_variables &s,program_variables &p,Param &param,int contacts_sum[],
+                     iv1d &surface_count,iv1d &refined_sel)
 {
     int i          = 0;                               //loop variable
     int j          = 0;                               //loop variable
@@ -65,35 +67,38 @@ void protein_surface(Trajectory &traj,system_variables &s,program_variables &p,P
 
         for(j=min_p; j<=max_p; j++) //loop over current residue atoms
         {
-            for(k=0; k<traj.target_leaflet.size(); k++) //loop over target leaflet atoms
+            if(refined_sel[j] == 1) //check refined selection
             {
-                //get the first and last atom of the current lipid
-                int min = traj.t_lip_start(k);
-                int max = traj.t_lip_end(k);
-
-                //jump to the next lipid
-                k = traj.next_target_lipid(k);
-
-                //count contacts for target lipids 
-                for(l=0; l<param.main_size_y(); l++) //loop over lipid types 
+                for(k=0; k<traj.target_leaflet.size(); k++) //loop over target leaflet atoms
                 {
-                    if(strcmp(traj.res_name[min].c_str(), param.param_main_s[l][0].c_str()) == 0) //residue is a target lipid
+                    //get the first and last atom of the current lipid
+                    int min = traj.t_lip_start(k);
+                    int max = traj.t_lip_end(k);
+
+                    //jump to the next lipid
+                    k = traj.next_target_lipid(k);
+
+                    //count contacts for target lipids 
+                    for(l=0; l<param.main_size_y(); l++) //loop over lipid types 
                     {
-                        for(m=min; m<=max; m++) //loop over current lipid atoms
+                        if(strcmp(traj.res_name[min].c_str(), param.param_main_s[l][0].c_str()) == 0) //residue is a target lipid
                         {
-                            for(n=0; n<param.sec_size_y(l); n++) //loop over target atoms
+                            for(m=min; m<=max; m++) //loop over current lipid atoms
                             {
-                                if(strcmp(traj.atom_name[m].c_str(), param.param_sec_s[l][n][0].c_str()) == 0) //atom is a target atom
+                                for(n=0; n<param.sec_size_y(l); n++) //loop over target atoms
                                 {
-                                    double dif_x = traj.r[j][0] - traj.r[m][0];
-                                    double dif_y = traj.r[j][1] - traj.r[m][1];
-                                    double dif_z = traj.r[j][2] - traj.r[m][2];
-
-                                    double dist = sqrt(dif_x*dif_x + dif_y*dif_y + dif_z*dif_z);
-
-                                    if(dist < p.contact_cutoff)
+                                    if(strcmp(traj.atom_name[m].c_str(), param.param_sec_s[l][n][0].c_str()) == 0) //atom is a target atom
                                     {
-                                        contact[prot_count] = 1;
+                                        double dif_x = traj.r[j][0] - traj.r[m][0];
+                                        double dif_y = traj.r[j][1] - traj.r[m][1];
+                                        double dif_z = traj.r[j][2] - traj.r[m][2];
+
+                                        double dist = sqrt(dif_x*dif_x + dif_y*dif_y + dif_z*dif_z);
+
+                                        if(dist < p.contact_cutoff)
+                                        {
+                                            contact[prot_count] = 1;
+                                        }
                                     }
                                 }
                             }
@@ -323,6 +328,7 @@ int main(int argc, const char * argv[])
     add_argument_mpi_s(argc,argv,"-pf_prm", p.protein_finder_param_name,  "File with additional protein finder parameters (prm)",          s.world_rank, &p.b_pf_param,0);
     add_argument_mpi_d(argc,argv,"-cutoff", &p.cutoff,                    "Cutoff for selecting the N surface atoms (chi)",                s.world_rank, nullptr,      0);
     add_argument_mpi_d(argc,argv,"-cdist",  &p.contact_cutoff,            "The contact cutoff distance (nm)",                              s.world_rank, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-sel",    p.selection_text_file_name,   "Input file with the atom selection text (sel)",                 s.world_rank, &p.b_sel_text,0);
     conclude_input_arguments_mpi(argc,argv,s.world_rank,s.program_name);
 
     //create a trajectory
@@ -361,6 +367,10 @@ int main(int argc, const char * argv[])
     {
         check_extension_mpi(s.world_rank,"-pf_prm",p.protein_finder_param_name,".prm");
     }
+    if(p.b_sel_text == 1)
+    {
+        check_extension_mpi(s.world_rank,"-sel",p.selection_text_file_name,".sel");
+    }
 
     //create parameter files
     Param param;
@@ -396,7 +406,29 @@ int main(int argc, const char * argv[])
     int contacts_sum[traj.prot.size()];           //Stores the contact counts
     init_iarray(contacts_sum,traj.prot.size());
 
-    iv1d surface_count(0,0);
+    iv1d surface_count(0,0);                      //Holds the number of surface atoms for each frame
+
+    //create object to hold protein atom refinement
+    iv1d refined_sel(traj.atoms(),1);
+
+    if(p.b_sel_text == 1)
+    {
+        //create a object to hold an atom selection
+        Selection this_sel;
+
+        //select the atoms
+        this_sel.get_selection(traj,p.selection_text_file_name);
+
+        //generate pdb file name for highlighting the selection 
+        string pdb_filename = chop_and_add_tag(p.selection_text_file_name,".pdb");
+
+        //highlight the selected atoms
+        this_sel.highlight_sel(traj,pdb_filename);
+
+        //refine the selection
+        refined_sel = this_sel.tag_atoms(traj);
+    }
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     //print info about the worlk load distribution
@@ -413,7 +445,7 @@ int main(int argc, const char * argv[])
 
         traj.do_fit();
 
-        protein_surface(traj,s,p,param,contacts_sum,surface_count);
+        protein_surface(traj,s,p,param,contacts_sum,surface_count,refined_sel);
 
         traj.set_beta_lf();
 

@@ -26,6 +26,7 @@ struct program_variables
     FILE *surface_pdb_file;                       //File for writing the final surface atom data to pdb
     FILE *lf_pdb_file;                            //File for writing the output pdb file with leaflets indicated by B-factor
     FILE *pf_pdb_file;                            //File for writing the output pdb file with protein indicated by B-factor
+    string selection_text_file_name;              //Name of the selection card with the selection text
     string histo_file_name;                       //Name of the histogram file
     string surface_pdb_file_name;                 //Name of the surface pdb file
     string lf_pdb_file_name;                      //Name of the output pdb file with leaflets indicated by B-factor
@@ -41,6 +42,7 @@ struct program_variables
     int b_lf_pdb;                                 //Print pdb with leaflets indicated by beta factor
     int b_pf_pdb;                                 //Print pdb with protein indicated by beta factor
     int bin;                                      //Bin width for histogram
+    int b_sel_text;                               //Refine the selection of protein atoms?
     double cutoff;                                //Above what percentage is significant?
     double contact_cutoff;                        //How far away before no longer counted as a contact
     double bulk;                                  //Lipid ratio in the bulk
@@ -74,6 +76,7 @@ void initialize_program_variables(program_variables *p)
     p->b_pf_pdb       = 0;
     p->b_lf_param     = 0;
     p->bin            = 1;
+    p->b_sel_text     = 0;
 
     //here we set the program description
     p->program_description = "Surface Residue Finder is a program that selects the surface atoms of a protein. This is done by counting the number of lipids that form one or more contacts with a given protein atom. Then, atopms with too few contacting lipids are excluded from the surface. The output is a pdb with surface residues indicated by the beta factor as well as PyMOL commands used for selecting the surace and core atoms.";

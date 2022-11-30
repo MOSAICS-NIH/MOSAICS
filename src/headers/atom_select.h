@@ -768,12 +768,12 @@ iv1d grab_atoms(Trajectory traj,sv1d sel_text)
 class Selection
 {
     public:
-        iv1d sel;                                                         //This holds the atom numbers for the selection 
+        iv1d sel;                                                             //This holds the atom numbers for the selection 
 
     public:
-        void get_selection(Trajectory traj,sv1d sel_tex);                 //read in the index
-        void highlight_sel(Trajectory traj,string pdb_filename);          //write a pdb file with the selection highlighted in the B-factor 
-        iv1d tag_atoms(Trajectory traj);                                  //This function marks the selected atoms with a 1 and the rest with 0 
+        void get_selection(Trajectory traj,string selection_text_file_name);  //read in the index
+        void highlight_sel(Trajectory traj,string pdb_filename);              //write a pdb file with the selection highlighted in the B-factor 
+        iv1d tag_atoms(Trajectory traj);                                      //This function marks the selected atoms with a 1 and the rest with 0 
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -781,9 +781,15 @@ class Selection
 // This function analyzes the selection text and the trajectory and makes the atom selection                //
 //                                                                                                          //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void Selection::get_selection(Trajectory traj,sv1d sel_text)
+void Selection::get_selection(Trajectory traj,string selection_text_file_name)
 {
-    sel = grab_atoms(traj,sel_text);
+    //create index to hold the atom selection text
+    Index selection_text;
+
+    //read the index files
+    selection_text.get_index(selection_text_file_name);
+
+    sel = grab_atoms(traj,selection_text.index_s);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////

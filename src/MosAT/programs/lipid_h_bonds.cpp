@@ -1164,21 +1164,15 @@ int main(int argc, const char * argv[])
     dv1d b_factor_freq(traj.atoms(),0.0); //store the number of times a protein atom formed an h-bond as b-factor
 
     //create object to hold protein atom refinement
-    iv1d refined_sel(traj.atoms(),0);
-
-    //create a object to hold an atom selection
-    Selection this_sel;
+    iv1d refined_sel(traj.atoms(),1);
 
     if(p.b_sel_text == 1)
     {
-        //create index to hold the atom selection text
-        Index selection_text;
-
-        //read the index files
-        selection_text.get_index(p.selection_text_file_name);
+        //create a object to hold an atom selection
+        Selection this_sel;
 
         //select the atoms
-        this_sel.get_selection(traj,selection_text.index_s);
+        this_sel.get_selection(traj,p.selection_text_file_name);
 
         //generate pdb file name for highlighting the selection 
         string pdb_filename = chop_and_add_tag(p.selection_text_file_name,".pdb");
@@ -1187,17 +1181,7 @@ int main(int argc, const char * argv[])
         this_sel.highlight_sel(traj,pdb_filename);
 
         //refine the selection
-        for(i=0; i<this_sel.sel.size(); i++) //loop over selected atoms
-        {
-            refined_sel[this_sel.sel[i]-1] = 1; 
-        }
-    }
-    else 
-    {
-        for(i=0; i<traj.prot.size(); i++) //loop over protein atoms
-        {
-            refined_sel[traj.prot[i]-1] = 1;
-        }
+        refined_sel = this_sel.tag_atoms(traj);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
