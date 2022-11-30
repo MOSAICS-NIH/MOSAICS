@@ -989,7 +989,7 @@ int main(int argc, const char * argv[])
     add_argument_mpi_i(argc,argv,"-stdev",  &p.b_stdev,                   "Compute the STDEV and STEM? (0:no 1:yes)",                     s.world_rank, nullptr,      0);
     add_argument_mpi_i(argc,argv,"-clean",  &p.b_clean,                   "Remove single frame files? (0:no 1:yes)",                      s.world_rank, nullptr,      0);
     add_argument_mpi_i(argc,argv,"-test",   &p.b_test,                    "Print info for checking hydrogen bonds? (0:no 1:yes)",         s.world_rank, nullptr,      0);
-    add_argument_mpi_s(argc,argv,"-sel",    p.selection_text_file_name,   "Selection card with the atom selection text (sel)",            s.world_rank, &p.b_sel_text,0);
+    add_argument_mpi_s(argc,argv,"-sel",    p.selection_text_file_name,   "Input file with the atom selection text (sel)",                s.world_rank, &p.b_sel_text,0);
     conclude_input_arguments_mpi(argc,argv,s.world_rank,s.program_name);
 
     //create a trajectory

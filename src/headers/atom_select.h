@@ -743,7 +743,7 @@ iv1d grab_atoms(Trajectory traj,sv1d sel_text)
     
             update_selection(traj,&b_invert,op,current_sel,this_selection);
         }
-        else if(s_type == 14) //select solvent
+        else if(s_type == 14) //select lower leaflet
         {
             current_sel = select_lower(traj);
     
