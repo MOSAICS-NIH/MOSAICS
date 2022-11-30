@@ -111,6 +111,10 @@ int check_instruction_type(string this_string)
         {
             type = 14;
         }
+        else if(strcmp(this_string.c_str(), "hydrogen") == 0) //select hydrogens
+        {
+            type = 15;
+        }
         else if(check_int_sel(this_string) == 1 || check_int_sel(this_string) == 2) //an atom/residue id was provided
         {
             type = 4;
@@ -435,6 +439,28 @@ iv1d select_lower(Trajectory traj)
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                          //
+// This function selects hydrogen atoms (assumed to be atoms beginning with H)                              //
+//                                                                                                          //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+iv1d select_hydrogen(Trajectory traj)
+{
+    int i = 0;
+
+    iv1d selection(0,0);
+
+    for(i=0; i<traj.atoms(); i++) //loop over system atoms
+    {
+        if(traj.atom_name[i].at(0) == 'H') //atom is a hydrogen
+        {
+            selection.push_back(traj.atom_nr[i]);
+        }
+    }
+
+    return selection;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                          //
 // This function combines two selections                                                                    //
 //                                                                                                          //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -558,6 +584,29 @@ iv1d invert(Trajectory traj,iv1d current_sel)
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                          //
+// This function updates the selection                                                                      //
+//                                                                                                          //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void update_selection(Trajectory traj,int *b_invert,int op,iv1d &current_sel,iv1d &this_selection)
+{
+    if(*b_invert == 1)
+    {
+        current_sel = invert(traj,current_sel);
+    }
+
+    if(op == 1)
+    {
+        this_selection = combine(this_selection,current_sel);
+    }
+    else if(op == -1)
+    {
+        this_selection = prune(this_selection,current_sel);
+    }
+    *b_invert = 0;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                          //
 // This function makes an atom selection                                                                    //
 //                                                                                                          //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -568,9 +617,8 @@ iv1d grab_atoms(Trajectory traj,sv1d sel_text)
     int op       = 1;          //tells how to handle new data and this_selection
     int b_invert = 0;          //invert the current selection?
 
-    iv1d this_selection(0,0);
-
-    iv1d current_sel(0,0);
+    iv1d this_selection(0,0);  //holds the long term selection
+    iv1d current_sel(0,0);     //holds the current selection
  
     //parse the selection text
     for(i=0; i<sel_text.size(); i++) //loop over items in text
@@ -594,20 +642,7 @@ iv1d grab_atoms(Trajectory traj,sv1d sel_text)
 
                     current_sel = select_by_atom_id(traj,min,max);
 
-                    if(b_invert == 1)
-                    {
-                        current_sel = invert(traj,current_sel);
-                    }
-
-                    if(op == 1)
-                    {
-                        this_selection = combine(this_selection,current_sel);
-                    }
-                    else if(op == -1)
-                    {
-                        this_selection = prune(this_selection,current_sel); 
-                    }
-                    b_invert = 0;
+                    update_selection(traj,&b_invert,op,current_sel,this_selection);
                 }
                 else if(s_type == 1 && next_s_type == 4) //select by res id
                 {
@@ -617,60 +652,21 @@ iv1d grab_atoms(Trajectory traj,sv1d sel_text)
 
                     current_sel = select_by_res_id(traj,min,max);
 
-                    if(b_invert == 1)
-                    {
-                        current_sel = invert(traj,current_sel);
-                    }
-
-                    if(op == 1)
-                    {
-                        this_selection = combine(this_selection,current_sel);
-                    }
-                    else if(op == -1)
-                    {
-                        this_selection = prune(this_selection,current_sel);
-                    }
-                    b_invert = 0;
+                    update_selection(traj,&b_invert,op,current_sel,this_selection);
                 }
                 else if(s_type == 2 && next_s_type == 5) //select by atom name
                 {
                     sv1d list   = get_sel_list(sel_text[i+1]);
                     current_sel = select_by_atom_name(traj,list);
 
-                    if(b_invert == 1)
-                    {
-                        current_sel = invert(traj,current_sel);
-                    }
-
-                    if(op == 1)
-                    {
-                        this_selection = combine(this_selection,current_sel);
-                    }
-                    else if(op == -1)
-                    {
-                        this_selection = prune(this_selection,current_sel);
-                    }
-                    b_invert = 0;
+                    update_selection(traj,&b_invert,op,current_sel,this_selection);
                 }
                 else if(s_type == 3 && next_s_type == 5) //select by res name
                 {
                     sv1d list    = get_sel_list(sel_text[i+1]);
                     current_sel = select_by_res_name(traj,list);
 
-                    if(b_invert == 1)
-                    {
-                        current_sel = invert(traj,current_sel);
-                    }
-
-                    if(op == 1)
-                    {
-                        this_selection = combine(this_selection,current_sel);
-                    }
-                    else if(op == -1)
-                    {
-                        this_selection = prune(this_selection,current_sel);
-                    }
-                    b_invert = 0;
+                    update_selection(traj,&b_invert,op,current_sel,this_selection);
                 }
                 else 
                 {
@@ -708,20 +704,7 @@ iv1d grab_atoms(Trajectory traj,sv1d sel_text)
             }
             current_sel = grab_atoms(traj,bracket_sel);
 
-            if(b_invert == 1)
-            {
-                current_sel = invert(traj,current_sel);
-            }
-
-            if(op == 1)
-            {
-                this_selection = combine(this_selection,current_sel);
-            }
-            else if(op == -1)
-            {
-                this_selection = prune(this_selection,current_sel);
-            }
-            b_invert = 0;
+            update_selection(traj,&b_invert,op,current_sel,this_selection);
 
             i = end + 1;
         }
@@ -746,77 +729,31 @@ iv1d grab_atoms(Trajectory traj,sv1d sel_text)
         {
             current_sel = select_prot(traj); 
 
-            if(b_invert == 1)
-            {
-                current_sel = invert(traj,current_sel);
-            }
-
-            if(op == 1)
-            {
-                this_selection = combine(this_selection,current_sel);
-            }
-            else if(op == -1)
-            {
-                this_selection = prune(this_selection,current_sel);
-            }
-            b_invert = 0;
+            update_selection(traj,&b_invert,op,current_sel,this_selection);
         }
         else if(s_type == 12) //select solvent
         {
             current_sel = select_sol(traj);
 
-            if(b_invert == 1)
-            {
-                current_sel = invert(traj,current_sel);
-            }
-
-            if(op == 1)
-            {
-                this_selection = combine(this_selection,current_sel);
-            }
-            else if(op == -1)
-            {
-                this_selection = prune(this_selection,current_sel);
-            }
-            b_invert = 0;
+            update_selection(traj,&b_invert,op,current_sel,this_selection);
         }
         else if(s_type == 13) //select upper leaflet
         {
             current_sel = select_upper(traj);
     
-            if(b_invert == 1)
-            {
-                current_sel = invert(traj,current_sel);
-            }
-
-            if(op == 1)
-            {
-                this_selection = combine(this_selection,current_sel);
-            }
-            else if(op == -1)
-            {
-                this_selection = prune(this_selection,current_sel);
-            }
-            b_invert = 0;
+            update_selection(traj,&b_invert,op,current_sel,this_selection);
         }
         else if(s_type == 14) //select solvent
         {
             current_sel = select_lower(traj);
     
-            if(b_invert == 1)
-            {
-                current_sel = invert(traj,current_sel);
-            }
+            update_selection(traj,&b_invert,op,current_sel,this_selection);
+        }
+        else if(s_type == 15) //select hydrogens
+        {
+            current_sel = select_hydrogen(traj);
 
-            if(op == 1)
-            {
-                this_selection = combine(this_selection,current_sel);
-            }
-            else if(op == -1)
-            {
-                this_selection = prune(this_selection,current_sel);
-            }
-            b_invert = 0;
+            update_selection(traj,&b_invert,op,current_sel,this_selection);
         }
     }
    
@@ -836,6 +773,7 @@ class Selection
     public:
         void get_selection(Trajectory traj,sv1d sel_tex);                 //read in the index
         void highlight_sel(Trajectory traj,string pdb_filename);          //write a pdb file with the selection highlighted in the B-factor 
+        iv1d tag_atoms(Trajectory traj);                                  //This function marks the selected atoms with a 1 and the rest with 0 
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -885,3 +823,22 @@ void Selection::highlight_sel(Trajectory traj,string pdb_filename)
     }
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                          //
+// This function returns a 1d vector with the selected atoms marked by 1 and other atoms by a 0             //
+//                                                                                                          //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+iv1d Selection::tag_atoms(Trajectory traj)
+{
+    int i = 0;                           //standard variable used in loops
+
+    iv1d tagged_atoms(traj.atoms(),0);   //holds an indicator for each atom
+
+    //tag the selected atoms
+    for(i=0; i<sel.size(); i++) //loop over selected atoms
+    {
+        tagged_atoms[sel[i]-1] = 1;
+    }
+    
+    return tagged_atoms;
+}
