@@ -29,6 +29,7 @@ struct program_variables
     string leaflet_finder_param_name;             //Name of the leaflet finder param file
     string protein_finder_param_name;             //Name of the protein finder param file
     string solvent_finder_param_name;             //Name of the solvent finder param file
+    string selection_text_file_name;              //Name of the selection card with the selection text
     int b_sf_param;                               //Tells if the user included a solvent types parameter file
     int b_pf_param;                               //Tells if the user included a protein types parameter file
     int b_lf_param;                               //Tells if the user included a lipid types parameter file
@@ -42,6 +43,7 @@ struct program_variables
     int b_stdev;                                  //Compute the z-coord standard deviation?
     int b_clean;                                  //Delete single frame rmsd files after computing average?
     int b_mol;                                    //Count molecules instead of contacts?
+    int b_sel_text;                               //Refine the selection of protein atoms?
     double APS;                                   //This is the area of a grid square
     double radius;                                //Radius of the atom
     double cutoff;                                //Percentage of average rho used for excluding data
@@ -88,6 +90,7 @@ void initialize_program_variables(program_variables *p)
     p->b_lf_param      = 0;
     p->b_mol           = 0;
     p->ex_val          = 0.0;
+    p->b_sel_text      = 0;
 
     //here we set the program description
     p->program_description = "Lipid Contacts 3d is a program designed for quantifying contacts between lipids and other molecules. The program can measure lipid-lipid, lipid-protein, and lipid-solvent contacts or a mixture of the three. The number of contacts formed is projected onto a 3d lattice.";   
