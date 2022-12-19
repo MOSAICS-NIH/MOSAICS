@@ -458,6 +458,7 @@ class Grid_lt
         int size_x();                                                                                             //return the size in x
         int size_y();                                                                                             //return the size in y
         int size();                                                                                               //return how many items in file
+        void size_grid(int size_x,int size_y);                                                                    //allocates memory for the grid
         void exclude_grid_data(double cutoff,double avg_rho,dv4d &rho);                                           //exclude insignificant data  
         void init_grid(double val);                                                                               //set grid point equal to val
         void set_nan(double val);                                                                                 //set nan tags equal to val
@@ -552,6 +553,20 @@ int Grid_lt::size()
 {
     return capacity;
 }   
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function allocates memory for the grid                                                               //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void Grid_lt::size_grid(int size_x,int size_y)
+{
+    x_size   = size_x; 
+    y_size   = size_y; 
+    capacity = size_x*size_y; 
+
+    grid.resize(x_size,dv3d(y_size,dv2d(3,dv1d(2,0))));
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                           //
