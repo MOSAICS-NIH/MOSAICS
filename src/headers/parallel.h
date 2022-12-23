@@ -208,6 +208,7 @@ void print_work_load_stats_lip(int world_rank,int world_size,vector <int> &world
 
     if(world_rank == 0)
     {
+        printf("Distributing the workload (the lipids) accross %d mpi processes. \n",world_size);
         printf(" %10s %10s %20s %20s \n","Rank","Lipids","Lipid_Start","Lipid_End");
         printf(" %10s-%10s-%20s-%20s \n","----------","----------","--------------------","--------------------");
         for(i=0; i<world_size; i++)
@@ -348,6 +349,7 @@ void print_work_load_stats_prot(int world_rank,int world_size,vector <int> &worl
 
     if(world_rank == 0)
     {
+        printf("Distributing the workload (the protein atoms) accross %d mpi processes. \n",world_size);
         printf(" %10s %10s %20s %20s \n","Rank","Protein Atoms","Prot_Start","Prot_End");
         printf(" %10s-%10s-%20s-%20s \n","----------","----------","--------------------","--------------------");
         for(i=0; i<world_size; i++)
@@ -486,6 +488,7 @@ void print_work_load_stats_wat(int world_rank,int world_size,vector <int> &world
 
     if(world_rank == 0)
     {
+        printf("Distributing the workload (the water molecules) accross %d mpi processes. \n",world_size);
         printf(" %10s %10s %20s %20s \n","Rank","Waters","Water_Start","Water_End");
         printf(" %10s-%10s-%20s-%20s \n","----------","----------","--------------------","--------------------");
         for(i=0; i<world_size; i++)
@@ -524,7 +527,7 @@ void Trajectory::parallelize_by_water(int num_waters_1)
     world_water_end.resize(world_size,0);
 
     //compute each mpi processes start and end water
-    distribute_work_load_lip(num_waters_1,world_rank,world_size,my_waters,world_waters,&water_start,&water_end,world_water_start,world_water_end);
+    distribute_work_load_wat(num_waters_1,world_rank,world_size,my_waters,world_waters,&water_start,&water_end,world_water_start,world_water_end);
 
     //print_work_load_stats(s.world_rank,s.world_size,world_waters,world_water_start,world_water_end);
 }
@@ -623,6 +626,7 @@ void print_work_load_stats_sel(int world_rank,int world_size,vector <int> &world
 
     if(world_rank == 0)
     {
+        printf("Distributing the workload (the custom atom selection) accross %d mpi processes. \n",world_size);
         printf(" %10s %10s %20s %20s \n","Rank","Atoms","Atom_Start","Atom_End");
         printf(" %10s-%10s-%20s-%20s \n","----------","----------","--------------------","--------------------");
         for(i=0; i<world_size; i++)
