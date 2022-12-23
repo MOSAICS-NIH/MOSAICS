@@ -1098,9 +1098,12 @@ void write_frame_gro(matrix box,int num_atoms,vector<int> &atom_nr,vector<int> &
 
     for(i=0; i<num_atoms+3; i++) //loop over the current frame
     {
-        //account for the maxium allowed resid and atom id
-        adjusted_atom_nr = atom_nr[i-2]%99999;
-        adjusted_res_nr = res_nr[i-2]%99999;
+        if(i >= 2)
+        {
+            //account for the maxium allowed resid and atom id
+            adjusted_atom_nr = atom_nr[i-2]%100000;
+            adjusted_res_nr  = res_nr[i-2]%100000;
+        }
 
         //The first line is text, the second gives number of atoms and the last gives the box
         if(i == 0) //title
