@@ -274,6 +274,151 @@ void Trajectory::workload_lipid()
 
 
 
+        int             my_prots     = 0;             //How many protein atoms is the mpi process responsible for
+        int             prot_start   = 0;             //First protein atom the mpi process is responsible for
+        int             prot_end     = 0;             //Last protein atom the mpi process is responsible for
+        vector <int>    world_prots{};                //How many protein atoms is the mpi process responsible for (world)
+        vector <int>    world_prot_start{};           //The first protein atom the mpi process is reponsible for (world)
+        vector <int>    world_prot_end{};             //The last protein atom the mpi process is responsible for (world)
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function determines how many protein atoms each core is responsible for                              //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int compute_workload_prot(int num_prots_1,int world_rank,int world_size)
+{
+    int i         = 0;
+    int my_prots = 0;
+
+    for(i=0; i<num_prots_1; i++)
+    {
+        if(i%world_size == world_rank)
+        {
+            my_prots = my_prots + 1;
+        }
+    }
+
+    return my_prots;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function determines which protein atoms each core is responsible for                                 //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void distribute_work_load_prot(int num_prots_1,int world_rank,int world_size,int my_prots,vector <int> &world_prots,int *prot_start,
+                              int *prot_end,vector <int> &world_prot_start,vector <int> &world_prot_end)
+{
+    int i             = 0;
+    int running_count = 0;
+    int world_prot_start_ary[world_size];
+    int world_prot_end_ary[world_size];
+
+    for(i=0; i<world_size; i++)
+    {
+        if(world_rank == i)
+        {
+            *prot_start = running_count;
+            *prot_end   = running_count + world_prots[i] - 1;
+        }
+        running_count = running_count + world_prots[i];
+    }
+
+    MPI_Allgather(prot_start, 1, MPI_INT, world_prot_start_ary, 1, MPI_INT,MPI_COMM_WORLD);
+    MPI_Allgather(prot_end,   1, MPI_INT, world_prot_end_ary,   1, MPI_INT,MPI_COMM_WORLD);
+
+    for(i=0; i<world_size; i++)
+    {
+        world_prot_start[i] = world_prot_start_ary[i];
+        world_prot_end[i]   = world_prot_end_ary[i];
+    }
+
+    //printf("world_rank %3d num_prots_1 %5d prot_start %5d prot_end %5d \n",world_rank,num_prots_1,*prot_start,*prot_end);    
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function prints information about the work load distribution                                         //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void print_work_load_stats_prot(int world_rank,int world_size,vector <int> &world_prots,vector <int> &world_prot_start,vector <int> &world_prot_end)
+{
+    int i = 0;
+
+    if(world_rank == 0)
+    {
+        printf(" %10s %10s %20s %20s \n","Rank","Protein Atoms","Prot_Start","Prot_End");
+        printf(" %10s-%10s-%20s-%20s \n","----------","----------","--------------------","--------------------");
+        for(i=0; i<world_size; i++)
+        {
+            printf(" %10d %10d %20d %20d \n",i,world_prots[i],world_prot_start[i],world_prot_end[i]);
+        }
+        printf("\n");
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function breaks up the workload by protein atoms                                                     //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void Trajectory::parallelize_by_prot(int num_prots_1)
+{
+    int i = 0;
+
+    //count the number of protein atoms the mpi process is responsible for
+    my_prots = compute_workload_prot(num_prots_1,world_rank,world_size);
+
+    //create an array for collecting my_prots. then copy to the vector
+    int world_prots_ary[world_size];
+    MPI_Allgather(&my_prots, 1, MPI_INT, world_prots_ary, 1, MPI_INT,MPI_COMM_WORLD);
+
+    //allocate memory for world_prots and copy world_prots_ary 
+    world_prots.resize(world_size,0);
+    for(i=0; i<world_size; i++)
+    {
+        world_prots[i] = world_prots_ary[i];
+    }
+
+    //allocate memory for world_prot_start and world_prot_end
+    world_prot_start.resize(world_size,0);
+    world_prot_end.resize(world_size,0);
+
+    //compute each mpi processes start and end protein atom
+    distribute_work_load_prot(num_prots_1,world_rank,world_size,my_prots,world_prots,&prot_start,&prot_end,world_prot_start,world_prot_end);
+
+    //print_work_load_stats(s.world_rank,s.world_size,world_prots,world_prot_start,world_prot_end);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function prints the workload distribution for protein atoms                                          //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void Trajectory::workload_prot()
+{
+    print_work_load_stats_prot(world_rank,world_size,world_prots,world_prot_start,world_prot_end);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                           //
 // This function determines how many waters each core is responsible for                                     //
@@ -392,5 +537,142 @@ void Trajectory::parallelize_by_water(int num_waters_1)
 void Trajectory::workload_water()
 {
     print_work_load_stats_wat(world_rank,world_size,world_waters,world_water_start,world_water_end);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function determines how many waters each core is responsible for                                     //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int compute_workload_sel(int num_atoms,int world_rank,int world_size)
+{
+    int i        = 0;
+    int my_atoms = 0;
+
+    for(i=0; i<num_atoms; i++)
+    {
+        if(i%world_size == world_rank)
+        {
+            my_atoms = my_atoms + 1;
+        }
+    }
+
+    return my_atoms;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function determines which atoms each core is responsible for                                         //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void distribute_work_load_sel(int num_atoms_1,int world_rank,int world_size,int my_atoms,vector <int> &world_atoms,int *atom_start,
+                              int *atom_end,vector <int> &world_atom_start,vector <int> &world_atom_end)
+{
+    int i             = 0;
+    int running_count = 0;
+    int world_atom_start_ary[world_size];
+    int world_atom_end_ary[world_size];
+
+    for(i=0; i<world_size; i++)
+    {
+        if(world_rank == i)
+        {
+            *atom_start = running_count;
+            *atom_end   = running_count + world_atoms[i] - 1;
+        }
+        running_count = running_count + world_atoms[i];
+    }
+
+    MPI_Allgather(atom_start, 1, MPI_INT, world_atom_start_ary, 1, MPI_INT,MPI_COMM_WORLD);
+    MPI_Allgather(atom_end,   1, MPI_INT, world_atom_end_ary,   1, MPI_INT,MPI_COMM_WORLD);
+
+    for(i=0; i<world_size; i++)
+    {
+        world_atom_start[i] = world_atom_start_ary[i];
+        world_atom_end[i]   = world_atom_end_ary[i];
+    }
+
+    //printf("world_rank %3d num_atoms_1 %5d atom_start %5d atom_end %5d \n",world_rank,num_atoms_1,*atom_start,*atom_end);    
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function prints information about the work load distribution                                         //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void print_work_load_stats_sel(int world_rank,int world_size,vector <int> &world_atoms,vector <int> &world_atom_start,vector <int> &world_atom_end)
+{
+    int i = 0;
+
+    if(world_rank == 0)
+    {
+        printf(" %10s %10s %20s %20s \n","Rank","Atoms","Atom_Start","Atom_End");
+        printf(" %10s-%10s-%20s-%20s \n","----------","----------","--------------------","--------------------");
+        for(i=0; i<world_size; i++)
+        {
+            printf(" %10d %10d %20d %20d \n",i,world_atoms[i],world_atom_start[i],world_atom_end[i]);
+        }
+        printf("\n");
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function breaks up the workload by a custom atom selection                                           //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void Trajectory::parallelize_by_selection(int num_atoms_1)
+{
+    int i = 0;
+
+    //count the number of waterss the mpi process is responsible for
+    my_atoms = compute_workload_sel(num_atoms_1,world_rank,world_size);
+
+    //create an array for collecting my_waters. then copy to the vector
+    int world_atoms_ary[world_size];
+    MPI_Allgather(&my_atoms, 1, MPI_INT, world_atoms_ary, 1, MPI_INT,MPI_COMM_WORLD);
+
+    //allocate memory for world_waters and copy world_waters_ary
+    world_atoms.resize(world_size,0);
+    for(i=0; i<world_size; i++)
+    {
+        world_atoms[i] = world_atoms_ary[i];
+    }
+
+    //allocate memory for world_water_start and world_water_end
+    world_atom_start.resize(world_size,0);
+    world_atom_end.resize(world_size,0);
+
+    //compute each mpi processes start and end water
+    distribute_work_load_sel(num_atoms_1,world_rank,world_size,my_atoms,world_atoms,&atom_start,&atom_end,world_atom_start,world_atom_end);
+
+    //print_work_load_stats(s.world_rank,s.world_size,world_atoms,world_atom_start,world_atom_end);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function prints the workload distribution for waters                                                 //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void Trajectory::workload_sel()
+{
+    print_work_load_stats_sel(world_rank,world_size,world_atoms,world_atom_start,world_atom_end);
 }
 

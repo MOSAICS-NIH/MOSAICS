@@ -439,16 +439,23 @@ void set_file_pos(int in_f,FILE *in_file,XDRFILE *xd_r,XDRFILE *trr_r,vector <in
 // effective frames taking into acount stride and begin/end frame.                                           //
 //                                                                                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-int get_global_frame(vector <int> &world_frames,int world_rank,int current_frame)
+int get_global_frame(vector <int> &world_frames,int world_rank,int current_frame,int block_parallel)
 {
     int i            = 0;       //standard variable used in loops
     int global_frame = 0;       //the global frame
 
-    for(i=0; i<world_rank; i++)
+    if(block_parallel == on)
     {
-        global_frame = global_frame + world_frames[i];
+        for(i=0; i<world_rank; i++)
+        {
+            global_frame = global_frame + world_frames[i];
+        }
+        global_frame = global_frame + current_frame;
     }
-    global_frame = global_frame + current_frame;
+    else
+    {
+        global_frame = current_frame;
+    }
 
     return global_frame;
 }
@@ -886,7 +893,7 @@ void read_frame(FILE **in_file,matrix box,int *num_atoms,vector<int> &atom_nr,ve
                 rvec *r,char title[],int world_rank,real *time,int *step,int frames,int in_f,XDRFILE *xd_r,real *prec,int *status_xtc,
                 int current_frame,XDRFILE *trr_r,rvec *v,rvec *f,int *status_trr,int *box_dimension,vector<double> &beta,vector<double> &weight,
                 vector<string> &element,vector<char> &chain_id,vector <int> &world_frames,int *global_frame,gmx_bool *bBox,gmx_bool *bV,
-                gmx_bool *bF,int64_t offset_r)
+                gmx_bool *bF,int64_t offset_r,Switch block_parallel)
 {
     int i = 0;    //standard variable used in loops
 
@@ -909,7 +916,7 @@ void read_frame(FILE **in_file,matrix box,int *num_atoms,vector<int> &atom_nr,ve
         } 
 
         //get the global frame number
-        *global_frame = get_global_frame(world_frames,world_rank,current_frame);
+        *global_frame = get_global_frame(world_frames,world_rank,current_frame,block_parallel);
 
         //check if some items were included like box, velocities and forces
         *bBox = 1; //gro file always has a box line
@@ -926,7 +933,7 @@ void read_frame(FILE **in_file,matrix box,int *num_atoms,vector<int> &atom_nr,ve
         get_cont_indices(*num_atoms,atom_nr,res_nr);
 
         //get the global frame number
-        *global_frame = get_global_frame(world_frames,world_rank,current_frame);
+        *global_frame = get_global_frame(world_frames,world_rank,current_frame,block_parallel);
 
         //check if some items were included like box, velocities and forces
         *bV = 0;   //pdbs do not contain velocities
@@ -943,7 +950,7 @@ void read_frame(FILE **in_file,matrix box,int *num_atoms,vector<int> &atom_nr,ve
         if(*status_xtc != 0) //could not read the frame
         {
             //note: we could get a cleaner exit here if we were willing to add a communication step. 
-            printf("An MPI core with world rank %d was unable to read trajectory frame %d. Perhaps there is something wrong with the trajectory or .info file? Attempting to terminate analysis. \n",world_rank,get_global_frame(world_frames,world_rank,current_frame));
+            printf("An MPI core with world rank %d was unable to read trajectory frame %d. Perhaps there is something wrong with the trajectory or .info file? Attempting to terminate analysis. \n",world_rank,get_global_frame(world_frames,world_rank,current_frame,block_parallel));
             exit(EXIT_SUCCESS);
         }
 
@@ -957,7 +964,7 @@ void read_frame(FILE **in_file,matrix box,int *num_atoms,vector<int> &atom_nr,ve
         } 
 
         //get the global frame number
-        *global_frame = get_global_frame(world_frames,world_rank,current_frame);
+        *global_frame = get_global_frame(world_frames,world_rank,current_frame,block_parallel);
 
         //generate a "title"
         string title_s = "step "; 
@@ -988,7 +995,7 @@ void read_frame(FILE **in_file,matrix box,int *num_atoms,vector<int> &atom_nr,ve
         if(*status_trr != 0) //could not read the frame
         {
             //note: we could get a cleaner exit here if we were willing to add a communication step. 
-            printf("An MPI core with world rank %d was unable to read trajectory frame %d. Perhaps there is something wrong with the trajectory or .info file? Attempting to terminate analysis. \n",world_rank,get_global_frame(world_frames,world_rank,current_frame));
+            printf("An MPI core with world rank %d was unable to read trajectory frame %d. Perhaps there is something wrong with the trajectory or .info file? Attempting to terminate analysis. \n",world_rank,get_global_frame(world_frames,world_rank,current_frame,block_parallel));
             exit(EXIT_SUCCESS);
         }
 
@@ -1002,7 +1009,7 @@ void read_frame(FILE **in_file,matrix box,int *num_atoms,vector<int> &atom_nr,ve
         }
 
         //get the global frame number
-        *global_frame  = get_global_frame(world_frames,world_rank,current_frame);
+        *global_frame  = get_global_frame(world_frames,world_rank,current_frame,block_parallel);
 
         //generate a "title"
         string title_s = "step ";
@@ -1757,12 +1764,24 @@ class Trajectory
         vector <int>    world_lipids{};               //How many lipids is the mpi process responsible for (world)
         vector <int>    world_lipid_start{};          //The first lipid the mpi process is reponsible for (world)
         vector <int>    world_lipid_end{};            //The last lipid the mpi process is responsible for (world)
+        int             my_prots     = 0;             //How many protein atoms is the mpi process responsible for
+        int             prot_start   = 0;             //First protein atom the mpi process is responsible for
+        int             prot_end     = 0;             //Last protein atom the mpi process is responsible for
+        vector <int>    world_prots{};                //How many protein atoms is the mpi process responsible for (world)
+        vector <int>    world_prot_start{};           //The first protein atom the mpi process is reponsible for (world)
+        vector <int>    world_prot_end{};             //The last protein atom the mpi process is responsible for (world)
         int             my_waters   = 0;              //How many waters is the mpi process responsible for
         int             water_start = 0;              //First water the mpi process is responsible for
         int             water_end   = 0;              //Last water the mpi process is responsible for
         vector <int>    world_waters{};               //How many waters is the mpi process responsible for (world)
         vector <int>    world_water_start{};          //The first water the mpi process is reponsible for (world)
         vector <int>    world_water_end{};            //The last water the mpi process is responsible for (world)
+        int             my_atoms   = 0;               //How many atoms is the mpi process responsible for
+        int             atom_start = 0;               //First atom the mpi process is responsible for
+        int             atom_end   = 0;               //Last atom the mpi process is responsible for
+        vector <int>    world_atoms{};                //How many atoms is the mpi process responsible for (world)
+        vector <int>    world_atom_start{};           //The first atom the mpi process is reponsible for (world)
+        vector <int>    world_atom_end{};             //The last atom the mpi process is responsible for (world)
 
     public:
         void        set_input_arguments(int argc, const char * argv[]);                                 //give the traj the command line args
@@ -1774,7 +1793,10 @@ class Trajectory
         void        set_res(int my_stride,int my_start_frame,int my_end_frame);                         //set the stride and begin/end frames
         double      build();                                                                            //analyze the traj/ref files
         void        workload();                                                                         //print info about work load distribution
-        int         get_frames();                                                                       //retrun the number of frames in the trajectory
+        int         get_frames();                                                                       //return the number of frames in the trajectory
+        int         get_start_frame();                                                                  //return start_frame
+        int         get_end_frame();                                                                    //return end_frame
+        int         get_stride();                                                                       //return stride
         int         get_num_frames();                                                                   //return the number of frames when looping over traj
         vector<int> get_num_frames_world();                                                             //returns number of frames each mpi process is responsible for (world_frames)
         void        read_traj_frame();                                                                  //reads a frame from the traj
@@ -1785,6 +1807,7 @@ class Trajectory
         int         get_ef_frames();                                                                    //return the effective num frames after -b, -e and -stride
         real        get_prec();                                                                         //return the precision of the trajectory
         int         get_frame_global();                                                                 //returns the global frame   
+        int         get_frame_full();                                                                   //returns the frame index for the full trajectory (no -b -e -stride or block parallel)
         void        report_progress();                                                                  //reports that analysis is beginning
         dv1d        center(sv1d &target_atoms,int min,int max);                                         //computes the center of a molecule
         dv1d        center_store(sv1d &target_atoms,int min,int max);                                   //computes the center of a molecule using stored coords
@@ -1843,8 +1866,12 @@ class Trajectory
         void        workload_grid();                                                                    //prints the workload distribution for grid points
         void        parallelize_by_lipid(int num_lipids_1);                                             //distribute workload by lipids
         void        workload_lipid();                                                                   //prints the workload distribution for lipids
+        void        parallelize_by_prot(int num_prots_1);                                               //distribute workload by protein atoms
+        void        workload_prot();                                                                    //prints the workload distribution for protein atoms
         void        parallelize_by_water(int num_waters_1);                                             //distribute workload by waters
         void        workload_water();                                                                   //prints the workload distribution for waters
+        void        parallelize_by_selection(int num_atoms_1);                                          //distribute workload by a custom atom selection
+        void        workload_sel();                                                                     //prints the workload distribution for custom atom selections
 
         const char * argv[];                          //The command line arguments
 };
@@ -1873,7 +1900,7 @@ void Trajectory::set_input_arguments(int my_argc, const char * my_argv[])
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int Trajectory::get_frame_global()
 {
-    return get_global_frame(world_frames,world_rank,current_frame);
+    return get_global_frame(world_frames,world_rank,current_frame,block_parallel);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1898,6 +1925,36 @@ int Trajectory::get_frames()
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                          //
+// This function returns the first trajectory frame to be analyzed                                          //
+//                                                                                                          //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int Trajectory::get_start_frame()
+{
+    return start_frame;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                          //
+// This function returns the last trajectory frame to be analyzed                                           //
+//                                                                                                          //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int Trajectory::get_end_frame()
+{
+    return end_frame;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                          //
+// This function returns the stride used for the analysis                                                   //
+//                                                                                                          //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int Trajectory::get_stride()
+{
+    return stride;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                          //
 // This function returns the effective number of frames. i.e. the total number of frames to be analyzed     //
 // counting all mpi processes and accounting for -b, -e, and -stride.                                       //
 //                                                                                                          //
@@ -1906,6 +1963,33 @@ int Trajectory::get_ef_frames()
 {
     return effective_frames;
 }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                          //
+// This function returns the frame index for the full trajectory (no -b -e stride or block parallel)        //
+//                                                                                                          //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int Trajectory::get_frame_full()
+{
+    int i                  = 0;     //standard variable used in loops
+    int frame_number_full  = 0;     //frame index in the full trajectory
+    int global_frame_count = 0;     //counts how many frames analyzed which is related to frame_number_full
+
+    for(i=0; i<get_frames(); i++)
+    {
+        if(i >= get_start_frame() && i <= get_end_frame() && i%get_stride() == 0) //i is one of the frames analyzed
+        {
+            if(global_frame_count == get_frame_global())
+            {
+                frame_number_full = i;
+            }
+            global_frame_count++;
+        }
+    }
+
+    return frame_number_full; 
+}
+
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                          //
@@ -1966,7 +2050,7 @@ void Trajectory::read_traj_frame()
     //read in the data
     read_frame(&in_file,box,&num_atoms,atom_nr,res_nr,res_name,atom_name,r,title,world_rank,&time,&step,frames,
                in_f,xd_r,&prec,&status_xtc,current_frame,trr_r,v,f,&status_trr,
-               &box_dimension,beta,weight,element,chain_id,world_frames,&global_frame,&bBox,&bV,&bF,offset_r);
+               &box_dimension,beta,weight,element,chain_id,world_frames,&global_frame,&bBox,&bV,&bF,offset_r,block_parallel);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
