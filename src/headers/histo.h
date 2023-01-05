@@ -7,19 +7,29 @@
 class Histogram_i
 {
     private: 
-        int  bin_width;                                      //The bin width
-        int  size;                                           //How many data points making sample
-        int  start;                                          //Starting value for loop variable
-        int  end;                                            //End value for loop variable
-        int  num_bins;                                       //How many bins
+        int bin_width;                                       //The bin width
+        int size;                                            //How many data points making sample
+        int start;                                           //Starting value for loop variable
+        int end;                                             //End value for loop variable
+        int num_bins;                                        //How many bins
+        int b_force_range = 0;                               //Forces the range covered by histogram
+        int forced_smallest;                                 //Smallest value to be covered (forced)
+        int forced_largest;                                  //Largest value to be covered (forced)
+
     public:
-        iv2d bins;                                           //Holds the value, number of hits and probability for each bin
+        iv1d bins;                                           //Holds the number of hits for each bin
 
     public:
         void bin_data(iv1d &data,int bin_width);             //Analyze data and make a histogram
         void write_histo(string out_file_name,string label); //Write the histogram to file
+        void set_range(int min,int max);                     //Manually set the smallest and largest values to include in histo
         double get_avg(iv1d &data);                          //Computes average over the data set
         double get_stdev(iv1d &data);                        //Computes standard deviation over the data set
+        int    get_bin_width();                              //returns the bin width
+        int get_size();                                      //returns the number of data points analyzed
+        int get_start();                                     //returns starting value for loop value
+        int get_end();                                       //returns end value for loop variable
+        int get_num_bins();                                  //returns the number of bins
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -73,11 +83,7 @@ void Histogram_i::bin_data(iv1d &data,int my_bin_width)
     end       = start + num_bins;
     int count = 0;
 
-    bins.resize(num_bins);  
-    for(i=0; i<num_bins; i++)
-    {
-        bins[i].resize(2,0);
-    } 
+    bins.resize(num_bins,0);  
 
     for(i=0; i<size; i++) //loop over data
     {
@@ -85,7 +91,7 @@ void Histogram_i::bin_data(iv1d &data,int my_bin_width)
         {
             if(data[i] >= j*(bin_width) && data[i] < (j+1)*(bin_width))
             {
-                bins[count][1] = bins[count][1] + 1;
+                bins[count] = bins[count] + 1;
             }
             count++;
         }
@@ -118,14 +124,26 @@ void Histogram_i::write_histo(string out_file_name,string label)
 
         for(i=start; i<end; i++)
         {
-            double probability = (double)bins[count][1]/(double)size;
-            fprintf(out_file,"%10.4f %10d %10.8f \n",(double)i*bin_width,bins[count][1],probability);
+            double probability = (double)bins[count]/(double)size;
+            fprintf(out_file,"%10.4f %10d %10.8f \n",(double)i*bin_width,bins[count],probability);
             sum_prob = sum_prob + probability;
             count++;
         }
         fclose(out_file);
         printf("Summing probability over bins. sum_prob = %f \n",sum_prob);
     }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function manually sets the range covered in the histogram                                            //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void Histogram_i::set_range(int min,int max)
+{
+    b_force_range   = 1;
+    forced_smallest = min;
+    forced_largest  = max;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -176,6 +194,55 @@ double Histogram_i::get_stdev(iv1d &data)
     return stdev;
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function returns the bin width                                                                       //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int Histogram_i::get_bin_width()
+{
+    return bin_width; 
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function returns the number of data points analyzed                                                  //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int Histogram_i::get_size()
+{
+    return size;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function returns the starting value for loop value                                                   //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int Histogram_i::get_start()
+{
+    return start;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function returns the end value for loop value                                                        //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int Histogram_i::get_end()
+{
+    return end;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function returns the number of bins                                                                  //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int Histogram_i::get_num_bins()
+{
+    return num_bins;
+}
 
 
 
@@ -194,16 +261,25 @@ class Histogram_d
         int     start;                                       //Starting value for loop variable
         int     end;                                         //End value for loop variable
         int     num_bins;                                    //How many bins
+        int     b_force_range = 0;                           //Forces the range covered by histogram
         double  bin_width;                                   //The bin width
+        double  forced_smallest;                             //Smallest value to be covered (forced)
+        double  forced_largest;                              //Largest value to be covered (forced)
 
     public:
-        dv2d bins;                                           //Holds the value, number of hits and probability for each bin
+        dv1d bins;                                           //Holds the number of hits for each bin
 
     public:
         void bin_data(dv1d &data,double bin_width);          //Analyze data and make a histogram
         void write_histo(string out_file_name,string label); //Write the histogram to file
+        void set_range(double min,double max);               //Manually set the smallest and largest values to include in histo
         double get_avg(dv1d &data);                          //Computes average over the data set
         double get_stdev(dv1d &data);                        //Computes standard deviation over the data set
+        double get_bin_width();                              //returns the bin width
+        int get_size();                                      //returns the number of data points analyzed
+        int get_start();                                     //returns starting value for loop value
+        int get_end();                                       //returns end value for loop variable
+        int get_num_bins();                                  //returns the number of bins
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -249,6 +325,17 @@ void Histogram_d::bin_data(dv1d &data,double my_bin_width)
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
+    // Check if the range is set manually                                                                        //
+    //                                                                                                           //
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    if(b_force_range == 1)
+    {
+        smallest_value = forced_smallest;
+        largest_value  = forced_largest;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //                                                                                                           //
     // Bin data                                                                                                  //
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -257,11 +344,7 @@ void Histogram_d::bin_data(dv1d &data,double my_bin_width)
     end       = start + num_bins;
     int count = 0;
 
-    bins.resize(num_bins);
-    for(i=0; i<num_bins; i++)
-    {
-        bins[i].resize(2,0.0);
-    }
+    bins.resize(num_bins,0.0);
 
     for(i=0; i<size; i++) //loop over data
     {
@@ -269,7 +352,7 @@ void Histogram_d::bin_data(dv1d &data,double my_bin_width)
         {
             if(data[i] >= (double)j*(bin_width) && data[i] < (double)(j+1)*(bin_width))
             {
-                bins[count][1] = bins[count][1] + 1.0;
+                bins[count] = bins[count] + 1.0;
             }
             count++;
         }
@@ -302,14 +385,26 @@ void Histogram_d::write_histo(string out_file_name,string label)
 
         for(i=start; i<end; i++)
         {
-            double probability = bins[count][1]/(double)size;
-            fprintf(out_file,"%10.4f %10d %10.8f \n",(double)i*bin_width,(int)bins[count][1],probability);
+            double probability = bins[count]/(double)size;
+            fprintf(out_file,"%10.4f %10d %10.8f \n",(double)i*bin_width,(int)bins[count],probability);
             sum_prob = sum_prob + probability;
             count++;
         }
         fclose(out_file);
         printf("Summing probability over bins. sum_prob = %f \n",sum_prob);
     }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function manually sets the range covered in the histogram                                            //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void Histogram_d::set_range(double min,double max) 
+{
+    b_force_range   = 1;
+    forced_smallest = min; 
+    forced_largest  = max;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -359,3 +454,54 @@ double Histogram_d::get_stdev(dv1d &data)
 
     return stdev;
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function returns the bin width                                                                       //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+double Histogram_d::get_bin_width()
+{
+    return bin_width;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function returns the number of data points analyzed                                                  //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int Histogram_d::get_size()
+{
+    return size;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function returns the starting value for loop value                                                   //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int Histogram_d::get_start()
+{
+    return start;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function returns the end value for loop value                                                        //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int Histogram_d::get_end()
+{
+    return end;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function returns the number of bins                                                                  //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int Histogram_d::get_num_bins()
+{
+    return num_bins;
+}
+
