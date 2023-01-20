@@ -247,7 +247,16 @@ void get_voronoi(Trajectory &traj,system_variables &s,program_variables &p,Param
     int pbc          = 0;                      //account for periodic boundary conditions in voronoi diagrams?
 
     //get the voronoi diagram
-    Grid_i voronoi = voronoi_diagram(traj,p.APS,p.num_g_x,p.num_g_y,param,p.c_dist,p.voro_stamp_rad,p.v_prot,dynamic,pbc);
+    Grid_i voronoi;
+
+    if(p.com == 1)
+    {
+        voronoi = voronoi_diagram_com(traj,p.APS,p.num_g_x,p.num_g_y,param,p.c_dist,p.voro_stamp_rad,p.v_prot,dynamic,pbc);
+    }
+    else 
+    {
+        voronoi = voronoi_diagram(traj,p.APS,p.num_g_x,p.num_g_y,param,p.c_dist,p.voro_stamp_rad,p.v_prot,dynamic,pbc);
+    }
 
     //write the voronoi diagram to file
     string voronoi_file_name = add_tag(p.k_file_name,to_string(traj.get_frame_global()));
@@ -583,6 +592,7 @@ int main(int argc, const char * argv[])
     add_argument_mpi_d(argc,argv,"-c_dist", &p.c_dist,                    "Distance cutoff for counting protein atoms in voronoi diagram (nm)",           s.world_rank, nullptr,      0);
     add_argument_mpi_i(argc,argv,"-clean",  &p.b_clean,                   "Remove voronoi diagrams after writing binding events files? (0:no 1:yes)",     s.world_rank, nullptr,      0);
     add_argument_mpi_i(argc,argv,"-dump",   &p.dump,                      "Dump bound lipids on last frame? (0:no 1:yes)",                                s.world_rank, nullptr,      0);
+    add_argument_mpi_i(argc,argv,"-com",    &p.com,                       "Use the lipid center of mass for voronoi tessellations? (0:no 1:yes)",         s.world_rank, nullptr,      0);
     conclude_input_arguments_mpi(argc,argv,s.world_rank,s.program_name);
 
     //create a trajectory

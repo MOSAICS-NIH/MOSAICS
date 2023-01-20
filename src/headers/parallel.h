@@ -275,13 +275,6 @@ void Trajectory::workload_lipid()
 
 
 
-        int             my_prots     = 0;             //How many protein atoms is the mpi process responsible for
-        int             prot_start   = 0;             //First protein atom the mpi process is responsible for
-        int             prot_end     = 0;             //Last protein atom the mpi process is responsible for
-        vector <int>    world_prots{};                //How many protein atoms is the mpi process responsible for (world)
-        vector <int>    world_prot_start{};           //The first protein atom the mpi process is reponsible for (world)
-        vector <int>    world_prot_end{};             //The last protein atom the mpi process is responsible for (world)
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                           //
 // This function determines how many protein atoms each core is responsible for                              //
@@ -401,6 +394,142 @@ void Trajectory::parallelize_by_prot(int num_prots_1)
 void Trajectory::workload_prot()
 {
     print_work_load_stats_prot(world_rank,world_size,world_prots,world_prot_start,world_prot_end);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function determines how many amino acids each core is responsible for                              //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int compute_workload_amino(int num_aminos_1,int world_rank,int world_size)
+{
+    int i         = 0;
+    int my_aminos = 0;
+
+    for(i=0; i<num_aminos_1; i++)
+    {
+        if(i%world_size == world_rank)
+        {
+            my_aminos = my_aminos + 1;
+        }
+    }
+
+    return my_aminos;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function determines which amino acids each core is responsible for                                   //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void distribute_work_load_amino(int num_aminos_1,int world_rank,int world_size,int my_aminos,vector <int> &world_aminos,int *amino_start,
+                              int *amino_end,vector <int> &world_amino_start,vector <int> &world_amino_end)
+{
+    int i             = 0;
+    int running_count = 0;
+    int world_amino_start_ary[world_size];
+    int world_amino_end_ary[world_size];
+
+    for(i=0; i<world_size; i++)
+    {
+        if(world_rank == i)
+        {
+            *amino_start = running_count;
+            *amino_end   = running_count + world_aminos[i] - 1;
+        }
+        running_count = running_count + world_aminos[i];
+    }
+
+    MPI_Allgather(amino_start, 1, MPI_INT, world_amino_start_ary, 1, MPI_INT,MPI_COMM_WORLD);
+    MPI_Allgather(amino_end,   1, MPI_INT, world_amino_end_ary,   1, MPI_INT,MPI_COMM_WORLD);
+
+    for(i=0; i<world_size; i++)
+    {
+        world_amino_start[i] = world_amino_start_ary[i];
+        world_amino_end[i]   = world_amino_end_ary[i];
+    }
+
+    //printf("world_rank %3d num_aminos_1 %5d amino_start %5d amino_end %5d \n",world_rank,num_aminos_1,*amino_start,*amino_end);    
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function prints information about the work load distribution                                         //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void print_work_load_stats_amino(int world_rank,int world_size,vector <int> &world_aminos,vector <int> &world_amino_start,vector <int> &world_amino_end)
+{
+    int i = 0;
+
+    if(world_rank == 0)
+    {
+        printf("Distributing the workload (the protein residues) accross %d mpi processes. \n",world_size);
+        printf(" %10s %10s %20s %20s \n","Rank","Protein Residues","Res_Start","Res_End");
+        printf(" %10s-%10s-%20s-%20s \n","----------","----------","--------------------","--------------------");
+        for(i=0; i<world_size; i++)
+        {
+            printf(" %10d %10d %20d %20d \n",i,world_aminos[i],world_amino_start[i],world_amino_end[i]);
+        }
+        printf("\n");
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function breaks up the workload by protein residues                                                  //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void Trajectory::parallelize_by_amino(int num_aminos_1)
+{
+    int i = 0;
+
+    //count the number of protein residues the mpi process is responsible for
+    my_aminos = compute_workload_amino(num_aminos_1,world_rank,world_size);
+
+    //create an array for collecting my_aminos. then copy to the vector
+    int world_aminos_ary[world_size];
+    MPI_Allgather(&my_aminos, 1, MPI_INT, world_aminos_ary, 1, MPI_INT,MPI_COMM_WORLD);
+
+    //allocate memory for world_aminos and copy world_aminos_ary 
+    world_aminos.resize(world_size,0);
+    for(i=0; i<world_size; i++)
+    {
+        world_aminos[i] = world_aminos_ary[i];
+    }
+
+    //allocate memory for world_amino_start and world_amino_end
+    world_amino_start.resize(world_size,0);
+    world_amino_end.resize(world_size,0);
+
+    //compute each mpi processes start and end protein residue
+    distribute_work_load_amino(num_aminos_1,world_rank,world_size,my_aminos,world_aminos,&amino_start,&amino_end,world_amino_start,world_amino_end);
+
+    //print_work_load_stats(s.world_rank,s.world_size,world_aminos,world_amino_start,world_amino_end);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function prints the workload distribution for protein residues                                       //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void Trajectory::workload_amino()
+{
+    print_work_load_stats_amino(world_rank,world_size,world_aminos,world_amino_start,world_amino_end);
 }
 
 

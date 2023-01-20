@@ -53,6 +53,7 @@ struct program_variables
     int v_prot;                                   //Include protein in voronoi diagram?
     int b_clean;                                  //Remove voronoi diagrams after computing dwell times
     int dump;                                     //Dump all bound lipids at the end of the trajectory? i.e. record how long they have been bound?
+    int com;                                      //Use the lipid center of mass in voronoi tesselations?
     double APS;                                   //This is the area of a grid square
     double radius;                                //Radius of the atom
     double cell_size;                             //This is the lengh between grid points
@@ -101,6 +102,7 @@ void initialize_program_variables(program_variables *p)
     p->v_prot                  = 0;
     p->b_clean                 = 0;
     p->dump                    = 0;
+    p->com                     = 0;
 
     //here we set the program description
     p->program_description = "2D Kinetics is an analysis program designed for characterizing the lipid residence time and projecting this data onto ";

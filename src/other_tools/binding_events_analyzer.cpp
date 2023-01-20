@@ -49,6 +49,7 @@ int main(int argc, const char * argv[])
     int world_rank        = 0;    //Rank in the mpi world
     int b_rho             = 0;    //Did the user specify a rho input file name?
     int odf               = 0;    //Rho data file format
+    int threshold         = 0;    //Cutoff for mending fragmented binding events
     double slope          = 0;    //slope of LnP vs time
     double yint           = 0;    //ying of LnP vs time
     double r2             = 0;    //Correlation coeficient in linear regression
@@ -93,6 +94,7 @@ int main(int argc, const char * argv[])
     add_argument_mpi_s(argc,argv,"-rho"     , rho_file_name,              "Input data file with sample count (dat)"                           , world_rank, &b_rho,       0);
     add_argument_mpi_d(argc,argv,"-cutoff"  , &cutoff,                    "Cutoff for excluding grid data (chi)"                              , world_rank, nullptr,      0);
     add_argument_mpi_i(argc,argv,"-odf"     , &odf,                       "Data file format for sample count data (0:matrix 1:vector)"        , world_rank, nullptr,      0);
+    add_argument_mpi_i(argc,argv,"-repair"  , &threshold,                 "Maximum allowed size (frames) for mending fragmented events"       , world_rank, nullptr,      0);
     conclude_input_arguments_mpi(argc,argv,world_rank,program_name);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -270,6 +272,15 @@ int main(int argc, const char * argv[])
                         }
                     }
                 }
+
+                ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                //                                                                                                           //
+                // Make a timeline and mend any fragmented events                                                            //
+                //                                                                                                           //
+                ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                events.get_binding_timeline();              //make a timeline        
+                events.suppress_timeline_noise(threshold);  //mend fragmented events
+                events.binding_events_from_timeline();      //generate binding events from mended timeline
 
                 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 //                                                                                                           //

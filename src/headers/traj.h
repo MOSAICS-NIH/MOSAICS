@@ -1773,6 +1773,12 @@ class Trajectory
         vector <int>    world_prots{};                //How many protein atoms is the mpi process responsible for (world)
         vector <int>    world_prot_start{};           //The first protein atom the mpi process is reponsible for (world)
         vector <int>    world_prot_end{};             //The last protein atom the mpi process is responsible for (world)
+        int             my_aminos     = 0;            //How many protein residues is the mpi process responsible for
+        int             amino_start   = 0;            //First protein residue the mpi process is responsible for
+        int             amino_end     = 0;            //Last protein residue the mpi process is responsible for
+        vector <int>    world_aminos{};               //How many protein residues is the mpi process responsible for (world)
+        vector <int>    world_amino_start{};          //The first protein residue the mpi process is reponsible for (world)
+        vector <int>    world_amino_end{};            //The last protein residue the mpi process is responsible for (world)
         int             my_waters   = 0;              //How many waters is the mpi process responsible for
         int             water_start = 0;              //First water the mpi process is responsible for
         int             water_end   = 0;              //Last water the mpi process is responsible for
@@ -1871,6 +1877,8 @@ class Trajectory
         void        workload_lipid();                                                                   //prints the workload distribution for lipids
         void        parallelize_by_prot(int num_prots_1);                                               //distribute workload by protein atoms
         void        workload_prot();                                                                    //prints the workload distribution for protein atoms
+        void        parallelize_by_amino(int num_aminos_1);                                             //distribute workload by protein residues
+        void        workload_amino();                                                                   //prints the workload distribution for protein residues
         void        parallelize_by_water(int num_waters_1);                                             //distribute workload by waters
         void        workload_water();                                                                   //prints the workload distribution for waters
         void        parallelize_by_selection(int num_atoms_1);                                          //distribute workload by a custom atom selection
