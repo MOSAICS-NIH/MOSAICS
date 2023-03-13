@@ -33,7 +33,9 @@ class Param
         int sec_size_y(int z);                                                                              //returns the size of param_sec in y
         int sec_size_z();                                                                                   //returns the size of param_sec in z
         int check_file();                                                                                   //checks the integrity of the data files
-        sv1d get_column_sec_s(int target_file,int target_col);                                              //returns a column from the secondary file
+        sv1d get_column_sec_s(int target_file,int target_col);                                              //returns a column (string) from the secondary file
+        dv1d get_column_sec_d(int target_file,int target_col);                                              //returns a column (double) from the secondary file
+        iv1d get_column_sec_i(int target_file,int target_col);                                              //returns a column (int)    from the secondary file
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -281,7 +283,7 @@ int Param::check_file()
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                          //
-// This function checks that the files contain the right amount of data                                     //
+// This function returns a column (string) from the secondary file                                          //
 //                                                                                                          //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 sv1d Param::get_column_sec_s(int target_file,int target_col)
@@ -297,4 +299,39 @@ sv1d Param::get_column_sec_s(int target_file,int target_col)
     return my_vec;
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                          //
+// This function returns a column (int) from the secondary file                                             //
+//                                                                                                          //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+iv1d Param::get_column_sec_i(int target_file,int target_col)
+{
+    int i = 0;
+
+    iv1d my_vec(0,0);
+
+    for(i=0; i<sec_size_y(target_file); i++) //loop over y
+    {
+        my_vec.push_back(param_sec_i[target_file][i][target_col]);
+    }
+    return my_vec;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                          //
+// This function returns a column (double) from the secondary file                                          //
+//                                                                                                          //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+dv1d Param::get_column_sec_d(int target_file,int target_col)
+{
+    int i = 0;
+
+    dv1d my_vec(0,0);
+
+    for(i=0; i<sec_size_y(target_file); i++) //loop over y
+    {
+        my_vec.push_back(param_sec_d[target_file][i][target_col]);
+    }
+    return my_vec;
+}
 

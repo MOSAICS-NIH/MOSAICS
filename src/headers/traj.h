@@ -3171,10 +3171,10 @@ dv1d Trajectory::com(sv1d &target_atoms,int min,int max)
 dv1d Trajectory::com_i(iv1d group)
 {
     int    i         = 0;     //standard variable used in loops
-    double cx        = 0;     //used to add up the x component from each atom times the mass
-    double cy        = 0;     //used to add up the y component from each atom times the mass
-    double cz        = 0;     //used to add up the z component from each atom times the mass
-    double M         = 0;     //total mass of all atoms
+    double cx        = 0.0;   //used to add up the x component from each atom times the mass
+    double cy        = 0.0;   //used to add up the y component from each atom times the mass
+    double cz        = 0.0;   //used to add up the z component from each atom times the mass
+    double M         = 0.0;   //total mass of all atoms
 
     dv1d   r_com(3,0.0);      //the center of mass
 
@@ -3184,7 +3184,6 @@ dv1d Trajectory::com_i(iv1d group)
         cy = cy + mass[group[i]-1]*r[group[i]-1][1];
         cz = cz + mass[group[i]-1]*r[group[i]-1][2];
         M  = M  + mass[group[i]-1];
-        break;
     }
   
     if(M==0)
