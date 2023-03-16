@@ -491,12 +491,12 @@ void get_step_and_time(char title[],int world_rank,real *time,int *step)
         }
 
         //check if the next string is the time or step
-        if(strcmp(string200, "t=") == 0)
+        if(strcmp(string200, "t=") == 0 || strcmp(string200, "time") == 0)
         {
             next_time = 1;
             next_step = 0;
         }
-        else if(strcmp(string200, "step=") == 0)
+        else if(strcmp(string200, "step=") == 0 || strcmp(string200, "step") == 0)
         {
             next_time = 0;
             next_step = 1;
@@ -833,14 +833,14 @@ void read_pdb_frame_by_char(FILE **in_file,matrix box,vector<int> &atom_nr,vecto
             {
                 title[i] = line[line_offset];
                 line_offset++;
-                i++;   
+                i++; 
             }
             title[i] = '\n';
             title[i+1] = '\0';
             //printf("%s",title);
 
             if(frames > 1) //single frame gro files may not have time/step
-            {   
+            {  
                 get_step_and_time(title,world_rank,time,step);
             }
         }
@@ -1237,7 +1237,7 @@ void write_frame(matrix box,int num_atoms,vector<int> &atom_nr,vector<int> &res_
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                           //
 // This function reads in temporary trajectory files produced by each mpi rank and writes them to a single   //
-// trajectory file.                                                                                          //
+// trajectory file. Also generates an info file for the new trajectory.                                      //
 //                                                                                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void finalize_traj(int world_rank,XDRFILE *xd_r,XDRFILE *xd_w,string out_file_name,int world_size,int *step,
@@ -1252,6 +1252,11 @@ void finalize_traj(int world_rank,XDRFILE *xd_r,XDRFILE *xd_w,string out_file_na
         int i             = 0;    //standard variable used in loop   
         int world_size_ef = 0;    //how many mpi processes actually wrote a tmp traj file
 
+        //create items needed to create an info file for the new trajectory
+        vector <int64_t>  out_pos{};  //store the position of each frame written to .info file
+        int64_t out_filesize = 0;     //This is the size of the output trajectory file in bits
+        int     out_frames   = 0;     //This is the number of trajectory frames in the output file
+  
         //figure out how many ranks actually read data
         for(i=0; i<world_size; i++)
         {
@@ -1259,8 +1264,9 @@ void finalize_traj(int world_rank,XDRFILE *xd_r,XDRFILE *xd_w,string out_file_na
             {
                 world_size_ef++;
             }
+            out_frames = out_frames + world_frames[i];
         }
- 
+   
         if(out_f == 0) //gro
         {
             printf("\nFinalizing trajectory. \n");
@@ -1275,6 +1281,9 @@ void finalize_traj(int world_rank,XDRFILE *xd_r,XDRFILE *xd_w,string out_file_na
                 printf("failure opening %s. Make sure the file exists. \n",out_file_name.c_str());
             }
 
+            //store first frame position
+            out_pos.push_back(ftell(*out_file));
+
             for(i=0; i<world_size_ef; i++) //loop over temporary files
             {
                 //get tmp file name
@@ -1286,7 +1295,7 @@ void finalize_traj(int world_rank,XDRFILE *xd_r,XDRFILE *xd_w,string out_file_na
                 out_file_name_tmp = out_file_name_tmp + "_" + to_string(i) + ".gro";
 
                 //report progress
-                printf("Working on %s \n",out_file_name_tmp.c_str());
+                printf("  Working on %s \n",out_file_name_tmp.c_str());
 
                 //open tmp file for reading
                 FILE *out_file_tmp = fopen64(out_file_name_tmp.c_str(), "r");
@@ -1295,9 +1304,17 @@ void finalize_traj(int world_rank,XDRFILE *xd_r,XDRFILE *xd_w,string out_file_na
                     printf("failure opening %s. Make sure the file exists. \n",out_file_name_tmp.c_str());
                 }
 
+                int j = 0;
                 while(fgets(line, sizeof line, out_file_tmp) != NULL) //read in the frames
                 {
                     fprintf(*out_file,"%s",line); //write current frame to output file
+
+                    if(j%(*num_atoms + 3) == (*num_atoms + 2) )
+                    {
+                        out_pos.push_back(ftell(*out_file));
+                        out_filesize = ftell(*out_file);
+                    }
+                    j++;
                 }
                 fclose(out_file_tmp);
 
@@ -1320,6 +1337,9 @@ void finalize_traj(int world_rank,XDRFILE *xd_r,XDRFILE *xd_w,string out_file_na
                 printf("failure opening %s. Make sure the file exists. \n",out_file_name.c_str());
             }
 
+            //store first frame position
+            out_pos.push_back(ftell(*out_file));
+
             for(i=0; i<world_size_ef; i++) //loop over temporary files
             {
                 //get tmp file name
@@ -1331,7 +1351,7 @@ void finalize_traj(int world_rank,XDRFILE *xd_r,XDRFILE *xd_w,string out_file_na
                 out_file_name_tmp = out_file_name_tmp + "_" + to_string(i) + ".pdb";
 
                 //report progress
-                printf("Working on %s \n",out_file_name_tmp.c_str());
+                printf("  Working on %s \n",out_file_name_tmp.c_str());
 
                 //open tmp file for reading
                 FILE *out_file_tmp = fopen64(out_file_name_tmp.c_str(), "r");
@@ -1340,9 +1360,18 @@ void finalize_traj(int world_rank,XDRFILE *xd_r,XDRFILE *xd_w,string out_file_na
                     printf("failure opening %s. Make sure the file exists. \n",out_file_name_tmp.c_str());
                 }
 
+                int j = 0;
                 while(fgets(line, sizeof line, out_file_tmp) != NULL) //read in the frames
                 {
                     fprintf(*out_file,"%s",line); //write current frame to output file
+
+                    int line_offset = 0;
+                    int result      = next_string(world_rank,20,line,my_string,20,&line_offset);
+                    if(strcmp(my_string, "ENDMDL") == 0) //end of frame
+                    {
+                        out_pos.push_back(ftell(*out_file));
+                        out_filesize = ftell(*out_file);
+                    }
                 }
                 fclose(out_file_tmp);
  
@@ -1369,7 +1398,7 @@ void finalize_traj(int world_rank,XDRFILE *xd_r,XDRFILE *xd_w,string out_file_na
                 out_file_name_tmp = out_file_name_tmp + "_" + to_string(i) + ".xtc";
 
                 //report progress
-                printf("Working on %s \n",out_file_name_tmp.c_str());
+                printf("  Working on %s \n",out_file_name_tmp.c_str());
 
                 //open temp file for reading
                 xd_r = xdrfile_open(cname(out_file_name_tmp), "r");
@@ -1380,7 +1409,11 @@ void finalize_traj(int world_rank,XDRFILE *xd_r,XDRFILE *xd_w,string out_file_na
 
                 while(read_xtc(xd_r, *num_atoms, step, time, box, tmp_r, prec) == exdrOK) //read in the frames
                 {
+                    out_pos.push_back(xdr_tell(xd_w));
+
                     *status_xtc = write_xtc(xd_w,*num_atoms,*step,*time,box,tmp_r,*prec); //write current frame to output file
+
+                    out_filesize = xdr_tell(xd_w);
                 }
 
                 //close temp file
@@ -1430,20 +1463,24 @@ void finalize_traj(int world_rank,XDRFILE *xd_r,XDRFILE *xd_w,string out_file_na
                 out_file_name_tmp = out_file_name_tmp + "_" + to_string(i) + ".trr";
 
                 //report progress
-                printf("Working on %s \n",out_file_name_tmp.c_str());
+                printf("  Working on %s \n",out_file_name_tmp.c_str());
 
                 //open temp file for reading
                 trr_r = xdrfile_open(cname(out_file_name_tmp), "r");
                 
                 while(read_trr(trr_r, *num_atoms, step, time, &lambda, box, tmp_r, tmp_v, tmp_f,bBox,bV,bF) == exdrOK) //read in the frames
                 {
+                    out_pos.push_back(xdr_tell(trr_w));
+
                     //write current frame to output file
                     write_trr(trr_w,*num_atoms,*step,*time,lambda,
                                        *bBox ? box : nullptr,
                                        tmp_r,
                                        *bV     ? tmp_v : nullptr,
                                        *bF     ? tmp_f : nullptr,
-                                       bBox,bV,bF); 
+                                       bBox,bV,bF);
+
+                    out_filesize = xdr_tell(trr_w); 
                 }
 
 
@@ -1468,6 +1505,19 @@ void finalize_traj(int world_rank,XDRFILE *xd_r,XDRFILE *xd_w,string out_file_na
                 free(tmp_f);
             }
         }
+
+        //write info file for the new trajectory
+        string info_file_name = out_file_name + ".info";
+        printf("Writing info file %s \n\n",info_file_name.c_str());
+        FILE *info_file = fopen(info_file_name.c_str(),"w");
+        fprintf(info_file," %ld \n",out_filesize);
+        fprintf(info_file," %d \n",*num_atoms);
+        fprintf(info_file," %d \n",out_frames);
+        for(i=0; i<out_frames; i++)
+        {
+            fprintf(info_file," %ld \n",out_pos[i]);
+        }
+        fclose(info_file);
     }
 }
 
@@ -2644,7 +2694,7 @@ double Trajectory::build()
     {
         mass_lsq = (real *)calloc(num_atoms , sizeof(real));
     }
-    
+
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                          //
     // Get initial coords                                                                                       //
