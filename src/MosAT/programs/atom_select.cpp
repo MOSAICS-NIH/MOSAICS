@@ -79,7 +79,6 @@ int main(int argc, const char * argv[])
     add_argument_mpi_i(argc,argv,"-lsq_d",  &p.lsq_dim,                   "Dimension for lsq fitting (3:x,y,z 2:x,y)",                   s.world_rank, nullptr,      0);
     add_argument_mpi_i(argc,argv,"-lsq_r",  &p.lsq_ref,                   "Reference structure for lsq fitting (0:ref 1:first_frame)",   s.world_rank, nullptr,      0);
     add_argument_mpi_s(argc,argv,"-sel",    p.selection_text_file_name,   "Selection card with the selection text (crd)",                s.world_rank, nullptr,      1);
-    //add_argument_mpi_s(argc,argv,"-selpdb", p.pdb_filename,               "Output PDB file with selected atoms highlighted (pdb)",       s.world_rank, nullptr,      1);
     add_argument_mpi_s(argc,argv,"-lf_pdb", p.lf_pdb_file_name,           "PDB file with sorted leaflets (pdb)",                          s.world_rank, &p.b_lf_pdb,  0);
     add_argument_mpi_s(argc,argv,"-lf_prm", p.leaflet_finder_param_name,  "File with additional leaflet finder parameters (prm)",         s.world_rank, &p.b_lf_param,0);
     add_argument_mpi_s(argc,argv,"-pf_pdb", p.pf_pdb_file_name,           "PDB file with selected protein (pdb)",                         s.world_rank, &p.b_pf_pdb,  0);

@@ -22,8 +22,6 @@ struct program_variables
     int lsq_ref;                                  //Structure used for lsq fitting (0:ref 1:frame_0)
 
     string selection_text_file_name;              //Filename used to specify the index file with the selection text
-    //string pdb_filename;                          //Filename for output pdb file with selected atoms highlighted
-
     string lf_pdb_file_name;                      //Name of the output pdb file with leaflets indicated by B-factor
     string pf_pdb_file_name;                      //Name of the output pdb file with protein indicated by B-factor
     string sf_pdb_file_name;                      //Name of the output pdb file with sol indicated by B-factor
@@ -66,28 +64,6 @@ void initialize_program_variables(program_variables *p)
     p->b_sf_param      = 0;
 
     //here we set the program description
-    p->program_description = p->program_description + "MOSAICS Analysis Template (MosAT) is a versatile C++ program used for ";
-    p->program_description = p->program_description + "reading trajectory data. The program is designed to ";
-    p->program_description = p->program_description + "make easy the task of writing an analysis program without the sacrifice of performance. ";
-    p->program_description = p->program_description + "Specifically, MosAT will read a trajectory without any additional programming required ";
-    p->program_description = p->program_description + "by the user. MosAT also reads a reference file such as a .gro or .pdb file. Using the ";
-    p->program_description = p->program_description + "reference file, MosAT generates the atom and residue names and numbers for all molecules ";
-    p->program_description = p->program_description + "in the system. Additional data such as atomic masses, the initial coordinates and initial ";
-    p->program_description = p->program_description + "box are also extracted. This makes possible the creation of data structures before the ";
-    p->program_description = p->program_description + "main loop is executed at which point the trajectory is read. Furthermore, to reduce memory ";
-    p->program_description = p->program_description + "constraints, only a single frame is ever read into memory at a given time. MosAT makes easy ";
-    p->program_description = p->program_description + "the addition of command line arguments. This is done using the add_argument function. ";
-    p->program_description = p->program_description + "Likewise, user defined atom selections are possible through use of selection cards. To ensure speed, ";
-    p->program_description = p->program_description + "MosAT is pre-parallelized (using MPI) to take advantage of modern supercomputers. In ";
-    p->program_description = p->program_description + "general, the block parallelization scheme used by MosAT splits the trajectory into chunks ";
-    p->program_description = p->program_description + "where each core is assigned a section to read. In most cases, this removes any communication ";
-    p->program_description = p->program_description + "requirements until after the trajectory has been read. For this reason, the scalability ";
-    p->program_description = p->program_description + "with block parallelization is nearly linear. Alternatively, the parallelization scheme can ";
-    p->program_description = p->program_description + "be set (by turning off block parallelization) so each rank reads the entire trajectory. ";
-    p->program_description = p->program_description + "To ensure reliability and speed of an analysis program, MosAT makes full use of the trajectory file ";
-    p->program_description = p->program_description + "readers developed by the Gromacs team and simplified for use with analysis tools by the MDTraj developers. ";
-    p->program_description = p->program_description + "Additional functionality implemented in MosAT include least squares ";
-    p->program_description = p->program_description + "fitting, a stride for skipping frames, and control over the begin and end frames read. ";
-    p->program_description = p->program_description + "Compatible trajectory types include xtc, trr, gro and pdb with cross IO functionality supported.";
+    p->program_description = p->program_description + "Atom Select is an analysis tool used to select atoms using a selection text. The program creates an index file with the selected atoms as well as a pdb file with the selected atoms highlighted by teh B-factor.";
 }
 
