@@ -1137,6 +1137,7 @@ void write_frame_gro(matrix box,int num_atoms,vector<int> &atom_nr,vector<int> &
             }
         }
     }
+    fflush(*out_file);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1168,6 +1169,7 @@ void write_frame_pdb(matrix box,int num_atoms,vector<int> &atom_nr,vector<int> &
     //print the TER and ENDMDL tags
     fprintf(*out_file,"TER\n");
     fprintf(*out_file,"ENDMDL\n");
+    fflush(*out_file);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1867,6 +1869,9 @@ class Trajectory
         real        get_prec();                                                                         //return the precision of the trajectory
         int         get_frame_global();                                                                 //returns the global frame   
         int         get_frame_full();                                                                   //returns the frame index for the full trajectory (no -b -e -stride or block parallel)
+        int         get_b_lsq();                                                                        //returns b_lsq
+        int         get_box_dim();                                                                      //returns the box dimension
+        int         get_num_residues();                                                                 //returns the number of residues
         void        report_progress();                                                                  //reports that analysis is beginning
         dv1d        center(sv1d &target_atoms,int min,int max);                                         //computes the center of a molecule
         dv1d        center_store(sv1d &target_atoms,int min,int max);                                   //computes the center of a molecule using stored coords
@@ -1881,6 +1886,7 @@ class Trajectory
         int         next_residue(int i);                                                                //primes loop index i (traj.atom_name[i]) for the next residue
         void        check_broken_molecule(int flag_beta);                                               //checks current frame for broken residues
         double      get_dist(dv1d &vec_a,dv1d &vec_b);                                                  //returns the distance between 2 vectors
+        void        expand_traj(Trajectory traj_ref);                                                   //generates surrounding 8 periodic images for the reference traj
 
         //leaflet finder 
         void        get_leaflets(int leaf,string leaflet_finder_param_name,int b_lf_param);             //assign atoms to the leaflets
@@ -1934,7 +1940,7 @@ class Trajectory
         void        parallelize_by_selection(int num_atoms_1);                                          //distribute workload by a custom atom selection
         void        workload_sel();                                                                     //prints the workload distribution for custom atom selections
 
-        const char **argv;                          //The command line arguments
+        const char **argv;                                                                              //The command line arguments
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2051,6 +2057,35 @@ int Trajectory::get_frame_full()
     return frame_number_full; 
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                          //
+// This function returns b_lsq and is used to tell if the least squares fitting was used.                   //
+//                                                                                                          //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int Trajectory::get_b_lsq()
+{
+    return b_lsq;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                          //
+// This function returns the box dimension                                                                  //
+//                                                                                                          //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int Trajectory::get_box_dim()
+{
+    return box_dimension;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                          //
+// This function returns the number of residues                                                             //
+//                                                                                                          //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int Trajectory::get_num_residues()
+{
+    return num_residues;
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                          //
@@ -3525,3 +3560,123 @@ double Trajectory::get_dist(dv1d &vec_a,dv1d &vec_b)
 
     return dist;
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function takes a trajectory and generates the surrounding 8 periodic images                          //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void Trajectory::expand_traj(Trajectory traj_ref)
+{
+    init_carray(title,200);
+
+    //size the trajectory structures
+    atom_nr.resize(9*traj_ref.atoms(),0);
+    res_nr.resize(9*traj_ref.atoms(),0);
+    res_name.resize(9*traj_ref.atoms());
+    atom_name.resize(9*traj_ref.atoms());
+
+    //information for pdb format
+    beta.resize(9*traj_ref.atoms(),0);
+    weight.resize(9*traj_ref.atoms(),0);
+    element.resize(9*traj_ref.atoms());
+    chain_id.resize(9*traj_ref.atoms(),'A');
+
+    //allocate membory for r/v/f
+    r       = (rvec *)calloc(9*traj_ref.atoms() , sizeof(*r));
+    v       = (rvec *)calloc(9*traj_ref.atoms() , sizeof(*v));
+    f       = (rvec *)calloc(9*traj_ref.atoms() , sizeof(*f));
+    r_ref   = (rvec *)calloc(9*traj_ref.atoms() , sizeof(*r_ref));
+    r_store = (rvec *)calloc(9*traj_ref.atoms() , sizeof(*r_store));
+    v_ref   = (rvec *)calloc(9*traj_ref.atoms() , sizeof(*v_ref));
+    r0      = (rvec *)calloc(9*traj_ref.atoms() , sizeof(*r0));
+
+    //allocate memory to hold atomic masses
+    mass = (real *)calloc(9*traj_ref.atoms() , sizeof(real));
+    if(b_lsq == 1)
+    {
+        mass_lsq = (real *)calloc(9*traj_ref.atoms() , sizeof(real));
+    }
+
+    res_start.resize(9*traj_ref.get_num_residues(),0);
+    res_end.resize(9*traj_ref.get_num_residues(),0);
+
+    //get the world size and assign ranks
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);      //get the world size
+    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);      //get the process rank
+
+    world_frames.resize(world_size,0);
+
+    //adjust variables
+    frames               = traj_ref.get_frames();              
+    num_atoms            = 9*traj_ref.atoms();                 
+    num_atoms_ref        = 9*traj_ref.atoms();                 
+    box_dimension        = traj_ref.get_box_dim();                 
+    my_frames            = traj_ref.get_num_frames();                 
+    effective_frames     = traj_ref.get_ef_frames();                 
+    stride               = traj_ref.get_stride();                 
+    start_frame          = traj_ref.get_start_frame();                 
+    end_frame            = traj_ref.get_end_frame();
+    prec                 = traj_ref.get_prec();
+
+    world_frames = traj_ref.get_num_frames_world();
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //                                                                                                          //
+    // Open traj files for reading/writing                                                                      //
+    //                                                                                                          //
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //input trajectory
+    if(in_f == 0 || in_f == 1) //gro or pdb
+    {
+        in_file = fopen64(traj_file_name.c_str(), "r");
+        if(in_file == NULL)
+        {
+            if(world_rank == 0)
+            {
+                printf("failure opening %s. Make sure the file exists. \n",traj_file_name.c_str());
+            }
+            MPI_Finalize();
+            exit(EXIT_SUCCESS);
+        }
+    }
+
+    //input trajectory files
+    if(in_f == 2) //xtc
+    {
+        xd_r = xdrfile_open(cname(traj_file_name), "r");
+    }
+    else if(in_f == 3) //trr
+    {
+        trr_r = xdrfile_open(cname(traj_file_name), "r");
+    }
+
+    //temporary output trajectory files
+    if(my_frames > 0)
+    {
+        if((out_f == 0 || out_f == 1) && b_print == 1) //gro or pdb
+        {
+            out_file = fopen64(out_file_name_tmp.c_str(), "w");
+            if(out_file == NULL)
+            {
+                if(world_rank == 0)
+                {
+                    printf("failure opening %s. Make sure the file exists. \n",out_file_name_tmp.c_str());
+                }
+                MPI_Finalize();
+                exit(EXIT_SUCCESS);
+            }
+        }
+        else if(out_f == 2 && b_print == 1) //xtc
+        {
+            xd_w = xdrfile_open(cname(out_file_name_tmp), "w");
+        }
+        else if(out_f == 3 && b_print == 1) //trr
+        {
+            trr_w = xdrfile_open(cname(out_file_name_tmp), "w");
+        }
+    }
+
+    MPI_Barrier(MPI_COMM_WORLD);
+}
+

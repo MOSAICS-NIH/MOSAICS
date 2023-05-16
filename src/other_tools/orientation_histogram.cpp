@@ -31,6 +31,7 @@ int main(int argc, const char * argv[])
     int k                = 0;     //General variable used in loops
     int l                = 0;     //General variable used in loops
     int next             = 0;     //Used for controlling output printing
+    int b_ceil_theta     = 0;     //Tells if the user is manually setting max_theta
     double res_theta     = 1;     //bin size for theta
     double res_phi       = 1;     //bin size for phi
     double p_res_theta   = 0.005; //printing resultion
@@ -38,7 +39,8 @@ int main(int argc, const char * argv[])
     double biggest_theta = 0;     //biggest value of theta
     double percent       = 0;     //percent of data in bin for theta/phi
     double line_value    = 1;     //what value to print for theta contour lines
-
+    double ceil_theta    = 0;     //Lets the user manually set the largest value of theta to be considered
+   
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
     // Set program name/description and print info                                                               //
@@ -56,12 +58,13 @@ int main(int argc, const char * argv[])
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     start_input_arguments(argc,argv,program_description);
-    add_argument_s(argc,argv,"-d",         in_file_name,               "Input data file"                         , nullptr,      1);
-    add_argument_s(argc,argv,"-o",         out_file_name,              "Output file"                             , nullptr,      1);
-    add_argument_d(argc,argv,"-res_t",     &res_theta,                 "Bin size for theta"                      , nullptr,      1);
-    add_argument_d(argc,argv,"-res_p",     &res_phi,                   "Bin size for phi"                        , nullptr,      1);
-    add_argument_d(argc,argv,"-res",       &p_res_theta,               "Printing resolution"                     , nullptr,      1);
-    add_argument_d(argc,argv,"-line_v",    &line_value,                "What value to use for contour lines"     , nullptr,      1);
+    add_argument_s(argc,argv,"-d",         in_file_name,               "Input data file"                         , nullptr,       1);
+    add_argument_s(argc,argv,"-o",         out_file_name,              "Output file"                             , nullptr,       1);
+    add_argument_d(argc,argv,"-res_t",     &res_theta,                 "Bin size for theta"                      , nullptr,       1);
+    add_argument_d(argc,argv,"-res_p",     &res_phi,                   "Bin size for phi"                        , nullptr,       1);
+    add_argument_d(argc,argv,"-res",       &p_res_theta,               "Printing resolution"                     , nullptr,       1);
+    add_argument_d(argc,argv,"-line_v",    &line_value,                "What value to use for contour lines"     , nullptr,       1);
+    add_argument_d(argc,argv,"-max_t",     &ceil_theta,                "Largest value of theta to be considered" , &b_ceil_theta, 0);
     conclude_input_arguments(argc,argv,program_name);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -99,6 +102,12 @@ int main(int argc, const char * argv[])
         }
     }
 
+    //check if the user specified a maximum theta
+    if(b_ceil_theta == 1)
+    {
+        biggest_theta = ceil_theta;
+    }
+ 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
     // Determine how frequent each theta and phi values are                                                      //
