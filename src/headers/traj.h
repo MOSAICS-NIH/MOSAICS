@@ -1934,7 +1934,7 @@ class Trajectory
         void        parallelize_by_selection(int num_atoms_1);                                          //distribute workload by a custom atom selection
         void        workload_sel();                                                                     //prints the workload distribution for custom atom selections
 
-        const char * argv[];                          //The command line arguments
+        const char **argv;                          //The command line arguments
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
