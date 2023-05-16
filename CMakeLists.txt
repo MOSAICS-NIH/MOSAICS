@@ -28,6 +28,7 @@ foreach(CMD
     apl
     apl_3d
     atoms_in_2_planes
+    atom_select
     b_stamp
     b_stamp_grid
     bilayer_z
@@ -58,6 +59,7 @@ foreach(CMD
     nearest_neighbors_3d
     p2
     p2_3d
+    pbc_gen
     pbc_xy
     pbc_z
     protein_lipid_contacts

@@ -47,6 +47,8 @@ $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/surface_residue_finder.cpp   
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/system_translator.cpp          src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/system_translator_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/traj_time.cpp                  src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/traj_time_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/zcoord.cpp                     src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/zcoord_mpi
+$MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/pbc_gen.cpp                    src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/pbc_gen_mpi
+$MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/atom_select.cpp                src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/atom_select_mpi
 
 #non MosAT mpi
 $MPI_CPP_COMP -I src -std=c++11 src/other_tools/grid_distance_projection.cpp                -o build/grid_distance_projection_mpi
