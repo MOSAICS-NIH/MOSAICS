@@ -1846,7 +1846,7 @@ class Trajectory
         void        parallelize_by_water(int num_waters_1);                                             //distribute workload by waters
         void        workload_water();                                                                   //prints the workload distribution for waters
 
-        const char * argv[];                          //The command line arguments
+        const char **argv;                          //The command line arguments
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
