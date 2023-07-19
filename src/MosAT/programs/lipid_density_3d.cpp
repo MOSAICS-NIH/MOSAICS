@@ -183,11 +183,10 @@ int main(int argc, const char * argv[])
     add_argument_mpi_s(argc,argv,"-pf_prm", p.protein_finder_param_name,  "File with additional protein finder parameters (prm)",        s.world_rank, &p.b_pf_param,0);
     add_argument_mpi_d(argc,argv,"-APS",    &p.APS,                       "Area per grid box (nm^2)",                                    s.world_rank, nullptr,      1);
     add_argument_mpi_d(argc,argv,"-r",      &p.radius,                    "Radius of the target atom (nm)",                              s.world_rank, nullptr,      1);
-    add_argument_mpi_d(argc,argv,"-cutoff", &p.cutoff,                    "Cutoff for excluding data (chi)",                             s.world_rank, nullptr,      0);
     add_argument_mpi_d(argc,argv,"-bx",     &p.box_x,                     "Grid x dimension (nm)",                                       s.world_rank, nullptr,      0);
     add_argument_mpi_d(argc,argv,"-by",     &p.box_y,                     "Grid y dimension (nm)",                                       s.world_rank, nullptr,      0);
+    add_argument_mpi_d(argc,argv,"-bz",     &p.box_z,                     "Grid z dimension (nm)",                                       s.world_rank, nullptr,      0);
     add_argument_mpi_i(argc,argv,"-leaf",   &p.leaflet,                   "Which leaflet? (0:both 1:upper 2:lower)",                     s.world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-clean",  &p.b_clean,                   "Remove single frame files? (0:no 1:yes)",                     s.world_rank, nullptr,      0);
     add_argument_mpi_d(argc,argv,"-dist",   &p.dist_cutoff,               "How far from protein should lipids be counted? (nm)",         s.world_rank, &p.b_dist,    0);
     add_argument_mpi_i(argc,argv,"-ex_val", &p.ex_val,                    "Set excluded lattice points to this value",                   s.world_rank, nullptr,      0);
     conclude_input_arguments_mpi(argc,argv,s.world_rank,s.program_name);

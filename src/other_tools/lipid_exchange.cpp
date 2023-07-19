@@ -230,6 +230,9 @@ int main(int argc, const char * argv[])
         printf("Could not find binding events file \n"); 
     }
 
+    //relinquish the mpi environment
+    MPI_Finalize();
+
     std::cout << "\nFormatting completed successfully" << "\n\n";
 
     return 0;

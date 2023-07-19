@@ -139,6 +139,9 @@ int main(int argc, const char * argv[])
         events.write_binding_events(out_file_name);
     }
 
+    //relinquish the mpi environment
+    MPI_Finalize();
+
     printf("\n");
     std::cout << "\nFormatting completed successfully" << "\n\n";
 

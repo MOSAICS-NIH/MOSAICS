@@ -34,13 +34,11 @@ struct program_variables
     int b_lf_pdb;                                 //Print pdb with indicated leaflets by beta factor?
     int b_pf_pdb;                                 //Print pdb with indicated protein by beta factor?
     int b_stdev;                                  //Compute the z-coord standard deviation?
-    int b_clean;                                  //Delete single frame rmsd files after computing average?
     int b_dist;                                   //Add density only local to the protein? 
     int ex_val;                                   //Set excluded lattice points to this value
     double dist_cutoff;                           //How close to the protien must the lipids be to add density?
     double APS;                                   //This is the area of a grid square
     double radius;                                //Radius of the atom
-    double cutoff;                                //Percentage of average rho used for excluding data
     double box_x;                                 //Grid x dimension
     double box_y;                                 //Grid y dimension
     double box_z;                                 //Grid z dimension
@@ -66,14 +64,12 @@ void initialize_program_variables(program_variables *p)
     p->leaflet         = 0;
     p->APS             = 0;
     p->radius          = 0;
-    p->cutoff          = 0;
     p->box_x           = 0;
     p->box_y           = 0;
     p->box_z           = 0;
     p->b_lf_pdb        = 0;
     p->b_pf_pdb        = 0;
     p->b_stdev         = 0;
-    p->b_clean         = 0;
     p->b_lf_param      = 0;
     p->b_pf_param      = 0;
     p->b_dist          = 0;
