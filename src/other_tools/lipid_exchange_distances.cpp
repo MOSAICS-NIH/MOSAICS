@@ -59,6 +59,7 @@ int main(int argc, const char * argv[])
     double avg_rho        = 0;          //The average lipid density over the grid
     double ex             = 0;          //Exclude binding events shorter than this (ns)
     double bin_width      = 1.0;        //Bin width for histogram
+    sv1d cl_tags;                       //Holds a list of command line tags for the program
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -88,19 +89,19 @@ int main(int argc, const char * argv[])
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     start_input_arguments_mpi(argc,argv,world_rank,program_description);
-    add_argument_mpi_s(argc,argv,"-d"       , base_file_name_i,           "Base filename for input binding events files"                            , world_rank, nullptr,      1);
-    add_argument_mpi_s(argc,argv,"-be"      , be_file_name,               "Binding events file for the target region (be)"                          , world_rank, nullptr,      1);
-    add_argument_mpi_s(argc,argv,"-o"       , out_file_name,              "Output data files with exchange distance histogram (dat)"                , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-stride"  , &stride,                    "Skip stride frames"                                                      , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-b"       , &begin,                     "Start at this frame"                                                     , world_rank, &b_end,       0);
-    add_argument_mpi_i(argc,argv,"-e"       , &end,                       "End on this frame"                                                       , world_rank, nullptr,      0);
-    add_argument_mpi_s(argc,argv,"-rho"     , rho_file_name,              "Input data file with sample count (dat)"                                 , world_rank, &b_rho,       0);
-    add_argument_mpi_d(argc,argv,"-cutoff"  , &cutoff,                    "Cutoff for excluding grid data in noise filtered voronoi diagrams (chi)" , world_rank, nullptr,      0);
-    add_argument_mpi_i(argc,argv,"-odf"     , &odf,                       "Data file format for rho (0:matrix 1:vector)"                            , world_rank, nullptr,      0);
-    add_argument_mpi_s(argc,argv,"-crd"     , leaving_lipid_file_name,    "Selection card with leaving lipid types (crd)"                           , world_rank, nullptr,      1);
-    add_argument_mpi_d(argc,argv,"-ex"      , &ex,                        "Exclude binding events with a dwell time smaller than this (ps)"         , world_rank, nullptr,      0);
-    add_argument_mpi_d(argc,argv,"-bin"     , &bin_width,                 "Bin width (nm)"                                                          , world_rank, nullptr,      0);
-    conclude_input_arguments_mpi(argc,argv,world_rank,program_name);
+    add_argument_mpi_s(argc,argv,"-d"       , base_file_name_i,           "Base filename for input binding events files"                            , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-be"      , be_file_name,               "Binding events file for the target region (be)"                          , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-o"       , out_file_name,              "Output data files with exchange distance histogram (dat)"                , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-stride"  , &stride,                    "Skip stride frames"                                                      , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-b"       , &begin,                     "Start at this frame"                                                     , world_rank, cl_tags, &b_end,       0);
+    add_argument_mpi_i(argc,argv,"-e"       , &end,                       "End on this frame"                                                       , world_rank, cl_tags, nullptr,      0);
+    add_argument_mpi_s(argc,argv,"-rho"     , rho_file_name,              "Input data file with sample count (dat)"                                 , world_rank, cl_tags, &b_rho,       0);
+    add_argument_mpi_d(argc,argv,"-cutoff"  , &cutoff,                    "Cutoff for excluding grid data in noise filtered voronoi diagrams (chi)" , world_rank, cl_tags, nullptr,      0);
+    add_argument_mpi_i(argc,argv,"-odf"     , &odf,                       "Data file format for rho (0:matrix 1:vector)"                            , world_rank, cl_tags, nullptr,      0);
+    add_argument_mpi_s(argc,argv,"-crd"     , leaving_lipid_file_name,    "Selection card with leaving lipid types (crd)"                           , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_d(argc,argv,"-ex"      , &ex,                        "Exclude binding events with a dwell time smaller than this (ps)"         , world_rank, cl_tags, nullptr,      0);
+    add_argument_mpi_d(argc,argv,"-bin"     , &bin_width,                 "Bin width (nm)"                                                          , world_rank, cl_tags, nullptr,      0);
+    conclude_input_arguments_mpi(argc,argv,world_rank,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //

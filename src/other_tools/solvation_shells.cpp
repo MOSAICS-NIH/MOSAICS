@@ -69,6 +69,7 @@ int main(int argc, const char * argv[])
     double dt             = 0;          //Time step used for converting frames to time. set equal to ef_dt
     double cutoff_1       = 1;          //Cutoff distance for first shell lipids
     double cutoff_n       = 1;          //Cutoff distance for other shells
+    sv1d cl_tags;                       //Holds a list of command line tags for the program
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -98,24 +99,24 @@ int main(int argc, const char * argv[])
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     start_input_arguments_mpi(argc,argv,world_rank,program_description);
-    add_argument_mpi_s(argc,argv,"-d"     , base_file_name_i,           "Base filename for input binding events files"                          , world_rank, nullptr,      1);
-    add_argument_mpi_s(argc,argv,"-prot"  , prot_file_name,             "Input file with protein mask (dat)"                                    , world_rank, nullptr,      1);
-    add_argument_mpi_s(argc,argv,"-mask"  , mask_file_name,             "Input file with selection mask (overrides rectangular selection, dat)" , world_rank, &b_mask,      0);
-    add_argument_mpi_s(argc,argv,"-o"     , base_file_name_o,           "Base filename for output data files"                                   , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-odf"   , &odf,                       "Data file format (0:matrix 1:vector)"                                  , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-stride", &stride,                    "Skip stride frames"                                                    , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-b"     , &begin,                     "Start at this frame"                                                   , world_rank, &b_end,       0);
-    add_argument_mpi_i(argc,argv,"-e"     , &end,                       "End on this frame"                                                     , world_rank, nullptr,      0);
-    add_argument_mpi_d(argc,argv,"-dist_1", &cutoff_1,                  "Cutoff distance for first shell lipids (nm)"                           , world_rank, nullptr,      1);
-    add_argument_mpi_d(argc,argv,"-dist_n", &cutoff_n,                  "Cutoff distance for first outer shells (nm)"                           , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-n_shel", &range_shell,               "Noise filter half width for assigning lipids to the shells? (frames)"  , world_rank, nullptr,      0);
-    add_argument_mpi_i(argc,argv,"-n_box" , &range_box,                 "Noise filter half width for assigning lipids to the box? (frames)"     , world_rank, nullptr,      0);
-    add_argument_mpi_i(argc,argv,"-x"     , &target_x,                  "Rectangle center x (grid point)"                                       , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-y"     , &target_y,                  "Rectangle center y (grid point)"                                       , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-rx"    , &range_x,                   "Rectangle half width x (grid points)  "                                , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-ry"    , &range_y,                   "Rectangle half width y (grid points)  "                                , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-invert", &invert,                    "Invert rectangular selection? (0:no 1:yes)"                            , world_rank, nullptr,      1);
-    conclude_input_arguments_mpi(argc,argv,world_rank,program_name);
+    add_argument_mpi_s(argc,argv,"-d"     , base_file_name_i,           "Base filename for input binding events files"                          , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-prot"  , prot_file_name,             "Input file with protein mask (dat)"                                    , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-mask"  , mask_file_name,             "Input file with selection mask (overrides rectangular selection, dat)" , world_rank, cl_tags, &b_mask,      0);
+    add_argument_mpi_s(argc,argv,"-o"     , base_file_name_o,           "Base filename for output data files"                                   , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-odf"   , &odf,                       "Data file format (0:matrix 1:vector)"                                  , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-stride", &stride,                    "Skip stride frames"                                                    , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-b"     , &begin,                     "Start at this frame"                                                   , world_rank, cl_tags, &b_end,       0);
+    add_argument_mpi_i(argc,argv,"-e"     , &end,                       "End on this frame"                                                     , world_rank, cl_tags, nullptr,      0);
+    add_argument_mpi_d(argc,argv,"-dist_1", &cutoff_1,                  "Cutoff distance for first shell lipids (nm)"                           , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_d(argc,argv,"-dist_n", &cutoff_n,                  "Cutoff distance for first outer shells (nm)"                           , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-n_shel", &range_shell,               "Noise filter half width for assigning lipids to the shells? (frames)"  , world_rank, cl_tags, nullptr,      0);
+    add_argument_mpi_i(argc,argv,"-n_box" , &range_box,                 "Noise filter half width for assigning lipids to the box? (frames)"     , world_rank, cl_tags, nullptr,      0);
+    add_argument_mpi_i(argc,argv,"-x"     , &target_x,                  "Rectangle center x (grid point)"                                       , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-y"     , &target_y,                  "Rectangle center y (grid point)"                                       , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-rx"    , &range_x,                   "Rectangle half width x (grid points)  "                                , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-ry"    , &range_y,                   "Rectangle half width y (grid points)  "                                , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-invert", &invert,                    "Invert rectangular selection? (0:no 1:yes)"                            , world_rank, cl_tags, nullptr,      1);
+    conclude_input_arguments_mpi(argc,argv,world_rank,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //

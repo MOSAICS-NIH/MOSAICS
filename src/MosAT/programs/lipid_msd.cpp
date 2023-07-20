@@ -87,6 +87,9 @@ void store_coords(Trajectory &traj,system_variables &s,program_variables &p,Para
                     {
                         resid.push_back(traj.res_nr[min]);
                     }
+
+                    //free memory
+                    vector<string>().swap(target_atoms);
                 }
             }
         }
@@ -218,6 +221,9 @@ fflush (stdout);
             fprintf(msd_file," %10f \n",avg_msd);
             fflush (msd_file);
         }
+
+        //free memory
+        vector<double>().swap(msd_lipids);
     }
 
 printf("world_rank %d tag 7 \n",s.world_rank);
@@ -270,19 +276,19 @@ int main(int argc, const char * argv[])
 
     //analyze the command line arguments 
     start_input_arguments_mpi(argc,argv,s.world_rank,p.program_description);
-    add_argument_mpi_s(argc,argv,"-traj",   p.in_file_name,               "Input trajectory file (xtc, trr, pdb, gro)",                  s.world_rank, nullptr,      1);
-    add_argument_mpi_s(argc,argv,"-ref",    p.ref_file_name,              "Refference file (pdb, gro)",                                  s.world_rank, nullptr,      1);
-    add_argument_mpi_s(argc,argv,"-o",      p.out_file_name,              "Output trajectory file (xtc, trr, pdb, gro)",                 s.world_rank, &p.b_print,   0);
-    add_argument_mpi_i(argc,argv,"-stride", &p.stride,                    "Read every 'stride' frame",                                   s.world_rank, nullptr,      0);
-    add_argument_mpi_i(argc,argv,"-b",      &p.start_frame,               "Skip frames before this number",                              s.world_rank, nullptr,      0);
-    add_argument_mpi_i(argc,argv,"-e",      &p.end_frame,                 "Skip frames after this number",                               s.world_rank, nullptr,      0);
-    add_argument_mpi_s(argc,argv,"-lsq",    p.lsq_index_file_name,        "Index for lsq fitting (ndx)",                                 s.world_rank, &p.b_lsq,     0);
-    add_argument_mpi_i(argc,argv,"-lsq_d",  &p.lsq_dim,                   "Dimension for lsq fitting (3:x,y,z 2:x,y)",                   s.world_rank, nullptr,      0);
-    add_argument_mpi_i(argc,argv,"-lsq_r",  &p.lsq_ref,                   "Reference structure for lsq fitting (0:ref 1:first_frame)",   s.world_rank, nullptr,      0);
-    add_argument_mpi_s(argc,argv,"-crd",    p.param_file_name,            "Selection card (crd)",                                        s.world_rank, nullptr,      1);
-    add_argument_mpi_s(argc,argv,"-msd",    p.msd_file_name,              "Output data file with MSD data (dat)",                        s.world_rank, nullptr,      1);
-    add_argument_mpi_d(argc,argv,"-dt",     &p.ef_dt,                     "Time between analyzed frames (accounting for stride, ps)",    s.world_rank, nullptr,      1);
-    conclude_input_arguments_mpi(argc,argv,s.world_rank,s.program_name);
+    add_argument_mpi_s(argc,argv,"-traj",   p.in_file_name,               "Input trajectory file (xtc, trr, pdb, gro)",                  s.world_rank, s.cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-ref",    p.ref_file_name,              "Refference file (pdb, gro)",                                  s.world_rank, s.cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-o",      p.out_file_name,              "Output trajectory file (xtc, trr, pdb, gro)",                 s.world_rank, s.cl_tags, &p.b_print,   0);
+    add_argument_mpi_i(argc,argv,"-stride", &p.stride,                    "Read every 'stride' frame",                                   s.world_rank, s.cl_tags, nullptr,      0);
+    add_argument_mpi_i(argc,argv,"-b",      &p.start_frame,               "Skip frames before this number",                              s.world_rank, s.cl_tags, nullptr,      0);
+    add_argument_mpi_i(argc,argv,"-e",      &p.end_frame,                 "Skip frames after this number",                               s.world_rank, s.cl_tags, nullptr,      0);
+    add_argument_mpi_s(argc,argv,"-lsq",    p.lsq_index_file_name,        "Index for lsq fitting (ndx)",                                 s.world_rank, s.cl_tags, &p.b_lsq,     0);
+    add_argument_mpi_i(argc,argv,"-lsq_d",  &p.lsq_dim,                   "Dimension for lsq fitting (3:x,y,z 2:x,y)",                   s.world_rank, s.cl_tags, nullptr,      0);
+    add_argument_mpi_i(argc,argv,"-lsq_r",  &p.lsq_ref,                   "Reference structure for lsq fitting (0:ref 1:first_frame)",   s.world_rank, s.cl_tags, nullptr,      0);
+    add_argument_mpi_s(argc,argv,"-crd",    p.param_file_name,            "Selection card (crd)",                                        s.world_rank, s.cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-msd",    p.msd_file_name,              "Output data file with MSD data (dat)",                        s.world_rank, s.cl_tags, nullptr,      1);
+    add_argument_mpi_d(argc,argv,"-dt",     &p.ef_dt,                     "Time between analyzed frames (accounting for stride, ps)",    s.world_rank, s.cl_tags, nullptr,      1);
+    conclude_input_arguments_mpi(argc,argv,s.world_rank,s.program_name,s.cl_tags);
 
     //create a trajectory
     Trajectory traj; 

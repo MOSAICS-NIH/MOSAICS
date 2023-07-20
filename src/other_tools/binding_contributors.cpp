@@ -40,6 +40,7 @@ int main(int argc, const char * argv[])
     int world_size = 0;           //How many mpi ranks
     int world_rank = 0;           //Rank of the mpi process
     double dt      = 0;           //Time step used for output 
+    sv1d cl_tags;                 //Holds a list of command line tags for the program
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -69,8 +70,8 @@ int main(int argc, const char * argv[])
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     start_input_arguments_mpi(argc,argv,world_rank,program_description);
-    add_argument_mpi_s(argc,argv,"-d"       , base_file_name,             "Base filename for input binding events files"         , world_rank, nullptr,      1);
-    conclude_input_arguments_mpi(argc,argv,world_rank,program_name);
+    add_argument_mpi_s(argc,argv,"-d"       , base_file_name,             "Base filename for input binding events files"         , world_rank, cl_tags, nullptr,      1);
+    conclude_input_arguments_mpi(argc,argv,world_rank,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //

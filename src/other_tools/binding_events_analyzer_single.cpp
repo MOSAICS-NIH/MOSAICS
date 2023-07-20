@@ -51,6 +51,7 @@ int main(int argc, const char * argv[])
     double cutoff    = 0;              //Exclude data with cutoff less than this
     double bin_width = 1;              //bin width (default is 1ps)
     double percent   = 0;              //Percent reported for the bin
+    sv1d cl_tags;                      //Holds a list of command line tags for the program
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -84,12 +85,12 @@ int main(int argc, const char * argv[])
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     start_input_arguments_mpi(argc,argv,world_rank,program_description);
-    add_argument_mpi_s(argc,argv,"-d"        , binding_events_file_name,"Input binding events file (be)"                       , world_rank, nullptr,      1);
-    add_argument_mpi_s(argc,argv,"-histo"    , out_file_name,           "Output data file with dwell time histogram (dat)"     , world_rank, &b_write_hist,0);
-    add_argument_mpi_s(argc,argv,"-crd"      , lip_t_file_name,         "Selection card with lipid types (crd)"                , world_rank, nullptr,      1);
-    add_argument_mpi_d(argc,argv,"-cutoff"   , &cutoff,                 "Exclude data with a dwell time smaller than this (ps)", world_rank, nullptr,      0);
-    add_argument_mpi_d(argc,argv,"-bin",     &bin_width,                "Bin width (ps)"                                       , world_rank, nullptr,      0);
-    conclude_input_arguments_mpi(argc,argv,world_rank,program_name);
+    add_argument_mpi_s(argc,argv,"-d"        , binding_events_file_name,"Input binding events file (be)"                       , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-histo"    , out_file_name,           "Output data file with dwell time histogram (dat)"     , world_rank, cl_tags, &b_write_hist,0);
+    add_argument_mpi_s(argc,argv,"-crd"      , lip_t_file_name,         "Selection card with lipid types (crd)"                , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_d(argc,argv,"-cutoff"   , &cutoff,                 "Exclude data with a dwell time smaller than this (ps)", world_rank, cl_tags, nullptr,      0);
+    add_argument_mpi_d(argc,argv,"-bin",     &bin_width,                "Bin width (ps)"                                       , world_rank, cl_tags, nullptr,      0);
+    conclude_input_arguments_mpi(argc,argv,world_rank,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //

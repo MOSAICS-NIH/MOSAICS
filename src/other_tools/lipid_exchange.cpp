@@ -53,6 +53,7 @@ int main(int argc, const char * argv[])
     double r2             = 0;         //Correlation coeficient in linear regression
     double koff           = 0;         //The koff value
     double cutoff         = 0;         //Exclude data with cutoff less than this
+    sv1d cl_tags;                      //Holds a list of command line tags for the program
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -86,15 +87,15 @@ int main(int argc, const char * argv[])
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     start_input_arguments_mpi(argc,argv,world_rank,program_description);
-    add_argument_mpi_s(argc,argv,"-d"        , binding_events_file_name, "Input binding events file (be)"                                                           , world_rank, nullptr,      1);
-    add_argument_mpi_s(argc,argv,"-l_in"     , replacing_lipid_file_name,"Selection card with replacing lipid types (crd)"                                          , world_rank, nullptr,      1);
-    add_argument_mpi_s(argc,argv,"-l_out"    , leaving_lipid_file_name,  "Selection card with outgoing lipid types (crd)"                                           , world_rank, nullptr,      1);
-    add_argument_mpi_d(argc,argv,"-l_frac"   , &lipid_fraction,          "Fraction of lipids in the target leaflet that are of the type given in -l_in (0-1)"       , world_rank, nullptr,      1);
-    add_argument_mpi_d(argc,argv,"-cutoff"   , &cutoff,                  "Exclude binding events with a dwell time smaller than this (ps)"                          , world_rank, nullptr,      0);
-    add_argument_mpi_s(argc,argv,"-histo"    , histo_file_name,          "Output data file with the exchange duration histogram (dat)"                              , world_rank, &b_histo,     0);
-    add_argument_mpi_i(argc,argv,"-bin"      ,&bin_width,                "Bin width for the exchange duration histogram (frames)"                                   , world_rank, nullptr,      0);
-    add_argument_mpi_i(argc,argv,"-self"     , &b_self,                  "Count exchanges when the outgoing and replacing lipids are the same lipid? (0:no, 1:yes)" , world_rank, nullptr,      1);
-    conclude_input_arguments_mpi(argc,argv,world_rank,program_name);
+    add_argument_mpi_s(argc,argv,"-d"        , binding_events_file_name, "Input binding events file (be)"                                                           , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-l_in"     , replacing_lipid_file_name,"Selection card with replacing lipid types (crd)"                                          , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-l_out"    , leaving_lipid_file_name,  "Selection card with outgoing lipid types (crd)"                                           , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_d(argc,argv,"-l_frac"   , &lipid_fraction,          "Fraction of lipids in the target leaflet that are of the type given in -l_in (0-1)"       , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_d(argc,argv,"-cutoff"   , &cutoff,                  "Exclude binding events with a dwell time smaller than this (ps)"                          , world_rank, cl_tags, nullptr,      0);
+    add_argument_mpi_s(argc,argv,"-histo"    , histo_file_name,          "Output data file with the exchange duration histogram (dat)"                              , world_rank, cl_tags, &b_histo,     0);
+    add_argument_mpi_i(argc,argv,"-bin"      ,&bin_width,                "Bin width for the exchange duration histogram (frames)"                                   , world_rank, cl_tags, nullptr,      0);
+    add_argument_mpi_i(argc,argv,"-self"     , &b_self,                  "Count exchanges when the outgoing and replacing lipids are the same lipid? (0:no, 1:yes)" , world_rank, cl_tags, nullptr,      1);
+    conclude_input_arguments_mpi(argc,argv,world_rank,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //

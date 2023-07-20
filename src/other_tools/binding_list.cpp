@@ -41,6 +41,7 @@ int main(int argc, const char * argv[])
     int world_size  = 0;                 //Size of the mpi world
     int world_rank  = 0;                 //Rank in the mpi world
     double dt       = 0.0;               //dt used for final output
+    sv1d cl_tags;                        //Holds a list of command line tags for the program
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -74,10 +75,10 @@ int main(int argc, const char * argv[])
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     start_input_arguments_mpi(argc,argv,world_rank,program_description);
-    add_argument_mpi_s(argc,argv,"-d"     , binding_events_file_name,   "Input binding events file (be)"                 , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-mode"  , &mode,                      "Order events by (0:bind_i,1:dwell_t,2:repeats)" , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-t"     , &dt_mode,                   "Report time in (0:ns,1:frames)"                 , world_rank, nullptr,      1);
-    conclude_input_arguments_mpi(argc,argv,world_rank,program_name);
+    add_argument_mpi_s(argc,argv,"-d"     , binding_events_file_name,   "Input binding events file (be)"                 , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-mode"  , &mode,                      "Order events by (0:bind_i,1:dwell_t,2:repeats)" , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-t"     , &dt_mode,                   "Report time in (0:ns,1:frames)"                 , world_rank, cl_tags, nullptr,      1);
+    conclude_input_arguments_mpi(argc,argv,world_rank,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //

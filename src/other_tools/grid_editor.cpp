@@ -38,6 +38,7 @@ int main(int argc, const char * argv[])
     double target_y = 0;          //The target grid point y when making a rectangular selection
     double range_x  = 0;          //The half width of x in the rectangular selection
     double range_y  = 0;          //The half width of y in the rectangular selection
+    sv1d cl_tags;                 //Holds a list of command line tags for the program
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -56,16 +57,16 @@ int main(int argc, const char * argv[])
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     start_input_arguments(argc,argv,program_description);
-    add_argument_s(argc,argv,"-d"     , in_file_name,               "Input file with grid data to be edited (dat)" , nullptr,      1);
-    add_argument_s(argc,argv,"-o"     , out_file_name,              "Output data file with edited grid data (dat)" , nullptr,      1);
-    add_argument_d(argc,argv,"-x"     , &target_x,                  "Rectangle center x (grid point)"              , nullptr,      1);
-    add_argument_d(argc,argv,"-y"     , &target_y,                  "Rectangle center y (grid point)"              , nullptr,      1);
-    add_argument_d(argc,argv,"-rx"    , &range_x,                   "Rectangle half width x (grid points)  "       , nullptr,      1);
-    add_argument_d(argc,argv,"-ry"    , &range_y,                   "Rectangle half width y (grid points)  "       , nullptr,      1);
-    add_argument_d(argc,argv,"-val"   , &val,                       "Value to set grid points to"                  , nullptr,      1);
-    add_argument_i(argc,argv,"-odf"   , &odf,                       "Data file format (0:matrix 1:vector)"         , nullptr,      1);
-    add_argument_s(argc,argv,"-mask"  , mask_file_name,             "Mask file for selecting lattice points (dat)" , &b_mask,      0);
-    conclude_input_arguments(argc,argv,program_name);
+    add_argument_s(argc,argv,"-d"     , in_file_name,               "Input file with grid data to be edited (dat)" , cl_tags, nullptr,      1);
+    add_argument_s(argc,argv,"-o"     , out_file_name,              "Output data file with edited grid data (dat)" , cl_tags, nullptr,      1);
+    add_argument_d(argc,argv,"-x"     , &target_x,                  "Rectangle center x (grid point)"              , cl_tags, nullptr,      1);
+    add_argument_d(argc,argv,"-y"     , &target_y,                  "Rectangle center y (grid point)"              , cl_tags, nullptr,      1);
+    add_argument_d(argc,argv,"-rx"    , &range_x,                   "Rectangle half width x (grid points)  "       , cl_tags, nullptr,      1);
+    add_argument_d(argc,argv,"-ry"    , &range_y,                   "Rectangle half width y (grid points)  "       , cl_tags, nullptr,      1);
+    add_argument_d(argc,argv,"-val"   , &val,                       "Value to set grid points to"                  , cl_tags, nullptr,      1);
+    add_argument_i(argc,argv,"-odf"   , &odf,                       "Data file format (0:matrix 1:vector)"         , cl_tags, nullptr,      1);
+    add_argument_s(argc,argv,"-mask"  , mask_file_name,             "Mask file for selecting lattice points (dat)" , cl_tags, &b_mask,      0);
+    conclude_input_arguments(argc,argv,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //

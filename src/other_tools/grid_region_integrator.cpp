@@ -39,6 +39,7 @@ int main(int argc, const char * argv[])
     double avg           = 0;     //Average value reported
     double sum_o_squares = 0;     //Sum of squares for computing standard deviation
     double stdev         = 0;     //The standard deviation
+    sv1d cl_tags;                 //Holds a list of command line tags for the program
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -57,16 +58,16 @@ int main(int argc, const char * argv[])
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     start_input_arguments(argc,argv,program_description);
-    add_argument_s(argc,argv,"-d"     , in_file_name,               "Input data file to be averaged (dat)"                                                , nullptr,      1);
-    add_argument_s(argc,argv,"-mask"  , mask_file_name,             "Mask file used to select grid points in average (dat)"                               , &b_mask,      0);
-    add_argument_s(argc,argv,"-list"  , list_file_name,             "Output data file with the value of each lattice point included in the average (dat)" , &b_list,      0);
-    add_argument_i(argc,argv,"-x"     , &target_x,                  "Rectangle center x (grid point)"                                                     , nullptr,      1);
-    add_argument_i(argc,argv,"-y"     , &target_y,                  "Rectangle center y (grid point)"                                                     , nullptr,      1);
-    add_argument_i(argc,argv,"-rx"    , &range_x,                   "Rectangle half width x (grid points)  "                                              , nullptr,      1);
-    add_argument_i(argc,argv,"-ry"    , &range_y,                   "Rectangle half width y (grid points)  "                                              , nullptr,      1);
-    add_argument_i(argc,argv,"-invert", &invert,                    "Invert rectangular selection? (0:no 1:yes)"                                          , nullptr,      1);
-    add_argument_i(argc,argv,"-odf"   , &odf,                       "Data file format (0:matrix 1:vector)"                                                , nullptr,      1);
-    conclude_input_arguments(argc,argv,program_name);
+    add_argument_s(argc,argv,"-d"     , in_file_name,               "Input data file to be averaged (dat)"                                                , cl_tags, nullptr,      1);
+    add_argument_s(argc,argv,"-mask"  , mask_file_name,             "Mask file used to select grid points in average (dat)"                               , cl_tags, &b_mask,      0);
+    add_argument_s(argc,argv,"-list"  , list_file_name,             "Output data file with the value of each lattice point included in the average (dat)" , cl_tags, &b_list,      0);
+    add_argument_i(argc,argv,"-x"     , &target_x,                  "Rectangle center x (grid point)"                                                     , cl_tags, nullptr,      1);
+    add_argument_i(argc,argv,"-y"     , &target_y,                  "Rectangle center y (grid point)"                                                     , cl_tags, nullptr,      1);
+    add_argument_i(argc,argv,"-rx"    , &range_x,                   "Rectangle half width x (grid points)  "                                              , cl_tags, nullptr,      1);
+    add_argument_i(argc,argv,"-ry"    , &range_y,                   "Rectangle half width y (grid points)  "                                              , cl_tags, nullptr,      1);
+    add_argument_i(argc,argv,"-invert", &invert,                    "Invert rectangular selection? (0:no 1:yes)"                                          , cl_tags, nullptr,      1);
+    add_argument_i(argc,argv,"-odf"   , &odf,                       "Data file format (0:matrix 1:vector)"                                                , cl_tags, nullptr,      1);
+    conclude_input_arguments(argc,argv,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //

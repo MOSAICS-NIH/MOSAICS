@@ -41,6 +41,7 @@ int main(int argc, const char * argv[])
     int world_size = 0;               //Size of the mpi world
     int world_rank = 0;               //Rank in the mpi world
     double avg     = 0.0;             //Average number of bound lipids 
+    sv1d cl_tags;                     //Holds a list of command line tags for the program
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -74,10 +75,10 @@ int main(int argc, const char * argv[])
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     start_input_arguments_mpi(argc,argv,world_rank,program_description);
-    add_argument_mpi_s(argc,argv,"-d"        , binding_events_file_name,  "Input binding events file (be)"              , world_rank, nullptr,      1);
-    add_argument_mpi_s(argc,argv,"-o"        , out_file_name,             "Output data file with histogram (dat)"       , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-bin"      , &bin_width,                "Bin wdith (number of lipids) "               , world_rank, nullptr,      1);
-    conclude_input_arguments_mpi(argc,argv,world_rank,program_name);
+    add_argument_mpi_s(argc,argv,"-d"        , binding_events_file_name,  "Input binding events file (be)"              , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-o"        , out_file_name,             "Output data file with histogram (dat)"       , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-bin"      , &bin_width,                "Bin wdith (number of lipids) "               , world_rank, cl_tags, nullptr,      1);
+    conclude_input_arguments_mpi(argc,argv,world_rank,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //

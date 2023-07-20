@@ -32,6 +32,7 @@ int main(int argc, const char * argv[])
     int target_y  = 0;            //The target grid point y
     int odf       = 0;            //Data file format
     int mask_grew = 0;            //Did the mask grow in previous iteration
+    sv1d cl_tags;                 //Holds a list of command line tags for the program
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -50,12 +51,12 @@ int main(int argc, const char * argv[])
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     start_input_arguments(argc,argv,program_description);
-    add_argument_s(argc,argv,"-d"     , in_file_name,               "Input data file from which a mask is grown (dat)"      , nullptr,      1);
-    add_argument_s(argc,argv,"-o"     , out_file_name,              "Output data file containing the home grown mask (dat)" , nullptr,      1);
-    add_argument_i(argc,argv,"-x"     , &target_x,                  "Seed x coordinate (grid point)"                        , nullptr,      1);
-    add_argument_i(argc,argv,"-y"     , &target_y,                  "Seed y coordinate (grid point)"                        , nullptr,      1);
-    add_argument_i(argc,argv,"-odf"   , &odf,                       "Data file format (0:matrix 1:vector)"                  , nullptr,      1);
-    conclude_input_arguments(argc,argv,program_name);
+    add_argument_s(argc,argv,"-d"     , in_file_name,               "Input data file from which a mask is grown (dat)"      , cl_tags, nullptr,      1);
+    add_argument_s(argc,argv,"-o"     , out_file_name,              "Output data file containing the home grown mask (dat)" , cl_tags, nullptr,      1);
+    add_argument_i(argc,argv,"-x"     , &target_x,                  "Seed x coordinate (grid point)"                        , cl_tags, nullptr,      1);
+    add_argument_i(argc,argv,"-y"     , &target_y,                  "Seed y coordinate (grid point)"                        , cl_tags, nullptr,      1);
+    add_argument_i(argc,argv,"-odf"   , &odf,                       "Data file format (0:matrix 1:vector)"                  , cl_tags, nullptr,      1);
+    conclude_input_arguments(argc,argv,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //

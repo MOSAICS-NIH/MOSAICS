@@ -48,6 +48,7 @@ int main(int argc, const char * argv[])
     int num_lipids = 0;           //Number of target lipids
     int b_num_lip  = 0;           //Was the number of lipids specified?
     double dt      = 0;           //Time step used for output     
+    sv1d cl_tags;                 //Holds a list of command line tags for the program
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -77,12 +78,12 @@ int main(int argc, const char * argv[])
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     start_input_arguments_mpi(argc,argv,world_rank,program_description);
-    add_argument_mpi_s(argc,argv,"-d"       , base_file_name,             "Base filename for input binding events files"                        , world_rank, nullptr,      1);
-    add_argument_mpi_s(argc,argv,"-o"       , out_file_name,              "Output filename used to derive names for percent visited data (dat)" , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-freq"    , &freq,                      "How often to report the percent visited"                             , world_rank, nullptr,      1);
-    add_argument_mpi_s(argc,argv,"-crd"     , lip_t_file_name,            "Selection card with lipid types (crd)"                               , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-lipids"  , &num_lipids,                "How many lipids are there of the target type in the target leaflet?" , world_rank, &b_num_lip,   0);
-    conclude_input_arguments_mpi(argc,argv,world_rank,program_name);
+    add_argument_mpi_s(argc,argv,"-d"       , base_file_name,             "Base filename for input binding events files"                        , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-o"       , out_file_name,              "Output filename used to derive names for percent visited data (dat)" , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-freq"    , &freq,                      "How often to report the percent visited"                             , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-crd"     , lip_t_file_name,            "Selection card with lipid types (crd)"                               , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-lipids"  , &num_lipids,                "How many lipids are there of the target type in the target leaflet?" , world_rank, cl_tags, &b_num_lip,   0);
+    conclude_input_arguments_mpi(argc,argv,world_rank,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //

@@ -177,9 +177,11 @@ void start_input_arguments(int argc, const char *argv[],string description)
 // This function prints the final help information. Concludes the analysis of input arguments.               //
 //                                                                                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void conclude_input_arguments(int argc, const char *argv[],string program_name)
+void conclude_input_arguments(int argc, const char *argv[],string program_name,sv1d &cl_tags)
 {
     int i = 0;
+    int j = 0;
+
     for(i=0; i<argc; i++)
     {
         if(strcmp(argv[i], "-h") == 0)
@@ -192,6 +194,34 @@ void conclude_input_arguments(int argc, const char *argv[],string program_name)
             exit(EXIT_SUCCESS);
         }
     }
+
+    //check for provided tags that are not recognized by the program
+    int add_line = 0;
+    for(i=0; i<argc; i++)
+    {
+        if(argv[i][0] == '-')
+        {
+            int found = 0;
+
+            for(j=0; j<cl_tags.size(); j++)
+            {
+                if(strcmp(argv[i], cl_tags[j].c_str()) == 0)
+                {
+                    found = 1;
+                }
+            }
+
+            if(found == 0)
+            {
+                printf("Warning! Command line argument not recognized (%8s). Perhaps this is a typo? You should check the list of acceptable arguments using the -h tag. \n",argv[i]);
+                add_line = 1;
+            }
+        }
+    }
+    if(add_line == 1) //print a new line so that the warning messeges stand out. 
+    {
+        printf("\n");
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -201,7 +231,7 @@ void conclude_input_arguments(int argc, const char *argv[],string program_name)
 // description if -h is called.                                                                              //
 //                                                                                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void add_argument_s(int argc, const char *argv[],string tag,string &argument,string info,int *found_tag,int b_require)
+void add_argument_s(int argc, const char *argv[],string tag,string &argument,string info,sv1d &cl_tags,int *found_tag,int b_require)
 {
     int i         = 0;        //standard variable used in loops
     int tag_found = 0;        //tells if the user provided the tag
@@ -251,6 +281,9 @@ void add_argument_s(int argc, const char *argv[],string tag,string &argument,str
         printf("To use this program you must include the %8s command line argument. \n\n",tag.c_str());
         exit(EXIT_SUCCESS);
     }
+
+    //add tag to list of acceptable tags
+    cl_tags.push_back(tag);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -260,7 +293,7 @@ void add_argument_s(int argc, const char *argv[],string tag,string &argument,str
 // description if -h is called.                                                                              //
 //                                                                                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void add_argument_i(int argc, const char *argv[],string tag,int *argument,string info,int *found_tag,int b_require)
+void add_argument_i(int argc, const char *argv[],string tag,int *argument,string info,sv1d &cl_tags,int *found_tag,int b_require)
 {
     int i         = 0;        //standard variable used in loops
     int tag_found = 0;        //tells if the user provided the tag
@@ -319,6 +352,9 @@ void add_argument_i(int argc, const char *argv[],string tag,int *argument,string
         printf("To use this program you must include the %8s command line argument. \n\n",tag.c_str());
         exit(EXIT_SUCCESS);
     }
+
+    //add tag to list of acceptable tags
+    cl_tags.push_back(tag);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -328,7 +364,7 @@ void add_argument_i(int argc, const char *argv[],string tag,int *argument,string
 // description if -h is called.                                                                              //
 //                                                                                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void add_argument_f(int argc, const char *argv[],string tag,float *argument,string info,int *found_tag,int b_require)
+void add_argument_f(int argc, const char *argv[],string tag,float *argument,string info,sv1d &cl_tags,int *found_tag,int b_require)
 {
     int i         = 0;        //standard variable used in loops
     int tag_found = 0;        //tells if the user provided the tag
@@ -387,6 +423,9 @@ void add_argument_f(int argc, const char *argv[],string tag,float *argument,stri
         printf("To use this program you must include the %8s command line argument. \n\n",tag.c_str());
         exit(EXIT_SUCCESS);
     }
+
+    //add tag to list of acceptable tags
+    cl_tags.push_back(tag);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -396,7 +435,7 @@ void add_argument_f(int argc, const char *argv[],string tag,float *argument,stri
 // description if -h is called.                                                                              //
 //                                                                                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void add_argument_d(int argc, const char *argv[],string tag,double *argument,string info,int *found_tag,int b_require)
+void add_argument_d(int argc, const char *argv[],string tag,double *argument,string info,sv1d &cl_tags,int *found_tag,int b_require)
 {
     int i         = 0;        //standard variable used in loops
     int tag_found = 0;        //tells if the user provided the tag
@@ -455,5 +494,8 @@ void add_argument_d(int argc, const char *argv[],string tag,double *argument,str
         printf("To use this program you must include the %8s command line argument. \n\n",tag.c_str());
         exit(EXIT_SUCCESS);
     }
+
+    //add tag to list of acceptable tags
+    cl_tags.push_back(tag);
 }
 

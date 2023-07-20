@@ -42,6 +42,7 @@ int main(int argc, const char * argv[])
     int do_time_line         = 0;             //Get final events from timeline? 
     int world_size           = 0;             //Size of the mpi world
     int world_rank           = 0;             //Rank in the mpi world
+    sv1d cl_tags;                             //Holds a list of command line tags for the program
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -75,14 +76,14 @@ int main(int argc, const char * argv[])
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     start_input_arguments_mpi(argc,argv,world_rank,program_description);
-    add_argument_mpi_s(argc,argv,"-d1"       , binding_events_file_name_1,"Input binding events file 1 (be)"                               , world_rank, nullptr,      1);
-    add_argument_mpi_s(argc,argv,"-d2"       , binding_events_file_name_2,"Input binding events file 2 (be)"                               , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-sort"     , &sort,                     "Sort the binding events by initial binding time (0:no, 1:yes)"  , world_rank, nullptr,      0);
-    add_argument_mpi_s(argc,argv,"-o"        , out_file_name,             "Output data file with merged binding events (be)"               , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-offset"   , &lipid_nr_offset,          "Offset lipid nr in -d2 by this much"                            , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-compnd"   , &compound_lipid_count,     "Compound lipid count? (0:no, 1:yes)"                            , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-tl"       , &do_time_line,             "Get events from time line? (0:no, 1:yes)"                       , world_rank, nullptr,      0);
-    conclude_input_arguments_mpi(argc,argv,world_rank,program_name);
+    add_argument_mpi_s(argc,argv,"-d1"       , binding_events_file_name_1,"Input binding events file 1 (be)"                               , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-d2"       , binding_events_file_name_2,"Input binding events file 2 (be)"                               , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-sort"     , &sort,                     "Sort the binding events by initial binding time (0:no, 1:yes)"  , world_rank, cl_tags, nullptr,      0);
+    add_argument_mpi_s(argc,argv,"-o"        , out_file_name,             "Output data file with merged binding events (be)"               , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-offset"   , &lipid_nr_offset,          "Offset lipid nr in -d2 by this much"                            , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-compnd"   , &compound_lipid_count,     "Compound lipid count? (0:no, 1:yes)"                            , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-tl"       , &do_time_line,             "Get events from time line? (0:no, 1:yes)"                       , world_rank, cl_tags, nullptr,      0);
+    conclude_input_arguments_mpi(argc,argv,world_rank,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //

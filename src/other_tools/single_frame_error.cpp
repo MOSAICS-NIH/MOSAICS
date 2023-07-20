@@ -41,6 +41,7 @@ int main(int argc, const char * argv[])
     int world_size        = 0;         //How many cores in world
     double nan            = 0.0;       //Value added to grid when NaN is encountered
     double smallest_error = 999999999; //Smallest error of all single frames
+    sv1d cl_tags;                      //Holds a list of command line tags for the program
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -71,13 +72,13 @@ int main(int argc, const char * argv[])
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     start_input_arguments_mpi(argc,argv,world_rank,program_description);
-    add_argument_mpi_s(argc,argv,"-d"       , in_file_name,               "Spatially resolved time average observable of interest (dat)"      , world_rank, nullptr,      1);
-    add_argument_mpi_s(argc,argv,"-mask"    , mask_file_name,             "Mask file with selection of grid region of interest (dat)"         , world_rank, nullptr,      1);
-    add_argument_mpi_s(argc,argv,"-base"    , base_file_name,             "Base filename for the single frame grid data"                      , world_rank, nullptr,      1);
-    add_argument_mpi_s(argc,argv,"-o"       , out_file_name,              "Output data file with the error for each trajectory frame (dat)"   , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-frames"  , &num_frames,                "How many single frame grids are there? "                           , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-odf"     , &odf,                       "Data file format (0:matrix 1:vector) "                             , world_rank, nullptr,      1);
-    conclude_input_arguments_mpi(argc,argv,world_rank,program_name);
+    add_argument_mpi_s(argc,argv,"-d"       , in_file_name,               "Spatially resolved time average observable of interest (dat)"      , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-mask"    , mask_file_name,             "Mask file with selection of grid region of interest (dat)"         , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-base"    , base_file_name,             "Base filename for the single frame grid data"                      , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-o"       , out_file_name,              "Output data file with the error for each trajectory frame (dat)"   , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-frames"  , &num_frames,                "How many single frame grids are there? "                           , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-odf"     , &odf,                       "Data file format (0:matrix 1:vector) "                             , world_rank, cl_tags, nullptr,      1);
+    conclude_input_arguments_mpi(argc,argv,world_rank,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //

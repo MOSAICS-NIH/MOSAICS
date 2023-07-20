@@ -50,6 +50,7 @@ int main(int argc, const char * argv[])
     double range            = 1;    //The half width of the grid point selection
     double APS              = 0;    //Area per square used for grid in analysis
     double ratio_bulk       = 0;    //Ratio in the bulk
+    sv1d cl_tags;                   //Holds a list of command line tags for the program
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -80,22 +81,22 @@ int main(int argc, const char * argv[])
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     start_input_arguments_mpi(argc,argv,world_rank,program_description);
-    add_argument_mpi_s(argc,argv,"-rho_A" , rho_file_name_1,            "Input data file with sample count for lipids A (dat)"    , world_rank, nullptr,      1);
-    add_argument_mpi_s(argc,argv,"-rho_B" , rho_file_name_2,            "Input data file with sample count for lipids B (dat)"    , world_rank, nullptr,      1);
-    add_argument_mpi_s(argc,argv,"-mask"  , in_file_name_mask,          "Input protein mask file (dat)"                           , world_rank, nullptr,      1);
-    add_argument_mpi_s(argc,argv,"-o"     , out_file_name,              "Output data file with projected enrichment factor (dat)" , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-x"     , &target_x,                  "Rectangle center x (grid point)"                         , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-y"     , &target_y,                  "Rectangle center y (grid point)"                         , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-rx"    , &range_x,                   "Rectangle half width x (grid points)"                    , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-ry"    , &range_y,                   "Rectangle half width y (grid points)"                    , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-invert", &invert,                    "Invert rectangular selection? (0:no 1:yes)"              , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-iter"  , &iterations,                "How many iterations to perform?"                         , world_rank, nullptr,      1);
-    add_argument_mpi_d(argc,argv,"-res"   , &res,                       "Distance moved between each iteration (nm)"              , world_rank, nullptr,      1);
-    add_argument_mpi_d(argc,argv,"-range" , &range,                     "Half width of the grid selection shell (nm)"             , world_rank, nullptr,      1);
-    add_argument_mpi_d(argc,argv,"-APS"   , &APS,                       "Area per grid square (nm^2)"                             , world_rank, nullptr,      1);
-    add_argument_mpi_d(argc,argv,"-ratio" , &ratio_bulk,                "Ratio of lip A to lip B in bulk?"                        , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-odf"   , &odf,                       "Data file format (0:matrix 1:vector)"                    , world_rank, nullptr,      1);
-    conclude_input_arguments_mpi(argc,argv,world_rank,program_name);
+    add_argument_mpi_s(argc,argv,"-rho_A" , rho_file_name_1,            "Input data file with sample count for lipids A (dat)"    , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-rho_B" , rho_file_name_2,            "Input data file with sample count for lipids B (dat)"    , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-mask"  , in_file_name_mask,          "Input protein mask file (dat)"                           , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-o"     , out_file_name,              "Output data file with projected enrichment factor (dat)" , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-x"     , &target_x,                  "Rectangle center x (grid point)"                         , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-y"     , &target_y,                  "Rectangle center y (grid point)"                         , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-rx"    , &range_x,                   "Rectangle half width x (grid points)"                    , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-ry"    , &range_y,                   "Rectangle half width y (grid points)"                    , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-invert", &invert,                    "Invert rectangular selection? (0:no 1:yes)"              , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-iter"  , &iterations,                "How many iterations to perform?"                         , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_d(argc,argv,"-res"   , &res,                       "Distance moved between each iteration (nm)"              , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_d(argc,argv,"-range" , &range,                     "Half width of the grid selection shell (nm)"             , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_d(argc,argv,"-APS"   , &APS,                       "Area per grid square (nm^2)"                             , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_d(argc,argv,"-ratio" , &ratio_bulk,                "Ratio of lip A to lip B in bulk?"                        , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-odf"   , &odf,                       "Data file format (0:matrix 1:vector)"                    , world_rank, cl_tags, nullptr,      1);
+    conclude_input_arguments_mpi(argc,argv,world_rank,program_name,cl_tags);
 
     cell_size = sqrt(APS);
 

@@ -55,6 +55,7 @@ int main(int argc, const char * argv[])
     double dt             = 0;          //Time step used for converting frames to time. set equal to ef_dt
     double cutoff         = 0;          //Cutoff for excluding data
     double avg_rho        = 0;          //The average lipid density over the grid
+    sv1d cl_tags;                       //Holds a list of command line tags for the program
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -84,16 +85,16 @@ int main(int argc, const char * argv[])
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     start_input_arguments_mpi(argc,argv,world_rank,program_description);
-    add_argument_mpi_s(argc,argv,"-d"       , base_file_name_i,           "Base filename for input binding events files"                             , world_rank, nullptr,      1);
-    add_argument_mpi_s(argc,argv,"-be"      , be_file_name,               "Binding events file for highlighting select lipids (be)"                  , world_rank, &b_select,    0);
-    add_argument_mpi_s(argc,argv,"-o"       , base_file_name_o,           "Base filename for output data files with noise filtered voronoi diagrams" , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-stride"  , &stride,                    "Skip stride frames"                                                       , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-b"       , &begin,                     "Start at this frame"                                                      , world_rank, nullptr,      0);
-    add_argument_mpi_i(argc,argv,"-e"       , &end,                       "End on this frame"                                                        , world_rank, &b_end,       0);
-    add_argument_mpi_s(argc,argv,"-rho"     , rho_file_name,              "Input data file with sample count (dat)"                                  , world_rank, &b_rho,       0);
-    add_argument_mpi_d(argc,argv,"-cutoff"  , &cutoff,                    "Cutoff for excluding grid data (chi)"                                     , world_rank, nullptr,      0);
-    add_argument_mpi_i(argc,argv,"-odf"     , &odf,                       "Data file format for sample count (0:matrix 1:vector)"                    , world_rank, nullptr,      0);
-    conclude_input_arguments_mpi(argc,argv,world_rank,program_name);
+    add_argument_mpi_s(argc,argv,"-d"       , base_file_name_i,           "Base filename for input binding events files"                             , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-be"      , be_file_name,               "Binding events file for highlighting select lipids (be)"                  , world_rank, cl_tags, &b_select,    0);
+    add_argument_mpi_s(argc,argv,"-o"       , base_file_name_o,           "Base filename for output data files with noise filtered voronoi diagrams" , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-stride"  , &stride,                    "Skip stride frames"                                                       , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-b"       , &begin,                     "Start at this frame"                                                      , world_rank, cl_tags, nullptr,      0);
+    add_argument_mpi_i(argc,argv,"-e"       , &end,                       "End on this frame"                                                        , world_rank, cl_tags, &b_end,       0);
+    add_argument_mpi_s(argc,argv,"-rho"     , rho_file_name,              "Input data file with sample count (dat)"                                  , world_rank, cl_tags, &b_rho,       0);
+    add_argument_mpi_d(argc,argv,"-cutoff"  , &cutoff,                    "Cutoff for excluding grid data (chi)"                                     , world_rank, cl_tags, nullptr,      0);
+    add_argument_mpi_i(argc,argv,"-odf"     , &odf,                       "Data file format for sample count (0:matrix 1:vector)"                    , world_rank, cl_tags, nullptr,      0);
+    conclude_input_arguments_mpi(argc,argv,world_rank,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //

@@ -30,6 +30,7 @@ int main(int argc, const char * argv[])
     int j  = 0;                            //General variable used in loops
     int h1 = 0;                            //Number of header lines for data file 1
     int h2 = 0;                            //Number of header lines for data file 2
+    sv1d cl_tags;                          //Holds a list of command line tags for the program
    
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -48,12 +49,12 @@ int main(int argc, const char * argv[])
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     start_input_arguments(argc,argv,program_description);
-    add_argument_s(argc,argv,"-d1"    , in_file_name_1,             "Data file 1  "                               , nullptr,      1);
-    add_argument_s(argc,argv,"-d2"    , in_file_name_2,             "Data file 2  "                               , nullptr,      1);
-    add_argument_i(argc,argv,"-h1"    , &h1,                        "Number of header lines in data file 1  "     , nullptr,      0);
-    add_argument_i(argc,argv,"-h2"    , &h2,                        "Number of header lines in data file 2  "     , nullptr,      0);
-    add_argument_s(argc,argv,"-o"     , out_file_name,              "Output data file "                           , nullptr,      1);
-    conclude_input_arguments(argc,argv,program_name);
+    add_argument_s(argc,argv,"-d1"    , in_file_name_1,             "Data file 1  "                               , cl_tags, nullptr,      1);
+    add_argument_s(argc,argv,"-d2"    , in_file_name_2,             "Data file 2  "                               , cl_tags, nullptr,      1);
+    add_argument_i(argc,argv,"-h1"    , &h1,                        "Number of header lines in data file 1  "     , cl_tags, nullptr,      0);
+    add_argument_i(argc,argv,"-h2"    , &h2,                        "Number of header lines in data file 2  "     , cl_tags, nullptr,      0);
+    add_argument_s(argc,argv,"-o"     , out_file_name,              "Output data file "                           , cl_tags, nullptr,      1);
+    conclude_input_arguments(argc,argv,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //

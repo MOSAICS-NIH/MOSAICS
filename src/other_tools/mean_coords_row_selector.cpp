@@ -29,6 +29,7 @@ int main(int argc, const char * argv[])
     string row;                   //Name the atom selection 
     string out_file_name;         //Name of file to write commands to
     string end_text;              //Any ending text to print
+    sv1d cl_tags;                 //Holds a list of command line tags for the program
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -47,11 +48,11 @@ int main(int argc, const char * argv[])
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     start_input_arguments(argc,argv,program_description);
-    add_argument_i(argc,argv,"-height",&height,                    "How many rows in the pdb?"                         , nullptr,      1);
-    add_argument_i(argc,argv,"-width", &width,                     "How many columnds in the pdb?"                     , nullptr,      1);
-    add_argument_s(argc,argv,"-o",     out_file_name,              "Name of output file with selection commands (pml)" , nullptr,      1);
-    add_argument_s(argc,argv,"-e",     end_text,                   "Any selection text to be added (string)"           , nullptr,      0);
-    conclude_input_arguments(argc,argv,program_name);
+    add_argument_i(argc,argv,"-height",&height,                    "How many rows in the pdb?"                         , cl_tags, nullptr,      1);
+    add_argument_i(argc,argv,"-width", &width,                     "How many columnds in the pdb?"                     , cl_tags, nullptr,      1);
+    add_argument_s(argc,argv,"-o",     out_file_name,              "Name of output file with selection commands (pml)" , cl_tags, nullptr,      1);
+    add_argument_s(argc,argv,"-e",     end_text,                   "Any selection text to be added (string)"           , cl_tags, nullptr,      0);
+    conclude_input_arguments(argc,argv,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //

@@ -38,6 +38,7 @@ int main(int argc, const char * argv[])
     int items_per_line_fe  = 0;            //Items per line in the fe file
     int odf                = 0;            //Data file format
     double lipids_tot      = 0;            //How many lipids in the grid
+    sv1d cl_tags;                          //Holds a list of command line tags for the program
    
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -56,12 +57,12 @@ int main(int argc, const char * argv[])
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     start_input_arguments(argc,argv,program_description);
-    add_argument_s(argc,argv,"-d"     , in_file_name,               "Time average membrane thickness grid data (dat)"                     , nullptr,      1);
-    add_argument_s(argc,argv,"-rho"   , rho_file_name,              "Normalized lipid density grid data (dat)"                            , nullptr,      1);
-    add_argument_s(argc,argv,"-fe"    , fe_file_name,               "Free energy profile (used to look up cost based on thickness) (dat)" , nullptr,      1);
-    add_argument_s(argc,argv,"-o"     , out_file_name,              "Output grid data file with free energy penaly (dat) "                , nullptr,      1);
-    add_argument_i(argc,argv,"-odf"   , &odf,                       "Data file format (0:matrix 1:vector)"                                , nullptr,      1);
-    conclude_input_arguments(argc,argv,program_name);
+    add_argument_s(argc,argv,"-d"     , in_file_name,               "Time average membrane thickness grid data (dat)"                     , cl_tags, nullptr,      1);
+    add_argument_s(argc,argv,"-rho"   , rho_file_name,              "Normalized lipid density grid data (dat)"                            , cl_tags, nullptr,      1);
+    add_argument_s(argc,argv,"-fe"    , fe_file_name,               "Free energy profile (used to look up cost based on thickness) (dat)" , cl_tags, nullptr,      1);
+    add_argument_s(argc,argv,"-o"     , out_file_name,              "Output grid data file with free energy penaly (dat) "                , cl_tags, nullptr,      1);
+    add_argument_i(argc,argv,"-odf"   , &odf,                       "Data file format (0:matrix 1:vector)"                                , cl_tags, nullptr,      1);
+    conclude_input_arguments(argc,argv,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //

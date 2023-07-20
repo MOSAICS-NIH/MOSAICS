@@ -29,6 +29,7 @@ int main(int argc, const char * argv[])
     int j      = 0;                    //General variable used in loops
     int odf    = 0;                    //Data file format 
     double nan = -999999999999;        //Number to add to grid when NaN is encountered
+    sv1d cl_tags;                      //Holds a list of command line tags for the program
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -47,11 +48,11 @@ int main(int argc, const char * argv[])
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     start_input_arguments(argc,argv,program_description);
-    add_argument_s(argc,argv,"-d1"    , in_file_name_1,             "Grid data file 1 (dat)"                      , nullptr,      1);
-    add_argument_s(argc,argv,"-d2"    , in_file_name_2,             "Grid data file 2 (dat)"                      , nullptr,      1);
-    add_argument_s(argc,argv,"-o"     , out_file_name,              "Output data file with midplane (dat)"        , nullptr,      1);
-    add_argument_i(argc,argv,"-odf"   , &odf,                       "Data file format (0:matrix 1:vector)"        , nullptr,      1);
-    conclude_input_arguments(argc,argv,program_name);
+    add_argument_s(argc,argv,"-d1"    , in_file_name_1,             "Grid data file 1 (dat)"                      , cl_tags, nullptr,      1);
+    add_argument_s(argc,argv,"-d2"    , in_file_name_2,             "Grid data file 2 (dat)"                      , cl_tags, nullptr,      1);
+    add_argument_s(argc,argv,"-o"     , out_file_name,              "Output data file with midplane (dat)"        , cl_tags, nullptr,      1);
+    add_argument_i(argc,argv,"-odf"   , &odf,                       "Data file format (0:matrix 1:vector)"        , cl_tags, nullptr,      1);
+    conclude_input_arguments(argc,argv,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //

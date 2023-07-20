@@ -135,6 +135,7 @@ int main(int argc, const char * argv[])
     double cutoff_in  = 0.5;            //What percent of lipid must be in the region before counting it as bound
     double cutoff_out = 0.01;           //What percent of lipid must be in the region before counting it as leaving
     double dt         = 0;              //Time step used for converting frames to time. set equal to ef_dt
+    sv1d cl_tags;                       //Holds a list of command line tags for the program
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -164,22 +165,22 @@ int main(int argc, const char * argv[])
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     start_input_arguments_mpi(argc,argv,world_rank,program_description);
-    add_argument_mpi_s(argc,argv,"-d"     , base_file_name_i,           "Base filename for input binding events files"                            , world_rank, nullptr,      1);
-    add_argument_mpi_s(argc,argv,"-mask"  , in_file_name2,              "Input data file with protein mask (dat)"                                 , world_rank, nullptr,      1);
-    add_argument_mpi_s(argc,argv,"-o"     , base_file_name_o,           "Base filename for output data files"                                     , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-x"     , &target_x,                  "Rectangle center x (grid point)"                                         , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-y"     , &target_y,                  "Rectangle center y (grid point)"                                         , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-rx"    , &range_x,                   "Rectangle half width x (grid points)  "                                  , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-ry"    , &range_y,                   "Rectangle half width y (grid points)  "                                  , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-invert", &invert,                    "Invert rectangular selection? (0:no 1:yes)"                              , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-iter"  , &iterations,                "How many iterations to perform"                                          , world_rank, nullptr,      1);
-    add_argument_mpi_d(argc,argv,"-res"   , &res,                       "Distance between each iteration (nm)"                                    , world_rank, nullptr,      1);
-    add_argument_mpi_d(argc,argv,"-range" , &range,                     "Half width of the grid selection shell (nm)"                             , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-start" , &start,                     "Start at this iteration"                                                 , world_rank, nullptr,      1);
-    add_argument_mpi_d(argc,argv,"-in"    , &cutoff_in,                 "Percentage of lipid required inside shell before counting as bound"      , world_rank, nullptr,      1);
-    add_argument_mpi_d(argc,argv,"-out"   , &cutoff_out,                "Percentage of lipid required inside shell to continue counting as bound" , world_rank, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-odf"   , &odf,                       "Data file format (0:matrix 1:vector)"                                    , world_rank, nullptr,      1);
-    conclude_input_arguments_mpi(argc,argv,world_rank,program_name);
+    add_argument_mpi_s(argc,argv,"-d"     , base_file_name_i,           "Base filename for input binding events files"                            , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-mask"  , in_file_name2,              "Input data file with protein mask (dat)"                                 , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-o"     , base_file_name_o,           "Base filename for output data files"                                     , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-x"     , &target_x,                  "Rectangle center x (grid point)"                                         , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-y"     , &target_y,                  "Rectangle center y (grid point)"                                         , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-rx"    , &range_x,                   "Rectangle half width x (grid points)  "                                  , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-ry"    , &range_y,                   "Rectangle half width y (grid points)  "                                  , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-invert", &invert,                    "Invert rectangular selection? (0:no 1:yes)"                              , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-iter"  , &iterations,                "How many iterations to perform"                                          , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_d(argc,argv,"-res"   , &res,                       "Distance between each iteration (nm)"                                    , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_d(argc,argv,"-range" , &range,                     "Half width of the grid selection shell (nm)"                             , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-start" , &start,                     "Start at this iteration"                                                 , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_d(argc,argv,"-in"    , &cutoff_in,                 "Percentage of lipid required inside shell before counting as bound"      , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_d(argc,argv,"-out"   , &cutoff_out,                "Percentage of lipid required inside shell to continue counting as bound" , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-odf"   , &odf,                       "Data file format (0:matrix 1:vector)"                                    , world_rank, cl_tags, nullptr,      1);
+    conclude_input_arguments_mpi(argc,argv,world_rank,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //

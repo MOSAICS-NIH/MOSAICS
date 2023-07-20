@@ -32,6 +32,7 @@ int main(int argc, const char * argv[])
     double bin_width     = 1;     //bin width
     double largest_value = 0;     //largest value in data set
     double percent       = 0;     //Percent reported for the bin
+    sv1d cl_tags;                 //Holds a list of command line tags for the program
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -50,11 +51,11 @@ int main(int argc, const char * argv[])
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     start_input_arguments(argc,argv,program_description);
-    add_argument_s(argc,argv,"-d",   in_file_name,               "Input data file"                         , nullptr,      1);
-    add_argument_s(argc,argv,"-o",   out_file_name,              "Output file"                             , nullptr,      1);
-    add_argument_i(argc,argv,"-col", &col,                       "What collumn to work with"               , nullptr,      1);
-    add_argument_d(argc,argv,"-bin", &bin_width,                 "Bin size"                                , nullptr,      1);
-    conclude_input_arguments(argc,argv,program_name);
+    add_argument_s(argc,argv,"-d",   in_file_name,               "Input data file"                         , cl_tags, nullptr,      1);
+    add_argument_s(argc,argv,"-o",   out_file_name,              "Output file"                             , cl_tags, nullptr,      1);
+    add_argument_i(argc,argv,"-col", &col,                       "What collumn to work with"               , cl_tags, nullptr,      1);
+    add_argument_d(argc,argv,"-bin", &bin_width,                 "Bin size"                                , cl_tags, nullptr,      1);
+    conclude_input_arguments(argc,argv,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //

@@ -41,6 +41,7 @@ int main(int argc, const char * argv[])
     double nan            = 0.0;  //Value added to grid when NaN is encountered
     double APS            = 0;    //Area per square used for grid in analysis
     double dist           = 0;    //How far from protein to make mask
+    sv1d cl_tags;                 //Holds a list of command line tags for the program
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -59,18 +60,18 @@ int main(int argc, const char * argv[])
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     start_input_arguments(argc,argv,program_description);
-    add_argument_s(argc,argv,"-d"        , in_file_name,            "Input protein mask file (dat)"                    , nullptr,      1);
-    add_argument_s(argc,argv,"-o"        , out_file_name,           "Output data file with the generated mask (dat)"   , nullptr,      1);
-    add_argument_i(argc,argv,"-x"        , &target_x,               "Rectangle center x (grid point)"                  , nullptr,      1);
-    add_argument_i(argc,argv,"-y"        , &target_y,               "Rectangle center y (grid point)"                  , nullptr,      1);
-    add_argument_i(argc,argv,"-rx"       , &range_x,                "Rectangle half width x (grid points)  "           , nullptr,      1);
-    add_argument_i(argc,argv,"-ry"       , &range_y,                "Rectangle half width y (grid points)  "           , nullptr,      1);
-    add_argument_i(argc,argv,"-invert"   , &invert,                 "Invert rectangular selection (0:no,1:yes)"        , nullptr,      1);
-    add_argument_d(argc,argv,"-dist"     , &dist,                   "How far from the protein does mask extend (nm)"   , nullptr,      1);
-    add_argument_d(argc,argv,"-APS"      , &APS,                    "Area per grid point (nm^2)"                       , nullptr,      1);
-    add_argument_i(argc,argv,"-copy"     , &b_prot,                 "Copy the protein mask onto new mask (0:no 1:yes)" , nullptr,      1);
-    add_argument_i(argc,argv,"-odf"      , &odf,                    "Data file format (0:matrix 1:vector)"             , nullptr,      1);
-    conclude_input_arguments(argc,argv,program_name);
+    add_argument_s(argc,argv,"-d"        , in_file_name,            "Input protein mask file (dat)"                    , cl_tags, nullptr,      1);
+    add_argument_s(argc,argv,"-o"        , out_file_name,           "Output data file with the generated mask (dat)"   , cl_tags, nullptr,      1);
+    add_argument_i(argc,argv,"-x"        , &target_x,               "Rectangle center x (grid point)"                  , cl_tags, nullptr,      1);
+    add_argument_i(argc,argv,"-y"        , &target_y,               "Rectangle center y (grid point)"                  , cl_tags, nullptr,      1);
+    add_argument_i(argc,argv,"-rx"       , &range_x,                "Rectangle half width x (grid points)  "           , cl_tags, nullptr,      1);
+    add_argument_i(argc,argv,"-ry"       , &range_y,                "Rectangle half width y (grid points)  "           , cl_tags, nullptr,      1);
+    add_argument_i(argc,argv,"-invert"   , &invert,                 "Invert rectangular selection (0:no,1:yes)"        , cl_tags, nullptr,      1);
+    add_argument_d(argc,argv,"-dist"     , &dist,                   "How far from the protein does mask extend (nm)"   , cl_tags, nullptr,      1);
+    add_argument_d(argc,argv,"-APS"      , &APS,                    "Area per grid point (nm^2)"                       , cl_tags, nullptr,      1);
+    add_argument_i(argc,argv,"-copy"     , &b_prot,                 "Copy the protein mask onto new mask (0:no 1:yes)" , cl_tags, nullptr,      1);
+    add_argument_i(argc,argv,"-odf"      , &odf,                    "Data file format (0:matrix 1:vector)"             , cl_tags, nullptr,      1);
+    conclude_input_arguments(argc,argv,program_name,cl_tags);
 
     cell_size = sqrt(APS);
 

@@ -40,6 +40,7 @@ int main(int argc, const char * argv[])
     double percent       = 0;     //percent of data in bin for theta/phi
     double line_value    = 1;     //what value to print for theta contour lines
     double ceil_theta    = 0;     //Lets the user manually set the largest value of theta to be considered
+    sv1d cl_tags;                 //Holds a list of command line tags for the program
    
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -58,14 +59,14 @@ int main(int argc, const char * argv[])
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     start_input_arguments(argc,argv,program_description);
-    add_argument_s(argc,argv,"-d",         in_file_name,               "Input data file"                         , nullptr,       1);
-    add_argument_s(argc,argv,"-o",         out_file_name,              "Output file"                             , nullptr,       1);
-    add_argument_d(argc,argv,"-res_t",     &res_theta,                 "Bin size for theta"                      , nullptr,       1);
-    add_argument_d(argc,argv,"-res_p",     &res_phi,                   "Bin size for phi"                        , nullptr,       1);
-    add_argument_d(argc,argv,"-res",       &p_res_theta,               "Printing resolution"                     , nullptr,       1);
-    add_argument_d(argc,argv,"-line_v",    &line_value,                "What value to use for contour lines"     , nullptr,       1);
-    add_argument_d(argc,argv,"-max_t",     &ceil_theta,                "Largest value of theta to be considered" , &b_ceil_theta, 0);
-    conclude_input_arguments(argc,argv,program_name);
+    add_argument_s(argc,argv,"-d",         in_file_name,               "Input data file"                         , cl_tags, nullptr,       1);
+    add_argument_s(argc,argv,"-o",         out_file_name,              "Output file"                             , cl_tags, nullptr,       1);
+    add_argument_d(argc,argv,"-res_t",     &res_theta,                 "Bin size for theta"                      , cl_tags, nullptr,       1);
+    add_argument_d(argc,argv,"-res_p",     &res_phi,                   "Bin size for phi"                        , cl_tags, nullptr,       1);
+    add_argument_d(argc,argv,"-res",       &p_res_theta,               "Printing resolution"                     , cl_tags, nullptr,       1);
+    add_argument_d(argc,argv,"-line_v",    &line_value,                "What value to use for contour lines"     , cl_tags, nullptr,       1);
+    add_argument_d(argc,argv,"-max_t",     &ceil_theta,                "Largest value of theta to be considered" , cl_tags, &b_ceil_theta, 0);
+    conclude_input_arguments(argc,argv,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //

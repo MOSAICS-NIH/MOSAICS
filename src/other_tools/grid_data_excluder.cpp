@@ -31,6 +31,7 @@ int main(int argc, const char * argv[])
     double avg_rho = 0;           //The average lipid density over the grid
     double cutoff  = 0;           //Cutoff for excluding data
     double nan     = 0.0;         //Value added to grid when NaN is encountered
+    sv1d cl_tags;                 //Holds a list of command line tags for the program
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -49,12 +50,12 @@ int main(int argc, const char * argv[])
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     start_input_arguments(argc,argv,program_description);
-    add_argument_s(argc,argv,"-d"     , in_file_name,               "Input data file with grid data (dat)   "     , nullptr,      1);
-    add_argument_s(argc,argv,"-rho"   , rho_file_name,              "Input data file with sample count (dat)  "   , nullptr,      1);
-    add_argument_s(argc,argv,"-o"     , out_file_name,              "Output data file with grid data (dat)"       , nullptr,      1);
-    add_argument_d(argc,argv,"-cutoff", &cutoff,                    "Cutoff for excluding data (chi)"             , nullptr,      1);
-    add_argument_i(argc,argv,"-odf"   , &odf,                       "Data file format (0:matrix 1:vector)"        , nullptr,      1);
-    conclude_input_arguments(argc,argv,program_name);
+    add_argument_s(argc,argv,"-d"     , in_file_name,               "Input data file with grid data (dat)   "     , cl_tags, nullptr,      1);
+    add_argument_s(argc,argv,"-rho"   , rho_file_name,              "Input data file with sample count (dat)  "   , cl_tags, nullptr,      1);
+    add_argument_s(argc,argv,"-o"     , out_file_name,              "Output data file with grid data (dat)"       , cl_tags, nullptr,      1);
+    add_argument_d(argc,argv,"-cutoff", &cutoff,                    "Cutoff for excluding data (chi)"             , cl_tags, nullptr,      1);
+    add_argument_i(argc,argv,"-odf"   , &odf,                       "Data file format (0:matrix 1:vector)"        , cl_tags, nullptr,      1);
+    conclude_input_arguments(argc,argv,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //

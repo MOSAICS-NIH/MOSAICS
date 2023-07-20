@@ -14,6 +14,7 @@ struct system_variables
     double  seconds;                              //Used to keep track of how long the program has been running
     clock_t t;                                    //Keeps the time for testing performance
     clock_t t0;                                   //Takes the time at the start
+    vector<string> cl_tags;                       //Holds a list of the command line arguments tags
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
