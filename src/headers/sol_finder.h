@@ -295,3 +295,32 @@ int Trajectory::next_water(int i)
     return jump_to_res_end(i,sol.size(),res_end,res_nr,sol);
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function counts how many solvent molecules there are of a type                                       //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int Trajectory::count_waters_type(vector <string> sol_t)
+{
+    int i         = 0;
+    int j         = 0;
+    int sol_count = 0;
+    int prev_sol  = -1;
+
+    for(i=0; i<sol.size(); i++) //loop solvent atoms
+    {
+        for(j=0; j<sol_t.size(); j++) //loop over sol types
+        {
+            if(strcmp(res_name[sol[i]-1].c_str(), sol_t[j].c_str()) == 0) //sol type is correct
+            {
+                if(res_nr[sol[i]-1] != prev_sol)
+                {
+                    sol_count++;
+                }
+                prev_sol = res_nr[sol[i]-1];
+            }
+        }
+    }
+
+    return sol_count;
+}

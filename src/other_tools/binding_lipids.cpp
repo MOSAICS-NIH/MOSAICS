@@ -40,6 +40,10 @@ int main(int argc, const char * argv[])
     int bin_width  = 1.0;             //Bin width
     int world_size = 0;               //Size of the mpi world
     int world_rank = 0;               //Rank in the mpi world
+    int b_min      = 0;               //Did the user specify a minimum range for the histogram?
+    int b_max      = 0;               //Did the user specify a maximum range for the histogram?
+    int min        = 0.0;             //minimum value of histogram
+    int max        = 0.0;             //maximum value of histogram
     double avg     = 0.0;             //Average number of bound lipids 
     sv1d cl_tags;                     //Holds a list of command line tags for the program
 
@@ -78,6 +82,8 @@ int main(int argc, const char * argv[])
     add_argument_mpi_s(argc,argv,"-d"        , binding_events_file_name,  "Input binding events file (be)"              , world_rank, cl_tags, nullptr,      1);
     add_argument_mpi_s(argc,argv,"-o"        , out_file_name,             "Output data file with histogram (dat)"       , world_rank, cl_tags, nullptr,      1);
     add_argument_mpi_i(argc,argv,"-bin"      , &bin_width,                "Bin wdith (number of lipids) "               , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-min"      , &min,                      "Minimum value of histogram (num lipids)"     , world_rank, cl_tags, &b_min,       0);
+    add_argument_mpi_i(argc,argv,"-max"      , &max,                      "Maximum value of histogram (num lipids)"     , world_rank, cl_tags, &b_max,       0);
     conclude_input_arguments_mpi(argc,argv,world_rank,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -87,6 +93,21 @@ int main(int argc, const char * argv[])
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     check_extension_mpi(world_rank,"-d",binding_events_file_name,".be");
     check_extension_mpi(world_rank,"-o",out_file_name,".dat");
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //                                                                                                           //
+    // Check if a range was specified properly for the histogram                                                 //
+    //                                                                                                           //
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    if(b_min != b_max) //only single boundary was specified
+    {
+        if(world_rank == 0)
+        {
+            printf("Only a single boundary was specified for the histogram. Please specify either both or no boundaries. \n");
+        }
+        MPI_Finalize();
+        exit(EXIT_SUCCESS);
+    }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -142,6 +163,10 @@ int main(int argc, const char * argv[])
         //                                                                                                           //
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
         Histogram_i histo;
+	if(b_min == 1 && b_max == 1)
+        {
+            histo.set_range(min,max);
+        }
         histo.bin_data(data,bin_width);
         histo.write_histo(out_file_name,"number of lipids");
     }

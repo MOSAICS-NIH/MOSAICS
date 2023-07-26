@@ -53,12 +53,16 @@ int main(int argc, const char * argv[])
     int end               = 0;          //End on this frame
     int b_end             = 0;          //Did the user provide an end frame?
     int b_rho             = 0;          //Did the user specify a rho input file name?
+    int b_min             = 0;          //Did the user specify a minimum range for the histogram?
+    int b_max             = 0;          //Did the user specify a maximum range for the histogram?
     double cell_size      = 1;          //Distance between grid points
     double dt             = 0;          //Time step used for converting frames to time. set equal to ef_dt
     double cutoff         = 0;          //Cutoff for excluding data
     double avg_rho        = 0;          //The average lipid density over the grid
     double ex             = 0;          //Exclude binding events shorter than this (ns)
     double bin_width      = 1.0;        //Bin width for histogram
+    double min            = 0.0;        //minimum value of histogram
+    double max            = 0.0;        //maximum value of histogram
     sv1d cl_tags;                       //Holds a list of command line tags for the program
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -101,6 +105,8 @@ int main(int argc, const char * argv[])
     add_argument_mpi_s(argc,argv,"-crd"     , leaving_lipid_file_name,    "Selection card with leaving lipid types (crd)"                           , world_rank, cl_tags, nullptr,      1);
     add_argument_mpi_d(argc,argv,"-ex"      , &ex,                        "Exclude binding events with a dwell time smaller than this (ps)"         , world_rank, cl_tags, nullptr,      0);
     add_argument_mpi_d(argc,argv,"-bin"     , &bin_width,                 "Bin width (nm)"                                                          , world_rank, cl_tags, nullptr,      0);
+    add_argument_mpi_d(argc,argv,"-min"     , &min,                       "Minimum value of histogram (nm)"                                         , world_rank, cl_tags, &b_min,       0);
+    add_argument_mpi_d(argc,argv,"-max"     , &max,                       "Maximum value of histogram (nm)"                                         , world_rank, cl_tags, &b_max,       0);
     conclude_input_arguments_mpi(argc,argv,world_rank,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -114,6 +120,21 @@ int main(int argc, const char * argv[])
     if(b_rho == 1)
     {
         check_extension_mpi(world_rank,"-rho",rho_file_name,".dat");
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //                                                                                                           //
+    // Check if a range was specified properly for the histogram                                                 //
+    //                                                                                                           //
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    if(b_min != b_max) //only single boundary was specified
+    {
+        if(world_rank == 0)
+        {
+            printf("Only a single boundary was specified for the histogram. Please specify either both or no boundaries. \n");
+        }
+        MPI_Finalize();
+        exit(EXIT_SUCCESS);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -255,7 +276,7 @@ int main(int argc, const char * argv[])
     {
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //                                                                                                           //
-        // sort events by dwell time (largest firs)                                                                  //
+        // sort events by dwell time (largest first)                                                                 //
         //                                                                                                           //
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
         events.organize_events(1);
@@ -286,8 +307,9 @@ int main(int argc, const char * argv[])
         // characterize replacement binding                                                                          //
         //                                                                                                           //
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        for(i=0; i<events.bind_i.size()-1; i++) //loop over binding events
-        {
+        //for(i=0; i<events.bind_i.size()-1; i++) //loop over binding events
+        for(i=0; i<events.bind_i.size(); i++) //loop over binding events
+	{
             for(j=0; j<leaving_lipid.index_s.size(); j++) //loop over leaving lipids
             {
                 if(strcmp(events.res_name[i].c_str(), leaving_lipid.index_s[j].c_str()) == 0) //leaving lipid is of correct type
@@ -299,8 +321,9 @@ int main(int argc, const char * argv[])
                     int in_nr     =  0;
                     int out_nr    = events.lipid_nr[i];
 
-                    for(k=0; k<events.bind_i.size()-1; k++) //loop over binding events
-                    {
+                    //for(k=0; k<events.bind_i.size()-1; k++) //loop over binding events
+                    for(k=0; k<events.bind_i.size(); k++) //loop over binding events
+		    {
                         int delta = abs(events.bind_i[k] - events.bind_f[i]);
 
                         if(delta < closest)
@@ -407,6 +430,10 @@ int main(int argc, const char * argv[])
         if(world_rank == 0)
         {
             Histogram_d histo;
+            if(b_min == 1 && b_max == 1)
+            {
+	        histo.set_range(min,max);
+            }
             histo.bin_data(distances,bin_width);
             histo.write_histo(out_file_name,"distance (nm)");
         }

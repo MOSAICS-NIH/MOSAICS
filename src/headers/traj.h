@@ -1925,6 +1925,7 @@ class Trajectory
         int         sol_start(int i);                                                                   //returns the first atom (index) of the water   
         int         sol_end(int i);                                                                     //returns the last atom (index) of the water
         int         next_water(int i);                                                                  //primes loop index (sol) for next water
+        int         count_waters_type(vector <string> sol_t);                                           //counts how many solvent molecules of a given type
 
         //parallelization schemes
         void        parallelize_by_grid(int num_g_x);                                                   //distribute workload by grid points (num_g_x)
