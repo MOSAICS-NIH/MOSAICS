@@ -90,10 +90,12 @@ void store_coords(Trajectory &traj,system_variables &s,program_variables &p,Para
 
                     //free memory
                     vector<string>().swap(target_atoms);
-                }
+                    vector<double>().swap(r_center);
+		}
             }
         }
     }
+    //printf("step %d world rank %d resid.capacity %d my_coords.capacity() %d \n",traj.current_frame,s.world_rank,resid.capacity(),my_coords.capacity());
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -116,13 +118,7 @@ double finalize_analyisis(Trajectory &traj,system_variables &s,program_variables
     //record time when beginning analysis
     s.t = clock(); 
 
-printf("world_rank %d tag 1 \n",s.world_rank);
-fflush (stdout);
-
     dv2d msd(traj.get_num_frames()-1,dv1d(traj.my_lipids,0.0));    //holds the msd data for each cores lipids
-
-printf("world_rank %d tag 2 \n",s.world_rank);
-fflush (stdout);
 
     for(i=0; i<traj.my_lipids; i++) //loop over lipids
     {
@@ -133,7 +129,7 @@ fflush (stdout);
 
         for(j=1; j<traj.get_num_frames(); j++) //loop over deltas
         {
-            double this_msd = 0;
+            double this_msd = 0.0;
 
             for(k=0; k<traj.get_num_frames()-j; k++) //slide current delta
             {
@@ -150,9 +146,6 @@ fflush (stdout);
         }
     }
 
-printf("world_rank %d tag 3 \n",s.world_rank);
-fflush (stdout);
-
     //collect the msd from mpi processes
     FILE *msd_file;
     if(s.world_rank == 0)
@@ -160,26 +153,8 @@ fflush (stdout);
         msd_file = fopen(p.msd_file_name.c_str(), "w");
     }
 
-printf("world_rank %d tag 4 resid.size() %d \n",s.world_rank,resid.size());
-fflush (stdout);
-
     //print the header information
     collect_iv1d(s.world_size,s.world_rank,resid);
-
-printf("world rank %d resid.size() %d \n",s.world_rank,resid.size());
-fflush (stdout);
-
-if(s.world_rank == 0)
-{
-    for(i=0; i<resid.size(); i++)
-    {
-        printf("resid[%d] %d \n",i,resid[i]);
-        fflush (stdout);
-    }
-}
-
-printf("world_rank %d tag 5 \n",s.world_rank);
-fflush (stdout);
 
     if(s.world_rank == 0)
     {
@@ -195,9 +170,6 @@ fflush (stdout);
         fflush (msd_file);
     }
 
-
-printf("world_rank %d tag 6 \n",s.world_rank);
-fflush (stdout);
 
     for(i=0; i<traj.get_num_frames()-1; i++) //loop over deltas
     {
@@ -226,16 +198,10 @@ fflush (stdout);
         vector<double>().swap(msd_lipids);
     }
 
-printf("world_rank %d tag 7 \n",s.world_rank);
-fflush (stdout);
-
     if(s.world_rank == 0)
     {
         fclose(msd_file);
     }
-
-printf("world_rank %d tag 8 \n",s.world_rank);
-fflush (stdout);
 
     MPI_Barrier(MPI_COMM_WORLD);
 
@@ -347,14 +313,21 @@ int main(int argc, const char * argv[])
     iv1d resid(0,0);
 
     //print memory estimate
-    double mem = 0.0;
-    mem = mem + (double)traj.my_lipids*(double)traj.get_num_frames()*2.0*8.0;
-    mem = mem + (double)(traj.get_num_frames()-1)*(double)traj.my_lipids*8.0;
-    mem = mem/1000000.0;
+    double mem_1 = (double)traj.my_lipids*(double)traj.get_num_frames()*2.0*8.0/1000000.0; //my_coords
+    double mem_2 = (double)(traj.get_num_frames()-1)*(double)traj.my_lipids*8.0/1000000.0; //msd
+    double mem_3 = (double)(traj.get_num_frames()-1)*(double)p.num_lipids*8.0/1000000.0;   //msd_lipids
+    double mem_4 = (double)traj.my_lipids*4.0/1000000.0;                                   //resid
+    double mem   = mem_1 + mem_2 + mem_3 + mem_4;
 
     if(s.world_rank == 0)
     {
-        printf("Estimated memory: %10.1f MB. \n",mem);
+        printf("Estimated memory: (MB). \n");
+	printf("%s\n","------------------------");
+        printf("  %10s: %10.1f \n","my_coords",mem_1);
+        printf("  %10s: %10.1f \n","msd",mem_2);
+        printf("  %10s: %10.1f \n","msd_lipids",mem_3);
+        printf("  %10s: %10.1f \n","resid",mem_4);
+        printf("  %10s: %10.1f \n\n","total",mem);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////

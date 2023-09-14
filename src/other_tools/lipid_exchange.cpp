@@ -44,6 +44,10 @@ int main(int argc, const char * argv[])
     int k                 = 0;         //General variable used in loops
     int bin_width         = 1;         //The bin width 
     int b_histo           = 0;         //Make histogram for the time between the leaving lipid and the entering lipid?
+    int b_min             = 0;         //Did the user specify a minimum range for the histogram?
+    int b_max             = 0;         //Did the user specify a maximum range for the histogram?
+    int min               = 0;         //minimum value of histogram
+    int max               = 0;         //maximum value of histogram
     int world_size        = 0;         //Size of the mpi world
     int world_rank        = 0;         //Rank in the mpi world
     int b_self            = 1;         //Count events when leaving and replacing lipids are one         
@@ -94,6 +98,8 @@ int main(int argc, const char * argv[])
     add_argument_mpi_d(argc,argv,"-cutoff"   , &cutoff,                  "Exclude binding events with a dwell time smaller than this (ps)"                          , world_rank, cl_tags, nullptr,      0);
     add_argument_mpi_s(argc,argv,"-histo"    , histo_file_name,          "Output data file with the exchange duration histogram (dat)"                              , world_rank, cl_tags, &b_histo,     0);
     add_argument_mpi_i(argc,argv,"-bin"      ,&bin_width,                "Bin width for the exchange duration histogram (frames)"                                   , world_rank, cl_tags, nullptr,      0);
+    add_argument_mpi_i(argc,argv,"-min"      , &min,                     "Minimum value of histogram (num lipids)"                                                  , world_rank, cl_tags, &b_min,       0);
+    add_argument_mpi_i(argc,argv,"-max"      , &max,                     "Maximum value of histogram (num lipids)"                                                  , world_rank, cl_tags, &b_max,       0);
     add_argument_mpi_i(argc,argv,"-self"     , &b_self,                  "Count exchanges when the outgoing and replacing lipids are the same lipid? (0:no, 1:yes)" , world_rank, cl_tags, nullptr,      1);
     conclude_input_arguments_mpi(argc,argv,world_rank,program_name,cl_tags);
 
@@ -109,6 +115,21 @@ int main(int argc, const char * argv[])
     if(b_histo == 1)
     {
         check_extension_mpi(world_rank,"-histo",histo_file_name,".dat");
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //                                                                                                           //
+    // Check if a range was specified properly for the histogram                                                 //
+    //                                                                                                           //
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    if(b_min != b_max) //only single boundary was specified
+    {
+        if(world_rank == 0)
+        {
+            printf("Only a single boundary was specified for the histogram. Please specify either both or no boundaries. \n");
+        }
+        MPI_Finalize();
+        exit(EXIT_SUCCESS);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -221,7 +242,11 @@ int main(int argc, const char * argv[])
         if(b_histo == 1)
         {
             printf("Binning data \n");
-            Histogram_i histo; 
+            Histogram_i histo;
+            if(b_min == 1 && b_max == 1)
+            {
+                histo.set_range(min,max);
+            }
             histo.bin_data(delta_time,bin_width);
             histo.write_histo(histo_file_name,"exchange duration (frames)"); 
         }

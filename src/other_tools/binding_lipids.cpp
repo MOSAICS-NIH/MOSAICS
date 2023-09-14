@@ -42,8 +42,8 @@ int main(int argc, const char * argv[])
     int world_rank = 0;               //Rank in the mpi world
     int b_min      = 0;               //Did the user specify a minimum range for the histogram?
     int b_max      = 0;               //Did the user specify a maximum range for the histogram?
-    int min        = 0.0;             //minimum value of histogram
-    int max        = 0.0;             //maximum value of histogram
+    int min        = 0;               //minimum value of histogram
+    int max        = 0;               //maximum value of histogram
     double avg     = 0.0;             //Average number of bound lipids 
     sv1d cl_tags;                     //Holds a list of command line tags for the program
 

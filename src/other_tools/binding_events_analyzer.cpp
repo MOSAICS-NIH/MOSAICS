@@ -25,6 +25,55 @@ using namespace std;
 #include "../headers/array.h"
 #include "../headers/fit.h"
 #include "../headers/file_naming_mpi.h"
+#include "../headers/performance.h"        
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function determines how much time has passed and gives an estimate of the time remaining.            //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void ot_time_stats(clock_t t,int *counter,int current_step,int my_steps,int world_rank,string my_string)
+{
+    if(world_rank == 0)
+    {
+        double seconds = 0;
+
+        seconds = (clock() - t)/CLOCKS_PER_SEC;
+
+        if((int)seconds/10 > *counter)
+        {
+            double percent_done         = ((double)(current_step)/(double)my_steps)*100.0;
+            double estimated_total_time = 100.0*seconds/percent_done;
+            double time_remaining       = estimated_total_time - seconds;
+
+            if(current_step == my_steps)
+            {
+                estimated_total_time = 0.0;
+            }
+
+            int phr  = 0;
+            int pmin = 0;
+            int psec = 0;
+            int lhr  = 0;
+            int lmin = 0;
+            int lsec = 0;
+
+            phr  = (seconds)/(60*60);
+            pmin = (seconds - (phr*60*60))/60;
+            psec = seconds - (phr*60*60) - (pmin*60);
+
+            lhr  = ((int)time_remaining)/(60*60);
+            lmin = (time_remaining - (lhr*60*60))/60;
+            lsec = time_remaining - (lhr*60*60) - (lmin*60);
+
+            if(percent_done != 0)
+            {
+                printf("Finished %s %7d with %5.1f percent done overall in %2d hr %2d min %2d sec. Estimated time to completion is %2d hr %2d min %2d sec. \n",my_string.c_str(),current_step+1,percent_done,phr,pmin,psec,lhr,lmin,lsec);
+            }
+            *counter = *counter + 1;
+        }
+    }
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                           //
@@ -50,13 +99,16 @@ int main(int argc, const char * argv[])
     int b_rho             = 0;    //Did the user specify a rho input file name?
     int odf               = 0;    //Rho data file format
     int threshold         = 0;    //Cutoff for mending fragmented binding events
-    double slope          = 0;    //slope of LnP vs time
-    double yint           = 0;    //ying of LnP vs time
-    double r2             = 0;    //Correlation coeficient in linear regression
-    double koff           = 0;    //The koff value
-    double cutoff_dt      = 0;    //Exclude data with cutoff less than this
-    double cutoff         = 0;    //Cutoff for excluding data
-    double avg_rho        = 0;    //The average lipid density over the grid
+    int counter           = 0;    //How many times the "program run time" been displayed
+    double slope          = 0.0;  //slope of LnP vs time
+    double yint           = 0.0;  //ying of LnP vs time
+    double r2             = 0.0;  //Correlation coeficient in linear regression
+    double koff           = 0.0;  //The koff value
+    double cutoff_dt      = 0.0;  //Exclude data with cutoff less than this
+    double cutoff         = 0.0;  //Cutoff for excluding data
+    double avg_rho        = 0.0;  //The average lipid density over the grid
+    clock_t t;                    //Keeps the time for testing performance
+    clock_t t1;                   //Keeps the time for testing performance
     sv1d cl_tags;                 //Holds a list of command line tags for the program
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -67,6 +119,12 @@ int main(int argc, const char * argv[])
     MPI_Init(NULL, NULL);;
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);      //get the world size
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);      //get the process rank
+
+    //create object for logging performance data
+    Performance perf;
+
+    //take the initial time
+    t = clock();
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -218,6 +276,12 @@ int main(int argc, const char * argv[])
     dv2d r2_local        (events_ref.num_g_y,dv1d(my_num_g_x,0.0));
     dv2d koff_local      (events_ref.num_g_y,dv1d(my_num_g_x,0.0));
     dv2d largest_local   (events_ref.num_g_y,dv1d(my_num_g_x,0.0));
+
+    //log time spent leading up to main analysis
+    perf.log_time((clock() - t)/CLOCKS_PER_SEC,"Other");
+
+    //reset the clock
+    t = clock();
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -434,8 +498,19 @@ int main(int argc, const char * argv[])
             else //no such binding events file 
             {
             }
+
+            //report progress and estimated time to completion
+            int current_step = events_ref.num_g_y*ef_x + j + 1; 
+            int my_steps     = (my_xf - my_xi + 1)*events_ref.num_g_y;
+	    ot_time_stats(t,&counter,current_step,my_steps,world_rank,"lattice point");
         }
     }
+
+    //log time spent performing main analysis
+    perf.log_time((clock() - t)/CLOCKS_PER_SEC,"Main Loop");
+
+    //reset the clock
+    t = clock();
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -494,6 +569,12 @@ int main(int argc, const char * argv[])
         out_file_name = base_file_name_o + "_largest_dwell_time.dat";
         write_grid_to_file(events_ref.num_g_x,events_ref.num_g_y,nan,out_file_name,largest_global);
     }
+
+    //log time spent performing main analysis
+    perf.log_time((clock() - t)/CLOCKS_PER_SEC,"Collect Data");
+
+    //print the performance stats
+    perf.print_stats();
 
     if(world_rank == 0)
     {
