@@ -41,7 +41,7 @@ using namespace std;
 // This function computes the number of lipid-prot h-bonds and adds it to the grid                           //
 //                                                                                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-int check_h_bond(Trajectory &traj,program_variables &p,int acceptor,int donor,int h)
+int check_h_bond(Trajectory &traj,program_variables &p,int acceptor,int donor,int h,Index &report)
 {
     int result = 0;
     int pi     = 3.1415926535;
@@ -73,9 +73,9 @@ int check_h_bond(Trajectory &traj,program_variables &p,int acceptor,int donor,in
             printf("donor    %10d %10s %10d %10s \n",traj.atom_nr[donor],   traj.atom_name[donor].c_str(),   traj.res_nr[donor],   traj.res_name[donor].c_str());
             printf("h        %10d %10s %10d %10s \n",traj.atom_nr[h],       traj.atom_name[h].c_str(),       traj.res_nr[h],       traj.res_name[h].c_str());
             printf("angle %f dist %f \n",angle,dist);
-            printf("sel a, resi %d & resn %s & name %s \n",traj.res_nr[acceptor],traj.res_name[acceptor].c_str(),traj.atom_name[acceptor].c_str());
-            printf("sel d, resi %d & resn %s & name %s \n",traj.res_nr[donor],traj.res_name[donor].c_str(),traj.atom_name[donor].c_str());
-            printf("sel h, resi %d & resn %s & name %s \n",traj.res_nr[h],traj.res_name[h].c_str(),traj.atom_name[h].c_str());
+            printf("sel a, resi %d & resn %s & name %s \n",traj.res_nr[acceptor]%10000,traj.res_name[acceptor].c_str(),traj.atom_name[acceptor].c_str());
+            printf("sel d, resi %d & resn %s & name %s \n",traj.res_nr[donor]%10000,traj.res_name[donor].c_str(),traj.atom_name[donor].c_str());
+            printf("sel h, resi %d & resn %s & name %s \n",traj.res_nr[h]%10000,traj.res_name[h].c_str(),traj.atom_name[h].c_str());
             printf("get_angle (a), (d), (h), state=4  \n");
             printf("dist (a), (d) \n");
             printf("show licorice, resi %d \n",traj.res_nr[acceptor]);
@@ -83,6 +83,43 @@ int check_h_bond(Trajectory &traj,program_variables &p,int acceptor,int donor,in
             printf("sel triad, a + d + h \n");
             printf("orient triad \n");
             printf("\n");
+        }
+
+        if(p.b_report == 1)
+        {
+            for(i=0; i<report.index_s.size(); i+=4)  //loop over target h-bonds
+            {
+                if(strcmp(traj.res_name[donor].c_str(), report.index_s[i].c_str()) == 0) //donor belongs to lipid
+                {
+                    if(strcmp(traj.atom_name[donor].c_str(), report.index_s[i+1].c_str()) == 0) //atom type for lipid
+	            {
+                        if(traj.res_nr[acceptor] == report.index_i[i+2]) //resid is correct
+                        {
+                            if(strcmp(traj.atom_name[acceptor].c_str(), report.index_s[i+3].c_str()) == 0) //atom type for the protein
+                            {
+                                printf("Target hydrogen bond identified on trajectory frame: %d \n",traj.get_frame_global()); 
+                                printf("select lip,  resi %d and resname %s \n",traj.res_nr[donor]%10000,traj.res_name[donor].c_str());
+			        printf("select prot, resi %d and name %s \n",traj.res_nr[acceptor]%10000,traj.atom_name[acceptor].c_str());	
+			    }
+                        }
+                    } 
+                }
+                else if(strcmp(traj.res_name[acceptor].c_str(), report.index_s[i].c_str()) == 0) //acceptor belongs to lipid
+                {
+                    if(strcmp(traj.atom_name[acceptor].c_str(), report.index_s[i+1].c_str()) == 0) //atom type for lipid
+                    {
+                        if(traj.res_nr[donor] == report.index_i[i+2]) //resid is correct
+                        {
+                            if(strcmp(traj.atom_name[donor].c_str(), report.index_s[i+3].c_str()) == 0) //atom type for the protein
+                            {
+                                printf("Target hydrogen bond identified on trajectory frame: %d \n",traj.get_frame_global()); 
+                                printf("select lip,  resi %d and resname %s \n",traj.res_nr[acceptor]%10000,traj.res_name[acceptor].c_str());
+                                printf("select prot, resi %d and name %s \n",traj.res_nr[donor]%10000,traj.atom_name[donor].c_str());
+			    }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -158,7 +195,7 @@ void name_lip_atoms(Trajectory &traj,system_variables &s,program_variables &p,sv
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                           //
-// This function records the statistics for the b-bonds                                                      //
+// This function records the statistics for the h-bonds                                                      //
 //                                                                                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void store_h_bond(Trajectory &traj,system_variables &s,program_variables &p,int acceptor,int donor,sv1d &types,
@@ -290,7 +327,8 @@ void store_h_bond(Trajectory &traj,system_variables &s,program_variables &p,int 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void lip_h_bonds(Trajectory &traj,system_variables &s,program_variables &p,Index &param,Index &lip_a,Index &lip_d,
                  Index &prot_a,Index &prot_d,iv2d &bonds,Grid &hb,sv1d &types,iv1d &p_atom_id,sv1d &l_atom_type,
-                 dv2d &freq,vector <vector <rvec*>> &coords,iv1d &types_count,dv1d &b_factor_freq,iv1d &refined_sel)
+                 dv2d &freq,vector <vector <rvec*>> &coords,iv1d &types_count,dv1d &b_factor_freq,iv1d &refined_sel,
+		 Index &report)
 {
     int    i        = 0;                      //standard variable used in loops
     int    j        = 0;                      //standard variable used in loops
@@ -350,7 +388,7 @@ void lip_h_bonds(Trajectory &traj,system_variables &s,program_variables &p,Index
                                                     acceptor = traj.prot[o]-1;
 
                                                     //check for h-bond
-                                                    int result = check_h_bond(traj,p,acceptor,donor,h);
+                                                    int result = check_h_bond(traj,p,acceptor,donor,h,report);
 
                                                     contacts = contacts + result;
  
@@ -396,7 +434,7 @@ void lip_h_bonds(Trajectory &traj,system_variables &s,program_variables &p,Index
                                                         h = bonds[donor][o]-1;
 
                                                         //check for h-bond
-                                                        int result = check_h_bond(traj,p,acceptor,donor,h);
+                                                        int result = check_h_bond(traj,p,acceptor,donor,h,report);
                                                         
                                                         contacts = contacts + result;
 
@@ -990,6 +1028,7 @@ int main(int argc, const char * argv[])
     add_argument_mpi_i(argc,argv,"-clean",  &p.b_clean,                   "Remove single frame files? (0:no 1:yes)",                      s.world_rank, s.cl_tags, nullptr,      0);
     add_argument_mpi_i(argc,argv,"-test",   &p.b_test,                    "Print info for checking hydrogen bonds? (0:no 1:yes)",         s.world_rank, s.cl_tags, nullptr,      0);
     add_argument_mpi_s(argc,argv,"-sel",    p.selection_text_file_name,   "Input file with the atom selection text (sel)",                s.world_rank, s.cl_tags, &p.b_sel_text,0);
+    add_argument_mpi_s(argc,argv,"-report", p.report_file_name,           "Selection card with atom ids for h-bond to report when found", s.world_rank, s.cl_tags, &p.b_report,  0);
     conclude_input_arguments_mpi(argc,argv,s.world_rank,s.program_name,s.cl_tags);
 
     //create a trajectory
@@ -1043,7 +1082,11 @@ int main(int argc, const char * argv[])
     {
         check_extension_mpi(s.world_rank,"-sel",p.selection_text_file_name,".sel");
     }
-
+    if(p.b_report == 1)
+    {
+        check_extension_mpi(s.world_rank,"-report",p.report_file_name,".crd");
+    }
+ 
     //create index objects
     Index lip_a;
     Index lip_d;
@@ -1051,6 +1094,7 @@ int main(int argc, const char * argv[])
     Index prot_d;
     Index bond;
     Index param;
+    Index report;
 
     //read the index files
     lip_a.get_index(p.lip_a_file_name);
@@ -1059,6 +1103,10 @@ int main(int argc, const char * argv[])
     prot_d.get_index(p.prot_d_file_name);
     bond.get_index(p.bond_file_name);
     param.get_index(p.param_file_name);
+    if(p.b_report == 1)
+    {
+        report.get_index(p.report_file_name);
+    }
 
     //run leaflet/proten/solvent finder
     traj.get_leaflets(p.leaflet,p.leaflet_finder_param_name,p.b_lf_param);
@@ -1200,7 +1248,7 @@ int main(int argc, const char * argv[])
 
         traj.do_fit();
 
-        lip_h_bonds(traj,s,p,param,lip_a,lip_d,prot_a,prot_d,bonds,hb,types,p_atom_id,l_atom_type,freq,coords,types_count,b_factor_freq,refined_sel);
+        lip_h_bonds(traj,s,p,param,lip_a,lip_d,prot_a,prot_d,bonds,hb,types,p_atom_id,l_atom_type,freq,coords,types_count,b_factor_freq,refined_sel,report);
 
         traj.set_beta_lf();
 

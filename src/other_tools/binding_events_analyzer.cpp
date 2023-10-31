@@ -322,11 +322,11 @@ int main(int argc, const char * argv[])
                 // remove events with dwell time shorter than cutoff_dt                                                      //
                 //                                                                                                           //
                 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                if(cutoff_dt > 0)
+                if(cutoff_dt > 0.0)
                 {
-                    for(i=events.lipid_nr.size()-1; i>=0; i--) //loop over binding events
+                    for(k=events.lipid_nr.size()-1; k>=0; k--) //loop over binding events
                     {
-                        if((double)events.dwell_t[i]*events.ef_dt < cutoff_dt)
+                        if((double)events.dwell_t[k]*events.ef_dt < cutoff_dt)
                         {
                             events.dwell_t.pop_back();
                             events.lipid_nr.pop_back();

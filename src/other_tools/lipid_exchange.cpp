@@ -185,11 +185,12 @@ int main(int argc, const char * argv[])
         // characterize replacement binding                                                                          //
         //                                                                                                           //
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        int target_replacements = 0;       //total number of replacements by the correct lipid type
-        int total               = 0;       //total number of lipid replacements
-        iv1d delta_time(0,0);              //store the time between entering lipid and leaving lipid
+        int target_replacements = 0;             //total number of replacements by the correct lipid type
+        int total               = 0;             //total number of lipid replacements
+        iv1d delta_time(0,0);                    //store the time between entering lipid and leaving lipid
+        iv1d outcome(events.bind_i.size()-1,0);  //holds the outcome of each exchange event
 
-        for(i=0; i<events.bind_i.size()-1; i++) //loop over binding events
+        for(i=0; i<events.bind_i.size()-1; i++)  //loop over binding events
         {
             //printf("here 1 res_name %s leaving_lipid %s \n",events.repeats_res_name[l].c_str(),leaving_lipid.c_str());
             for(j=0; j<leaving_lipid.index_s.size(); j++) //loop over leaving lipids
@@ -219,6 +220,7 @@ int main(int argc, const char * argv[])
                         {
                             if(strcmp(events.res_name[closest_i].c_str(), replacing_lipid.index_s[k].c_str()) == 0) //replacing lipid is correct type
                             {
+                                outcome[i] = 1;
                                 target_replacements++;
                                 break;
                             }
@@ -233,12 +235,23 @@ int main(int argc, const char * argv[])
                 }
             }
         }
-        double percent = (double)target_replacements/(double)(total) - lipid_fraction;
+        double percent_obs = (double)target_replacements/(double)(total);
+        double percent     = (double)target_replacements/(double)(total) - lipid_fraction;
 
-        printf(" %30s %f \n","observed exchange frequency:",(double)target_replacements/(double)(total));
+        //compute the error
+        double se = 0.0;
+        for(i=0; i<outcome.size(); i++) //loop over exchange events
+        {
+            se = se + pow((double)outcome[i] - percent_obs,2.0);
+        }
+        se = sqrt(se/(double)((outcome.size()-1)*outcome.size()));
+
+        printf(" %30s %f \n","observed exchange frequency:",percent_obs);
         printf(" %30s %f \n","relative exchange frequency:",percent);
         printf(" %30s %d \n", "number of exchanges:",total);
+        printf(" %30s %f \n\n", "Standard error of mean:",se);       
 
+        //make histogram for exchange duration
         if(b_histo == 1)
         {
             printf("Binning data \n");

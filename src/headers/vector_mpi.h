@@ -350,3 +350,47 @@ void collect_and_sum_dv1d(int world_size,int world_rank,dv1d &my_vec)
     }
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function broadcasts a 1-d vector of doubles                                                         //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void broadcast_dv1d(int world_size,int world_rank,dv1d &my_vec)
+{
+    int i = 0;
+    int j = 0;
+
+    if(world_size > 0)
+    {
+        for(i=1; i<world_size; i++)
+        {
+            if(world_rank == 0)
+            {
+                int size = my_vec.size();  //how many items to send
+          
+                MPI_Send(&size, 1, MPI_INT, i, 13, MPI_COMM_WORLD);
+
+                double snd[size];
+                for(j=0; j<size; j++)
+                {
+                    snd[j] = my_vec[j];
+                }
+                MPI_Send(snd, size, MPI_DOUBLE, i, 13, MPI_COMM_WORLD);
+            }
+            else if(world_rank == i)
+            {
+                int size;                     //how many items to be received
+                MPI_Recv(&size, 1, MPI_INT, 0, 13, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+                double recv[size];            //array to hold received items
+                MPI_Recv(recv, size, MPI_DOUBLE, 0, 13, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+                for(j=0; j<size; j++)
+                {
+                    my_vec[j] = recv[j];
+                }
+            }
+        }
+    }
+}
+
