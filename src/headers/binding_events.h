@@ -1,148 +1,51 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                           //
-// This function reads a binding events file                                                                 //
+// This function determines how much time has passed and gives an estimate of the time remaining.            //
+// Takes in the current step starting at 1 (not zero).                                                       //
 //                                                                                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-int read_binding_events(string in_file_name,iv1d &lipid_nr,iv1d &res_nr,sv1d &res_name,iv1d &bind_i,iv1d &bind_f,
-                        iv1d &dwell_t,int *x_i,int *y_i,double *ef_dt,int *ef_frames,int *num_lipids,int *num_g_x,
-                        int *num_g_y,double *APS,int resize,int lipid_nr_offset)
+void be_time_stats(clock_t t,int *counter,int current_step,int my_steps,int world_rank,string my_string)
 {
-    int number_of_lines = 0;      //Number of lines in input files
-    int items_per_line  = 0;      //How many item is a single line
-    int k               = 0;      //Standard variable used in loops
-    int l               = 0;      //Standard variable used in loops
-    int m               = 0;      //Standard variable used in loops
-    int outcome         = 0;      //Return whether the file was read succesfully or not
-    char my_string[200];          //String to hold read in data entries
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //                                                                                                           //
-    // Resize binding events vectors                                                                             //
-    //                                                                                                           //
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    if(resize == 1)
+    if(world_rank == 0)
     {
-        lipid_nr.resize(0,0);
-        res_nr.resize(0,0);
-        res_name.resize(0);
-        bind_i.resize(0,0);
-        bind_f.resize(0,0);
-        dwell_t.resize(0,0);
-    }
+        double seconds = 0;
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //                                                                                                           //
-    // Here we open files for reading/writing                                                                    //
-    //                                                                                                           //
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    FILE *in_file = fopen(in_file_name.c_str(), "r");
-    if(in_file == NULL)
-    {
-        printf("failure opening %s. Make sure the file exists. \n",in_file_name.c_str());
-    }
-    else
-    {
-        outcome = 1;
+        seconds = (clock() - t)/CLOCKS_PER_SEC;
 
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                                                                                           //
-        // Get information about the data files                                                                      //
-        //                                                                                                           //
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        characterize_file(in_file_name,&number_of_lines,&items_per_line,4);
-
-        //printf("in_file_name %20s number_of_lines %10d items_per_line %10d \n",in_file_name.c_str(),number_of_lines,items_per_line);
-
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                                                                                           //
-        // Read in binding events                                                                                    //
-        //                                                                                                           //
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        for(k=0; k<number_of_lines+4; k++) //loop over rows
+        if((int)seconds/10 > *counter)
         {
-            if(k==0) //first line containts x_i,y_i,ef_dt,ef_frames,num_lipids,num_g_x and num_g_y
-            {
-                for(l=0; l<16; l++) //loop over header items
-                {
-                    fscanf(in_file, "%s,", my_string);
+            double percent_done         = ((double)(current_step)/(double)my_steps)*100.0;
+            double estimated_total_time = 100.0*seconds/percent_done;
+            double time_remaining       = estimated_total_time - seconds;
 
-                    if(l == 1) //x_i
-                    {
-                        *x_i = atoi(my_string);
-                    }
-                    if(l == 3) //y_i
-                    {
-                        *y_i = atoi(my_string);
-                    }
-                    if(l == 5) //ef_dt
-                    {
-                        *ef_dt = atof(my_string);
-                    }
-                    if(l == 7) //ef_frames
-                    {
-                        *ef_frames = atoi(my_string);
-                    }
-                    if(l == 9) //num_lipids
-                    {
-                        *num_lipids = atoi(my_string);
-                    }
-                    if(l == 11) //num_g_x
-                    {
-                        *num_g_x = atoi(my_string);
-                    }
-                    if(l == 13) //num_g_y
-                    {
-                        *num_g_y = atoi(my_string);
-                    }
-                    if(l == 15) //APS
-                    {
-                        *APS = atof(my_string);
-                        next_line(in_file);
-                    }
-                }
-            }
-            else if(k>3) //first 4 lines are header information
+            if(current_step == my_steps)
             {
-                for(l=0; l<items_per_line; l++) //loop over collumns
-                {
-                    fscanf(in_file, "%s,", my_string);
+                estimated_total_time = 0.0;
+            }
 
-                    if(l == 0) //lipid number
-                    {
-                        lipid_nr.push_back(atoi(my_string) + lipid_nr_offset);
-                    }
-                    if(l == 1) //res number
-                    {
-                        res_nr.push_back(atoi(my_string));
-                    }
-                    if(l == 2) //res name
-                    {
-                        res_name.push_back(strdup(my_string));
-                    }
-                    if(l == 3) //bind_i
-                    {
-                        bind_i.push_back(atoi(my_string));
-                    }
-                    if(l == 4) //bind_f
-                    {
-                        bind_f.push_back(atoi(my_string));
-                    }
-                    if(l == 5) //dwell_t
-                    {
-                        dwell_t.push_back(atoi(my_string));
-                    }
-                }
-            }
-            else //read the line
+            int phr  = 0;
+            int pmin = 0;
+            int psec = 0;
+            int lhr  = 0;
+            int lmin = 0;
+            int lsec = 0;
+
+            phr  = (seconds)/(60*60);
+            pmin = (seconds - (phr*60*60))/60;
+            psec = seconds - (phr*60*60) - (pmin*60);
+
+            lhr  = ((int)time_remaining)/(60*60);
+            lmin = (time_remaining - (lhr*60*60))/60;
+            lsec = time_remaining - (lhr*60*60) - (lmin*60);
+
+            if(percent_done != 0)
             {
-                next_line(in_file);
+                printf("Finished %s %7d with %5.1f percent done overall in %2d hr %2d min %2d sec. Estimated time to completion is %2d hr %2d min %2d sec. \n",my_string.c_str(),current_step+1,percent_done,phr,pmin,psec,lhr,lmin,lsec);
             }
+            *counter = *counter + 1;
         }
-        fclose(in_file);
     }
-    return outcome;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -253,82 +156,48 @@ class Binding_events
         iv1d time_line_res_nr{};                                                                                                         //stores time line res_rn
         sv1d time_line_res_name{};                                                                                                       //stores time line res_name
 
-        //lipid blobs
-        iv3d blob;                                                                                                                       //grid containing blobs
-        iv3d blob_nan;                                                                                                                   //grid containing blobs nan info
-        iv2d blob_frame;                                                                                                                 //current frame blob data
-        iv2d blob_nan_frame;                                                                                                             //current frame blob nan data
+        //lipid tessellations
+        iv2d voro;                                                                                                                       //grid containing tessellations
+        iv2d voro_nan;                                                                                                                   //grid containing tessellations nan info
+        iv2d voro_frame;                                                                                                                 //current frame tessellation data
+        iv2d voro_nan_frame;                                                                                                             //current frame tessellation nan data
+
+
+        //binary be files
+        ofstream be_file_o;                                                                                                              //file for writing binding events
+        ifstream be_file_i;                                                                                                              //file for reading binding events
+
+        //info file for gid data
+        i64v2d info_pos;                                                                                                                 //hols the position of binding events data in the be file
 
     public:
-        int  get_binding_events(string in_file_name);                                                                                    //reads the binding events file
-        int  add_binding_events(string in_file_name,int compound_lipid_count,int lipid_nr_offset);                                       //reads the binding events file and adds to current list
-        void gen_lipid_nr();                                                                                                             //generates a unique lipid nr for each lipid
-        void organize_events(int mode);                                                                                                  //organize binding events
-        void reduce_list();                                                                                                              //characterize repeat visits
-        void size_timeline();                                                                                                            //allocate memory for the binding time line
-        void get_binding_timeline();                                                                                                     //converts binding events into a timeline
-        void add_to_binding_timeline();                                                                                                  //add binding events to time line 
-        void stamp_to_binding_timeline();                                                                                                //stamps binding events to existing timeline
-        void binding_events_from_timeline();                                                                                             //use binding timeline to create binding events
-        void write_binding_events(string binding_events_file_name);                                                                      //write the binding events to file
-        void write_time_line(string timeline_file_name);                                                                                 //write the binding timeline to file
-        void suppress_timeline_noise(int threshold);                                                                                     //mend fragmented binding events
-        void sweep_timeline_noise(int lipid_count);                                                                                      //constrain numbero of lipids bound in timeline for a given t
-        void get_complete_set(string base_file_name_i,iv1d &lipid_nr,iv1d &res_nr,sv1d &res_name);                                       //reads binding events file until a complete set of lipid_nr etc. is found
-        void get_blobs(string base_file_name_i,int my_xi,int my_xf,int my_num_g_x,int stride,int my_ef_frames,int world_rank);           //reads binding events files and extracts the lipid blobs for each frame
-        void get_blobs_frame(int this_frame,int world_size,int world_rank);                                                              //collects a single frame of the lipid blobs
-        void write_blobs_frame(string out_file_name);                                                                                    //writes the current frame blob data to file
-        dv1d find_blobs_center(int this_lipid);                                                                                          //returns the center of a lipid blob
+        void    gen_lipid_nr();                                                                                                             //generates a unique lipid nr for each lipid
+        void    organize_events(int mode);                                                                                                  //organize binding events
+        void    reduce_list();                                                                                                              //characterize repeat visits
+        void    size_timeline();                                                                                                            //allocate memory for the binding time line
+        void    get_binding_timeline();                                                                                                     //converts binding events into a timeline
+        void    add_to_binding_timeline();                                                                                                  //add binding events to time line 
+        void    stamp_to_binding_timeline();                                                                                                //stamps binding events to existing timeline
+        void    binding_events_from_timeline();                                                                                             //use binding timeline to create binding events
+        void    write_time_line(string timeline_file_name);                                                                                 //write the binding timeline to file
+        void    suppress_timeline_noise(int threshold);                                                                                     //mend fragmented binding events
+        void    sweep_timeline_noise(int lipid_count);                                                                                      //constrain numbero of lipids bound in timeline for a given t
+        void    get_complete_set(string in_file_name,iv1d &lipid_nr,iv1d &res_nr,sv1d &res_name);                                           //reads binding events file until a complete set of lipid_nr etc. is found
+        dv1d    find_voro_center(int this_lipid);                                                                                           //returns the center of a lipid tessellation
+        int     get_binding_events_grid(string in_file_name,i64v2d &this_be_pos,int this_x,int this_y);                                     //reads in a binding events file for a lattice point
+        int     add_binding_events_grid(string in_file_name,i64v2d &this_be_pos,int this_x,int this_y);                                     //reads the binding events file for a lattice point and adds to current list
+        void    write_binding_events_bin(string binding_events_file_name);                                                                  //writes out a binding events file in binary
+        int     get_binding_events_bin(string binding_events_file_name);                                                                    //reads in a binary finding events file
+        int64_t write_binding_events_tmp(ofstream &be_file_o,int64_t pos);                                                                  //writes a be file to the tmp file for an MPI core. 
+        int64_t get_binding_events_tmp(ifstream &be_file_i,int64_t pos);                                                                    //reads binding events from the temporary be file
+        int     get_info(string binding_events_file_name);                                                                                  //reads the info file for a binding evetns file (grid)
+        int     get_binding_events_xy(string binding_events_file_name,int x,int y);                                                         //reads binding events data for a grid point 
+        int     get_tessellations(string in_file_name,int my_gi,int my_gf,int my_num_g,int stride,int my_ef_frames,int world_rank);         //reads binding events file and extracts tessellations for each frame
+        void    get_voro_frame(int this_frame,int world_size,int world_rank);                                                               //collects a single frame of the lipid tessellation
+        void    write_voro_frame(string out_file_name);                                                                                     //writes the current frame tessellation data to file
+        int     add_binding_events(string binding_events_file_name,int compound_lipid_count,int lipid_nr_offset);                           //reads the binding events file and adds to current list
+        void    write_binding_events_legacy(string binding_events_file_name);                                                               //writes a binding events file in human readable form
 };
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//                                                                                                           //
-// This function reads a binding events file                                                                 //
-//                                                                                                           //
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-int Binding_events::get_binding_events(string in_file_name)
-{
-    int resize = 1;
-
-    x_i         = 0;                                      
-    y_i         = 0;                                     
-    ef_frames   = 0;                                     
-    num_lipids  = 0;                                     
-    num_g_x     = 0;                                     
-    num_g_y     = 0;                                     
-    ef_dt       = 0.0;                                  
-    APS         = 0;                                      
-
-    int result = read_binding_events(in_file_name,lipid_nr,res_nr,res_name,bind_i,bind_f,dwell_t,&x_i,&y_i,&ef_dt,&ef_frames,&num_lipids,&num_g_x,&num_g_y,&APS,resize,0);
-
-    //lipid mixing stuff
-    lip_nr_1  = x_i;
-    res_nr_1  = y_i;
-    num_lip_1 = num_g_x; 
-    num_lip_2 = num_lipids;
-
-    return result;
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//                                                                                                           //
-// This function reads a binding events file and add them to existing binding events list                    //
-//                                                                                                           //
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-int Binding_events::add_binding_events(string in_file_name,int compound_lipid_count,int lipid_nr_offset)
-{   
-    int num_lipids_store = num_lipids;
-
-    int resize = 0;
-    int result = read_binding_events(in_file_name,lipid_nr,res_nr,res_name,bind_i,bind_f,dwell_t,&x_i,&y_i,&ef_dt,&ef_frames,&num_lipids,&num_g_x,&num_g_y,&APS,resize,lipid_nr_offset);
-
-    if(compound_lipid_count == 1)
-    { 
-        num_lipids = num_lipids + num_lipids_store;    
-    }
-
-    return result;
-}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                           //
@@ -387,7 +256,6 @@ void Binding_events::gen_lipid_nr()
         lipid_nr[i] = lipid_count;
     }
 }
-
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                           //
@@ -540,6 +408,41 @@ void Binding_events::organize_events(int mode)
             }
         }
     }
+    else if(mode == 4) //sort by final binding time
+    {
+        for(b_swap=1; b_swap > 0; )
+        {
+            b_swap = 0;
+            for(i=0; i<lipid_nr.size()-1; i++)
+            {
+                if(bind_f[i] > bind_f[i+1])
+                {
+                    int dwell_t_tmp     = dwell_t[i];
+                    int lipid_nr_tmp    = lipid_nr[i];
+                    int bind_i_tmp      = bind_i[i];
+                    int bind_f_tmp      = bind_f[i];
+                    int res_nr_tmp      = res_nr[i];
+                    string res_name_tmp = res_name[i];
+
+                    dwell_t[i]  = dwell_t[i+1];
+                    lipid_nr[i] = lipid_nr[i+1];
+                    bind_i[i]   = bind_i[i+1];
+                    bind_f[i]   = bind_f[i+1];
+                    res_nr[i]   = res_nr[i+1];
+                    res_name[i] = res_name[i+1];
+
+                    dwell_t[i+1]  = dwell_t_tmp;
+                    lipid_nr[i+1] = lipid_nr_tmp;
+                    bind_i[i+1]   = bind_i_tmp;
+                    bind_f[i+1]   = bind_f_tmp;
+                    res_nr[i+1]   = res_nr_tmp;
+                    res_name[i+1] = res_name_tmp;
+
+                    b_swap = 1;
+                }
+            }
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -634,9 +537,9 @@ void Binding_events::binding_events_from_timeline()
             {
                 bind_initial = j;
             }
-            else if(bound_time_line[j][i] == 0 && prev_state == 1) //lipid just left, write event to file
+            else if( (bound_time_line[j][i] == 0 || j==ef_frames-1) && prev_state == 1) //lipid just left, write event to file
             {
-                bind_final = j-1;
+                bind_final = j-1; //leaves last frame undound (careful if splicing)
                 int dwell_time = bind_final + 1 - bind_initial;
 
                 lipid_nr.push_back(time_line_lipid_nr[i]);
@@ -648,34 +551,6 @@ void Binding_events::binding_events_from_timeline()
             }
             prev_state = bound_time_line[j][i];
         }
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//                                                                                                           //
-// This function writes the binding events to file                                                           //
-//                                                                                                           //
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void Binding_events::write_binding_events(string binding_events_file_name)
-{
-    int i = 0;
-
-    FILE *binding_events_file = fopen(binding_events_file_name.c_str(), "w");
-    if(binding_events_file == NULL)
-    {
-        printf("failure opening %s. Make sure the file exists. \n",binding_events_file_name.c_str());
-    }
-    else
-    {
-        fprintf(binding_events_file," x_i %10d y_i %10d ef_dt(ps) %10f ef_frames %d num_lipids %10d num_g_x %10d num_g_y %10d APS(nm^2) %10f \n\n",x_i,y_i,ef_dt,ef_frames,num_lipids,num_g_x,num_g_y,APS);
-        fprintf(binding_events_file," %10s %10s %10s %15s %15s %20s \n","lipid","res_nr","res_name","bind_i(frame)","bind_f(frame)","dwell time(frames)");
-        fprintf(binding_events_file," %10s-%10s-%10s-%15s-%15s-%20s \n","----------","----------","----------","---------------","---------------","--------------------");
-
-        for(i=0; i<dwell_t.size(); i++)
-        {
-            fprintf(binding_events_file," %10d %10d %10s %15d %15d %20d \n",lipid_nr[i],res_nr[i],res_name[i].c_str(),bind_i[i],bind_f[i],dwell_t[i]);
-        }
-        fclose(binding_events_file);
     }
 }
 
@@ -874,292 +749,145 @@ void Binding_events::sweep_timeline_noise(int lipid_count)
 // This function reads binding events files until a complete set of lipid_nr is acquired                     //
 //                                                                                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void Binding_events::get_complete_set(string base_file_name_i,iv1d &lipid_nr,iv1d &res_nr,sv1d &res_name)
+void Binding_events::get_complete_set(string in_file_name,iv1d &lipid_nr,iv1d &res_nr,sv1d &res_name)
 {
-    int i = 0; 
-    int j = 0;
-    int k = 0;
-    int l = 0;
+    int count       = 0;          //Keep track of position for adding data
+    int string_size = 2000;       //How big of a string can we read?
+    char my_string[string_size];  //String to hold read in data entries
 
-    printf("Reading binding events until a complete lipid set is acquired. \n");
+    //string lipid_info_file_name = base_file_name_i + "_lipid_info.dat";
+    string lipid_info_file_name = chop_and_add_tag(in_file_name,"_lipid_info.dat");
 
-    for(i=0; i<=num_g_x; i++) //loop over x
+    FILE *lipid_info_file = fopen(lipid_info_file_name.c_str(), "r");
+    if(lipid_info_file == NULL) //read binding events files to get a complete set
     {
-        printf("Working on column %d. Set contains %d lipids with %d needed for a complete set. \n",i,res_nr.size(),num_lipids);
+        int i = 0; 
+        int j = 0;
+        int k = 0;
+        int l = 0;
 
-        for(j=0; j<num_g_y; j++) //loop over y
+        printf("Could not find a lipid info file (%s). Will read binding events files until a complete lipid set is acquired. \n",lipid_info_file_name.c_str());
+
+        for(i=0; i<=num_g_x; i++) //loop over x
         {
-            Binding_events events;
-            string in_file_name = base_file_name_i + "_" + to_string(i) + "_" + to_string(j) + ".be";
-            int result          = events.get_binding_events(in_file_name);
+            printf("Working on column %d. Set contains %d lipids with %d needed for a complete set. \n",i,res_nr.size(),num_lipids);
 
-            if(result == 1 && events.lipid_nr.size() > 0) //binding events file present with data inside
+            for(j=0; j<num_g_y; j++) //loop over y
             {
-                for(k=0; k<events.lipid_nr.size(); k++) //loop over binding events
-                {
-                    if(res_nr.size() < num_lipids) //not yet a complete set
-                    {
-                        int found = 0;
+                Binding_events events;
 
-                        for(l=0; l<res_nr.size(); l++) //loop over residue names and numbers in set
+		//string in_file_name = base_file_name_i + ".be";
+
+                int result = events.get_info(in_file_name);
+
+                if(result == 0)
+                {
+                    printf("Could not find binding events file (%s). This will most likely crash the program. \n",in_file_name.c_str());
+                }
+                else
+                {
+                    result = events.get_binding_events_xy(in_file_name,i,j);
+
+                    if(result == 1 && events.lipid_nr.size() > 0) //binding events file present with data inside
+                    {
+                        for(k=0; k<events.lipid_nr.size(); k++) //loop over binding events
                         {
-                            if(events.res_nr[k] == res_nr[l]) //lipid already in set
+                            if(res_nr.size() < num_lipids) //not yet a complete set
                             {
-                                found = 1;
-                                break;
+                                int found = 0;
+
+                                for(l=0; l<res_nr.size(); l++) //loop over residue names and numbers in set
+                                {
+                                    if(events.res_nr[k] == res_nr[l]) //lipid already in set
+                                    {
+                                        found = 1;
+                                        break;
+                                    }
+                                }
+
+                                if(found == 0) //add lipid to set
+                                {
+                                    res_nr.push_back(events.res_nr[k]);
+                                    res_name.push_back(events.res_name[k]);
+                                    lipid_nr.push_back(events.lipid_nr[k]);
+                                }
+                            }
+                            else
+                            {
+                                goto end_loop;
                             }
                         }
-
-                        if(found == 0) //add lipid to set
-                        {
-                            res_nr.push_back(events.res_nr[k]);
-                            res_name.push_back(events.res_name[k]);
-                            lipid_nr.push_back(events.lipid_nr[k]);
-                        }
-                    }
-                    else
-                    {
-                        goto end_loop;
                     }
                 }
             }
         }
-    }
-    end_loop:;
+        end_loop:;
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //                                                                                                           //
-    // Organize by lipid number                                                                                  //
-    //                                                                                                           //
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    int b_swap = 0;          //Used to tell if aray requires further sorting
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //                                                                                                           //
+        // Organize by lipid number                                                                                  //
+        //                                                                                                           //
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        int b_swap = 0;          //Used to tell if aray requires further sorting
 
-    for(b_swap=1; b_swap > 0; )
-    {
-        b_swap = 0;
-        for(i=0; i<num_lipids-1; i++)
+        for(b_swap=1; b_swap > 0; )
         {
-            if(lipid_nr[i] > lipid_nr[i+1])
+            b_swap = 0;
+            for(i=0; i<num_lipids-1; i++)
             {
-                int lipid_nr_tmp    = lipid_nr[i];
-                int res_nr_tmp      = res_nr[i];
-                string res_name_tmp = res_name[i];
-
-                lipid_nr[i] = lipid_nr[i+1];
-                res_nr[i]   = res_nr[i+1];
-                res_name[i] = res_name[i+1];
-
-                lipid_nr[i+1] = lipid_nr_tmp;
-                res_nr[i+1]   = res_nr_tmp;
-                 res_name[i+1] = res_name_tmp;
-
-                b_swap = 1;
-            }
-        }
-    }
-
-    //for(i=0; i<num_lipids; i++)
-    //{
-    //    printf("lipid_nr %d res_nr %d res_name %s \n",lipid_nr[i],res_nr[i],res_name[i].c_str());
-    //}
-
-    printf("A complete lipid set has been acquired. \n\n");
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//                                                                                                           //
-// This function reads binding events files for the grid and builds the lipid blobs for each frame           //
-//                                                                                                           //
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void Binding_events::get_blobs(string base_file_name_i,int my_xi,int my_xf,int my_num_g_x,int stride,int my_ef_frames,int world_rank)
-{
-    int i = 0;
-    int j = 0;
-    int k = 0;
-    int l = 0;
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //                                                                                                           //
-    // Back up header info in case a gridpoint (last one examined in get_blobs) has no be file this info could   //
-    // be lost                                                                                                   //
-    //                                                                                                           //
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    int ef_frames_store  = ef_frames;
-    int ef_dt_store      = ef_dt;
-    int num_lipids_store = num_lipids;
-    int num_g_x_store    = num_g_x;
-    int num_g_y_store    = num_g_y;
-    int APS_store        = APS;
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //                                                                                                           //
-    // Report estimated memory requirement                                                                       //
-    //                                                                                                           //
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    int num_entries     = my_ef_frames*num_g_y*my_num_g_x;
-    double mem_blob     = num_entries*4.0/1000000.0;
-    double mem_blob_nan = num_entries*4.0/1000000.0;
-
-    if(world_rank == 0)
-    {
-        printf("Collecting lipid blob data. Estimated memory required: %f MB. \n",mem_blob + mem_blob_nan);
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //                                                                                                           //
-    // Allocate memory for blob data                                                                             //
-    //                                                                                                           //
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    blob.resize(my_ef_frames);
-    blob_nan.resize(my_ef_frames);
-    for(i=0; i<my_ef_frames; i++)
-    {
-        blob[i].resize(num_g_y);
-        blob_nan[i].resize(num_g_y);
-        for(j=0; j<num_g_y; j++)
-        {
-            blob[i][j].resize(my_num_g_x,0);
-            blob_nan[i][j].resize(my_num_g_x,1);
-        }
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //                                                                                                           //
-    // Read binding events files and generate single frame blob data                                             //
-    //                                                                                                           //
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    for(i=my_xi; i<=my_xf; i++) //loop over x
-    {
-        int ef_x = i - my_xi;
-
-        for(j=0; j<num_g_y; j++) //loop over y
-        {
-            if(world_rank == 0)
-            {
-                printf("Working on x %d y %d \n",i,j);
-            }
-
-            ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-            //                                                                                                           //
-            // Read in binding events                                                                                    //
-            //                                                                                                           //
-            ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-            string in_file_name = base_file_name_i + "_" + to_string(i) + "_" + to_string(j) + ".be";
-            int result          = get_binding_events(in_file_name);
-
-            if(result == 1)
-            {
-                if(lipid_nr.size() > 0)
+                if(lipid_nr[i] > lipid_nr[i+1])
                 {
-                    get_binding_timeline();
-                    int ef_frame = 0;
+                    int lipid_nr_tmp    = lipid_nr[i];
+                    int res_nr_tmp      = res_nr[i];
+                    string res_name_tmp = res_name[i];
 
-                    for(k=0; k<ef_frames; k+=stride) //loop over frames
-                    {
-                        for(l=0; l<num_lipids; l++) //loop over lipids
-                        {
-                            if(bound_time_line[k][l] == 1)
-                            {
-                                blob[ef_frame][j][ef_x] = time_line_lipid_nr[l];
-                                blob_nan[ef_frame][j][ef_x] = 0;
-                                break;
-                            }
-                        }
-                        ef_frame = ef_frame + 1;
-                    }
+                    lipid_nr[i] = lipid_nr[i+1];
+                    res_nr[i]   = res_nr[i+1];
+                    res_name[i] = res_name[i+1];
+
+                    lipid_nr[i+1] = lipid_nr_tmp;
+                    res_nr[i+1]   = res_nr_tmp;
+                     res_name[i+1] = res_name_tmp;
+
+                    b_swap = 1;
                 }
             }
-            else
-            {
-                num_g_y = num_g_y_store;
-            }
         }
+        printf("A complete lipid set has been acquired. \n\n");
     }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //                                                                                                           //
-    // Restore the header info                                                                                   //
-    //                                                                                                           //
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ef_frames  = ef_frames_store;
-    ef_dt      = ef_dt_store;
-    num_lipids = num_lipids_store;
-    num_g_x    = num_g_x_store;
-    num_g_y    = num_g_y_store;
-    APS        = APS_store;
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//                                                                                                           //
-// This function collects the lipid blobs data for a single frame                                            //
-//                                                                                                           //
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void Binding_events::get_blobs_frame(int this_frame,int world_size,int world_rank)
-{
-    int i = 0;
-    int j = 0;
-
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    blob_frame.resize(0);
-    blob_nan_frame.resize(0);
-
-    for(j=0; j<num_g_y; j++) //loop over y
+    else //read in the data from the lipid_info.dat file
     {
-        iv1d current_row_grid = collect_and_clone_iv1d(world_size,world_rank,blob[this_frame][j]);
-        iv1d current_row_nan  = collect_and_clone_iv1d(world_size,world_rank,blob_nan[this_frame][j]);
-
-        blob_frame.push_back(current_row_grid);
-        blob_nan_frame.push_back(current_row_nan);
-    }
-
-    MPI_Barrier(MPI_COMM_WORLD);
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//                                                                                                           //
-// This function writes the current frame blob data to file                                                  //
-//                                                                                                           //
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void Binding_events::write_blobs_frame(string out_file_name)
-{
-    int j = 0;
-    int k = 0;
-
-    FILE *out_file = fopen(out_file_name.c_str(),"w");
-
-    if(out_file == NULL)
-    {
-        printf("failure writing %s. Make sure there is enough disc space available and that the target directory exists. \n",out_file_name.c_str());
-        fflush(stdin);
-    }
-    else
-    {
-        for(j=0; j<num_g_y; j++) //loop over y-dimension
+        while(fscanf(lipid_info_file, "%s,", my_string) != EOF)
         {
-            for(k=0; k<num_g_x; k++) //loop over x-dimension
-            {
-                if(blob_nan_frame[j][k] == 0)
-                {
-                    fprintf(out_file," %10d",blob_frame[j][k]);
-                }
-                else //data excluded
-                {
-                    fprintf(out_file," %10s ","NaN");
-                }
-            }
-            fprintf(out_file,"\n");
+           if(my_string[0] != '#')
+           {
+               if(count%3 == 0) //lipid_nr
+               {
+                   int lipid_number = atoi(my_string);
+                   lipid_nr.push_back(lipid_number);
+               }
+               else if(count%3 == 1) //res_name
+               {
+                   string this_res_name(my_string);
+                   res_name.push_back(this_res_name);
+               }
+               else if(count%3 == 2) //res_id
+               {
+                   int res_id = atoi(my_string);
+                   res_nr.push_back(res_id);
+               }
+               count++;
+           }
         }
-        fclose(out_file);
     }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                           //
-// This function analyzes lipid blob data and returns the center of a specified lipid                        //
+// This function analyzes lipid tessellation data and returns the center of a specified lipid                //
 //                                                                                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-dv1d Binding_events::find_blobs_center(int this_lipid)
+dv1d Binding_events::find_voro_center(int this_lipid)
 {
     int j     = 0;
     int k     = 0;
@@ -1170,9 +898,9 @@ dv1d Binding_events::find_blobs_center(int this_lipid)
     {
         for(k=0; k<num_g_x; k++) //loop over x-dimension
         {
-            if(blob_nan_frame[j][k] == 0) //check that grid point is not the protein
+            if(voro_nan_frame[j][k] == 0) //check that grid point is not the protein
             {
-                if(blob_frame[j][k] == this_lipid)
+                if(voro_frame[j][k] == this_lipid)
                 {
                     center[0] = center[0] + (double)k;
                     center[1] = center[1] + (double)j;
@@ -1194,4 +922,864 @@ dv1d Binding_events::find_blobs_center(int this_lipid)
     }
     
     return center;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function reads a binding events file for a particular lattice point                                  //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int Binding_events::get_binding_events_grid(string in_file_name,i64v2d &this_be_pos,int this_x,int this_y)
+{
+    int i      = 0;  //standard variable used in loops
+    int result = 0;  //tells if the file was read successfully or not
+
+    int resize = 1;
+
+    if(resize == 1)
+    {
+        lipid_nr.resize(0,0);
+        res_nr.resize(0,0);
+        res_name.resize(0);
+        bind_i.resize(0,0);
+        bind_f.resize(0,0);
+        dwell_t.resize(0,0);
+    }
+
+    x_i         = 0;
+    y_i         = 0;
+    ef_frames   = 0;
+    num_lipids  = 0;
+    num_g_x     = 0;
+    num_g_y     = 0;
+    ef_dt       = 0.0;
+    APS         = 0;
+
+    ifstream be_file(in_file_name, ios::out | ios::binary);
+    if(!be_file)
+    {
+
+    }
+    else
+    {
+        //read header info
+        be_file.read(reinterpret_cast<char *>(&ef_dt),       sizeof(double)); //ef_dt
+        be_file.read(reinterpret_cast<char *>(&ef_frames),   sizeof(int));    //ef_frames
+        be_file.read(reinterpret_cast<char *>(&num_lipids),  sizeof(int));    //num_lipids
+        be_file.read(reinterpret_cast<char *>(&num_g_x),     sizeof(int));    //number of grid points in x
+        be_file.read(reinterpret_cast<char *>(&num_g_y),     sizeof(int));    //number of grid points in y
+        be_file.read(reinterpret_cast<char *>(&APS),         sizeof(double)); //APS
+
+        //set the file position to the desired lattice point
+        be_file.seekg(this_be_pos[this_y][this_x]);
+
+        int num_events = 0;
+
+        be_file.read(reinterpret_cast<char *>(&x_i),            sizeof(int));    //grid points index in x
+        be_file.read(reinterpret_cast<char *>(&y_i),            sizeof(int));    //grid points index in y
+        be_file.read(reinterpret_cast<char *>(&num_events),     sizeof(int));    //number of binding events
+
+        for(i=0; i<num_events; i++) //loop over binding events
+        {
+            int this_lipid_nr       = 0;
+            int this_res_nr         = 0;
+            int this_bi             = 0;
+            int this_bf             = 0;
+            int this_time           = 0;
+            string this_res_name;
+            size_t this_res_name_size; 
+
+            be_file.read(reinterpret_cast<char *>(&this_lipid_nr),      sizeof(int));                 //lipid number
+            be_file.read(reinterpret_cast<char *>(&this_res_nr),        sizeof(int));                 //residue id
+            be_file.read(reinterpret_cast<char *>(&this_res_name_size), sizeof(this_res_name_size));  //size of residue name
+
+            this_res_name.resize(this_res_name_size);
+
+            be_file.read(reinterpret_cast<char *>(&this_res_name[0]),   this_res_name_size);          //lipid number
+	    be_file.read(reinterpret_cast<char *>(&this_bi),            sizeof(int));                 //bi
+            be_file.read(reinterpret_cast<char *>(&this_bf),            sizeof(int));                 //bf
+            be_file.read(reinterpret_cast<char *>(&this_time),          sizeof(int));                 //time
+
+            lipid_nr.push_back(this_lipid_nr);
+            res_nr.push_back(this_res_nr);
+            res_name.push_back(this_res_name);
+            bind_i.push_back(this_bi);
+            bind_f.push_back(this_bf);
+            dwell_t.push_back(this_time);
+        }
+        be_file.close();
+
+	result = 1;
+    }
+
+    //lipid mixing stuff
+    lip_nr_1  = x_i;
+    res_nr_1  = y_i;
+    num_lip_1 = num_g_x;
+    num_lip_2 = num_lipids;
+
+    return result;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function reads a binding events file for a grid point and adds them to existing binding events list  //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int Binding_events::add_binding_events_grid(string in_file_name,i64v2d &this_be_pos,int this_x,int this_y)
+{
+    int i      = 0;  //standard variable used in loops
+    int result = 0;  //tells if the file was read successfully or not
+
+    ifstream be_file(in_file_name, ios::out | ios::binary);
+    if(!be_file)
+    {
+
+    }
+    else
+    {
+        //set the file position to the desired lattice point
+        be_file.seekg(this_be_pos[this_y][this_x]);
+
+        int num_events = 0;
+
+        be_file.read(reinterpret_cast<char *>(&x_i),            sizeof(int));    //grid points index in x
+        be_file.read(reinterpret_cast<char *>(&y_i),            sizeof(int));    //grid points index in y
+        be_file.read(reinterpret_cast<char *>(&num_events),     sizeof(int));    //number of binding events
+
+        for(i=0; i<num_events; i++) //loop over binding events
+        {
+            int this_lipid_nr       = 0;
+            int this_res_nr         = 0;
+            int this_bi             = 0;
+            int this_bf             = 0;
+            int this_time           = 0;
+            string this_res_name;
+            size_t this_res_name_size;
+
+            be_file.read(reinterpret_cast<char *>(&this_lipid_nr),      sizeof(int));                 //lipid number
+            be_file.read(reinterpret_cast<char *>(&this_res_nr),        sizeof(int));                 //residue id
+            be_file.read(reinterpret_cast<char *>(&this_res_name_size), sizeof(this_res_name_size));  //size of residue name
+            
+            this_res_name.resize(this_res_name_size);
+
+            be_file.read(reinterpret_cast<char *>(&this_res_name[0]),   this_res_name_size);          //lipid number
+            be_file.read(reinterpret_cast<char *>(&this_bi),            sizeof(int));                 //bi
+            be_file.read(reinterpret_cast<char *>(&this_bf),            sizeof(int));                 //bf
+            be_file.read(reinterpret_cast<char *>(&this_time),          sizeof(int));                 //time
+
+            lipid_nr.push_back(this_lipid_nr);
+            res_nr.push_back(this_res_nr);
+            res_name.push_back(this_res_name);
+            bind_i.push_back(this_bi);
+            bind_f.push_back(this_bf);
+            dwell_t.push_back(this_time);
+        }
+        be_file.close();
+
+        result = 1;
+    }
+
+    //lipid mixing stuff
+    lip_nr_1  = x_i;
+    res_nr_1  = y_i;
+    num_lip_1 = num_g_x;
+    num_lip_2 = num_lipids;
+
+    return result;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function writes the binding events to file in binary                                                 //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void Binding_events::write_binding_events_bin(string binding_events_file_name)
+{
+    int i          = 0;
+    int num_events = lipid_nr.size();
+
+    ofstream be_file(binding_events_file_name, ios::out | ios::binary);
+
+    //write header info
+    be_file.write(reinterpret_cast<const char *>(&ef_dt),      sizeof(double)); //ef_dt
+    be_file.write(reinterpret_cast<const char *>(&ef_frames),  sizeof(int));    //ef_frames
+    be_file.write(reinterpret_cast<const char *>(&num_lipids), sizeof(int));    //num_lipids
+    be_file.write(reinterpret_cast<const char *>(&num_g_x),    sizeof(int));    //number of grid points in x
+    be_file.write(reinterpret_cast<const char *>(&num_g_y),    sizeof(int));    //number of grid points in y
+    be_file.write(reinterpret_cast<const char *>(&APS),        sizeof(double)); //APS
+    be_file.write(reinterpret_cast<const char *>(&x_i),        sizeof(int));    //grid points index in x
+    be_file.write(reinterpret_cast<const char *>(&y_i),        sizeof(int));    //grid points index in y
+    be_file.write(reinterpret_cast<const char *>(&num_events), sizeof(int));    //number of binding events
+
+    for(i=0; i<num_events; i++) //loop over binding events
+    {
+        size_t this_res_name_size = res_name[i].size();
+
+        be_file.write(reinterpret_cast<const char *>(&lipid_nr[i]),         sizeof(int));                //lipid number
+        be_file.write(reinterpret_cast<const char *>(&res_nr[i]),           sizeof(int));                //residue id
+        be_file.write(reinterpret_cast<const char *>(&this_res_name_size),  sizeof(this_res_name_size)); //size of residue name
+        be_file.write(reinterpret_cast<const char *>(res_name[i].c_str()),  this_res_name_size);         //lipid number
+        be_file.write(reinterpret_cast<const char *>(&bind_i[i]),           sizeof(int));                //bi
+        be_file.write(reinterpret_cast<const char *>(&bind_f[i]),           sizeof(int));                //bf
+        be_file.write(reinterpret_cast<const char *>(&dwell_t[i]),          sizeof(int));                //time
+    }
+    be_file.close();
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function reads in a binary binding events file                                                       //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int Binding_events::get_binding_events_bin(string binding_events_file_name)
+{
+    int i          = 0;  //standard variable used in loops
+    int num_events = 0;  //how many binding events
+    int result     = 0;  //tells if the file was read successfully or not
+
+    int resize = 1;
+
+    if(resize == 1)
+    {
+        lipid_nr.resize(0,0);
+        res_nr.resize(0,0);
+        res_name.resize(0);
+        bind_i.resize(0,0);
+        bind_f.resize(0,0);
+        dwell_t.resize(0,0);
+    }
+
+    x_i         = 0;
+    y_i         = 0;
+    ef_frames   = 0;
+    num_lipids  = 0;
+    num_g_x     = 0;
+    num_g_y     = 0;
+    ef_dt       = 0.0;
+    APS         = 0;
+
+    ifstream be_file(binding_events_file_name, ios::out | ios::binary);
+    if(!be_file)
+    {
+
+    }
+    else
+    {
+        //read header info
+        be_file.read(reinterpret_cast<char *>(&ef_dt),      sizeof(double)); //ef_dt
+        be_file.read(reinterpret_cast<char *>(&ef_frames),  sizeof(int));    //ef_frames
+        be_file.read(reinterpret_cast<char *>(&num_lipids), sizeof(int));    //num_lipids
+        be_file.read(reinterpret_cast<char *>(&num_g_x),    sizeof(int));    //number of grid points in x
+        be_file.read(reinterpret_cast<char *>(&num_g_y),    sizeof(int));    //number of grid points in y
+        be_file.read(reinterpret_cast<char *>(&APS),        sizeof(double)); //APS
+        be_file.read(reinterpret_cast<char *>(&x_i),        sizeof(int));    //grid points index in x
+        be_file.read(reinterpret_cast<char *>(&y_i),        sizeof(int));    //grid points index in y
+        be_file.read(reinterpret_cast<char *>(&num_events), sizeof(int));    //number of binding events
+
+        for(i=0; i<num_events; i++) //loop over binding events
+        {
+            int this_lipid_nr       = 0;
+            int this_res_nr         = 0;
+            int this_bi             = 0;
+            int this_bf             = 0;
+            int this_time           = 0;
+            string this_res_name;
+            size_t this_res_name_size;
+
+            be_file.read(reinterpret_cast<char *>(&this_lipid_nr),      sizeof(int));                //lipid number
+            be_file.read(reinterpret_cast<char *>(&this_res_nr),        sizeof(int));                //residue id
+            be_file.read(reinterpret_cast<char *>(&this_res_name_size), sizeof(this_res_name_size)); //size of residue name
+
+            this_res_name.resize(this_res_name_size);
+
+            be_file.read(reinterpret_cast<char *>(&this_res_name[0]),   this_res_name_size);         //lipid number
+            be_file.read(reinterpret_cast<char *>(&this_bi),            sizeof(int));                //bi
+            be_file.read(reinterpret_cast<char *>(&this_bf),            sizeof(int));                //bf
+            be_file.read(reinterpret_cast<char *>(&this_time),          sizeof(int));                //time
+
+            lipid_nr.push_back(this_lipid_nr);
+            res_nr.push_back(this_res_nr);
+            res_name.push_back(this_res_name);
+            bind_i.push_back(this_bi);
+            bind_f.push_back(this_bf);
+            dwell_t.push_back(this_time);
+	}
+        be_file.close();
+
+	result = 1;
+    }
+
+    return result;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function writes the temporary binding events for lattice points for the MPI core                     //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int64_t Binding_events::write_binding_events_tmp(ofstream &be_file_o,int64_t pos)
+{
+    int i          = 0;
+    int num_events = lipid_nr.size();
+    int64_t new_pos;
+
+    be_file_o.seekp(pos);
+
+    //write header info
+    be_file_o.write(reinterpret_cast<const char *>(&ef_dt),      sizeof(double)); //ef_dt
+    be_file_o.write(reinterpret_cast<const char *>(&ef_frames),  sizeof(int));    //ef_frames
+    be_file_o.write(reinterpret_cast<const char *>(&num_lipids), sizeof(int));    //num_lipids
+    be_file_o.write(reinterpret_cast<const char *>(&num_g_x),    sizeof(int));    //number of grid points in x
+    be_file_o.write(reinterpret_cast<const char *>(&num_g_y),    sizeof(int));    //number of grid points in y
+    be_file_o.write(reinterpret_cast<const char *>(&APS),        sizeof(double)); //APS
+    be_file_o.write(reinterpret_cast<const char *>(&x_i),        sizeof(int));    //grid points index in x
+    be_file_o.write(reinterpret_cast<const char *>(&y_i),        sizeof(int));    //grid points index in y
+    be_file_o.write(reinterpret_cast<const char *>(&num_events), sizeof(int));    //number of binding events
+
+    for(i=0; i<num_events; i++) //loop over binding events
+    {
+        size_t this_res_name_size = res_name[i].size();
+
+        be_file_o.write(reinterpret_cast<const char *>(&lipid_nr[i]),         sizeof(int));                //lipid number
+        be_file_o.write(reinterpret_cast<const char *>(&res_nr[i]),           sizeof(int));                //residue id
+        be_file_o.write(reinterpret_cast<const char *>(&this_res_name_size),  sizeof(this_res_name_size)); //size of residue name
+        be_file_o.write(reinterpret_cast<const char *>(res_name[i].c_str()),  this_res_name_size);         //lipid number
+        be_file_o.write(reinterpret_cast<const char *>(&bind_i[i]),           sizeof(int));                //bi
+        be_file_o.write(reinterpret_cast<const char *>(&bind_f[i]),           sizeof(int));                //bf
+        be_file_o.write(reinterpret_cast<const char *>(&dwell_t[i]),          sizeof(int));                //time
+    }
+    new_pos = be_file_o.tellp();
+
+    return new_pos; 
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function reads in binding events from the temporary be file                                           //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int64_t Binding_events::get_binding_events_tmp(ifstream &be_file_i,int64_t pos)
+{
+    int i          = 0;  //standard variable used in loops
+    int num_events = 0;  //how many binding events
+    int64_t new_pos;
+
+    int resize = 1;
+
+    if(resize == 1)
+    {
+        lipid_nr.resize(0,0);
+        res_nr.resize(0,0);
+        res_name.resize(0);
+        bind_i.resize(0,0);
+        bind_f.resize(0,0);
+        dwell_t.resize(0,0);
+    }
+
+    x_i         = 0;
+    y_i         = 0;
+    ef_frames   = 0;
+    num_lipids  = 0;
+    num_g_x     = 0;
+    num_g_y     = 0;
+    ef_dt       = 0.0;
+    APS         = 0;
+
+    be_file_i.seekg(pos);
+ 
+    //read header info
+    be_file_i.read(reinterpret_cast<char *>(&ef_dt),      sizeof(double)); //ef_dt
+    be_file_i.read(reinterpret_cast<char *>(&ef_frames),  sizeof(int));    //ef_frames
+    be_file_i.read(reinterpret_cast<char *>(&num_lipids), sizeof(int));    //num_lipids
+    be_file_i.read(reinterpret_cast<char *>(&num_g_x),    sizeof(int));    //number of grid points in x
+    be_file_i.read(reinterpret_cast<char *>(&num_g_y),    sizeof(int));    //number of grid points in y
+    be_file_i.read(reinterpret_cast<char *>(&APS),        sizeof(double)); //APS
+    be_file_i.read(reinterpret_cast<char *>(&x_i),        sizeof(int));    //grid points index in x
+    be_file_i.read(reinterpret_cast<char *>(&y_i),        sizeof(int));    //grid points index in y
+    be_file_i.read(reinterpret_cast<char *>(&num_events), sizeof(int));    //number of binding events
+
+    for(i=0; i<num_events; i++) //loop over binding events
+    {
+        int this_lipid_nr       = 0;
+        int this_res_nr         = 0;
+        int this_bi             = 0;
+        int this_bf             = 0;
+        int this_time           = 0;
+        string this_res_name;
+        size_t this_res_name_size;
+
+        be_file_i.read(reinterpret_cast<char *>(&this_lipid_nr),      sizeof(int));                //lipid number
+	be_file_i.read(reinterpret_cast<char *>(&this_res_nr),        sizeof(int));                //residue id
+	be_file_i.read(reinterpret_cast<char *>(&this_res_name_size), sizeof(this_res_name_size)); //size of residue name
+
+        this_res_name.resize(this_res_name_size);
+
+        be_file_i.read(reinterpret_cast<char *>(&this_res_name[0]),   this_res_name_size);         //lipid number
+	be_file_i.read(reinterpret_cast<char *>(&this_bi),            sizeof(int));                //bi
+	be_file_i.read(reinterpret_cast<char *>(&this_bf),            sizeof(int));                //bf
+	be_file_i.read(reinterpret_cast<char *>(&this_time),          sizeof(int));                //time
+
+        lipid_nr.push_back(this_lipid_nr);
+        res_nr.push_back(this_res_nr);
+        res_name.push_back(this_res_name);
+        bind_i.push_back(this_bi);
+        bind_f.push_back(this_bf);
+        dwell_t.push_back(this_time);
+    }
+
+    new_pos = be_file_i.tellg();
+
+    return new_pos;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function reads in the info file for the binding events file                                          //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int Binding_events::get_info(string binding_events_file_name)
+{
+    int i           = 0;           //standard variable used in loops
+    int j           = 0;           //standard variable used in loops
+    int result      = 0;           //was the BE file opened successfully
+    int num_events  = 0;           //how many binding events
+    int string_size = 2000;        //size of string used for reading in data
+    char my_string[string_size];   //used to read in data
+
+    ifstream be_file(binding_events_file_name, ios::out | ios::binary);
+    if(!be_file)
+    {
+
+    }
+    else
+    {
+        //read header info
+        be_file.read(reinterpret_cast<char *>(&ef_dt),      sizeof(double)); //ef_dt
+        be_file.read(reinterpret_cast<char *>(&ef_frames),  sizeof(int));    //ef_frames
+        be_file.read(reinterpret_cast<char *>(&num_lipids), sizeof(int));    //num_lipids
+        be_file.read(reinterpret_cast<char *>(&num_g_x),    sizeof(int));    //number of grid points in x
+        be_file.read(reinterpret_cast<char *>(&num_g_y),    sizeof(int));    //number of grid points in y
+        be_file.read(reinterpret_cast<char *>(&APS),        sizeof(double)); //APS
+        be_file.read(reinterpret_cast<char *>(&x_i),        sizeof(int));    //grid points index in x
+        be_file.read(reinterpret_cast<char *>(&y_i),        sizeof(int));    //grid points index in y
+        be_file.read(reinterpret_cast<char *>(&num_events), sizeof(int));    //number of binding events
+
+        //allocate memory to hold file positions
+        info_pos.resize(num_g_x);
+        for(i=0; i<num_g_x; i++)
+        {
+            info_pos[i].resize(num_g_y);
+        }
+
+        //read in .info file for the binding events file
+        string info_file_name = binding_events_file_name + ".info";
+        FILE *this_file = fopen(info_file_name.c_str(), "r");
+        if(this_file == NULL)
+        {
+            printf("Could not find an info file (%s). Will analyze the binding events file. \n",info_file_name.c_str());
+
+            int64_t current_pos = 0;
+            be_file.seekg(current_pos);
+
+            for(i=0; i<num_g_x; i++) //loop over x
+            {
+                for(j=0; j<num_g_y; j++) //loop over y 
+                {
+                    current_pos = get_binding_events_tmp(be_file,current_pos);
+                    info_pos[i][j] = current_pos; 
+                }
+            }
+        }
+        else //read info file
+        {
+            for(i=0; i<num_g_x; i++) //loop over x
+            {
+                for(j=0; j<num_g_y; j++) //loop over y 
+                {
+                    fscanf(this_file, "%s,", my_string);
+                    info_pos[i][j] = atol(my_string);
+                }
+                fprintf(this_file,"\n");
+            }
+            fclose(this_file);
+        }
+
+	//close binding events file
+        be_file.close();
+
+	result = 1;
+    }
+    return result;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function reads in a set of binding events for a lattice point                                        //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int Binding_events::get_binding_events_xy(string binding_events_file_name,int x,int y)
+{
+    int i          = 0;  //standard variable used in loops
+    int num_events = 0;  //how many binding events
+    int result     = 0;  //was the BE file opened successfully
+
+    int resize = 1;
+
+    if(resize == 1)
+    {
+        lipid_nr.resize(0,0);
+        res_nr.resize(0,0);
+        res_name.resize(0);
+        bind_i.resize(0,0);
+        bind_f.resize(0,0);
+        dwell_t.resize(0,0);
+    }
+
+    x_i         = 0;
+    y_i         = 0;
+    ef_frames   = 0;
+    num_lipids  = 0;
+    num_g_x     = 0;
+    num_g_y     = 0;
+    ef_dt       = 0.0;
+    APS         = 0;
+
+    ifstream be_file(binding_events_file_name, ios::out | ios::binary);
+    if(!be_file)
+    {
+
+    }
+    else
+    {
+        be_file.seekg(info_pos[x][y]);
+
+        //read header info
+        be_file.read(reinterpret_cast<char *>(&ef_dt),      sizeof(double)); //ef_dt
+        be_file.read(reinterpret_cast<char *>(&ef_frames),  sizeof(int));    //ef_frames
+        be_file.read(reinterpret_cast<char *>(&num_lipids), sizeof(int));    //num_lipids
+        be_file.read(reinterpret_cast<char *>(&num_g_x),    sizeof(int));    //number of grid points in x
+        be_file.read(reinterpret_cast<char *>(&num_g_y),    sizeof(int));    //number of grid points in y
+        be_file.read(reinterpret_cast<char *>(&APS),        sizeof(double)); //APS
+        be_file.read(reinterpret_cast<char *>(&x_i),        sizeof(int));    //grid points index in x
+        be_file.read(reinterpret_cast<char *>(&y_i),        sizeof(int));    //grid points index in y
+        be_file.read(reinterpret_cast<char *>(&num_events), sizeof(int));    //number of binding events
+
+        for(i=0; i<num_events; i++) //loop over binding events
+        {
+            int this_lipid_nr       = 0;
+            int this_res_nr         = 0;
+            int this_bi             = 0;
+            int this_bf             = 0;
+            int this_time           = 0;
+            string this_res_name;
+            size_t this_res_name_size;
+
+            be_file.read(reinterpret_cast<char *>(&this_lipid_nr),      sizeof(int));                //lipid number
+            be_file.read(reinterpret_cast<char *>(&this_res_nr),        sizeof(int));                //residue id
+            be_file.read(reinterpret_cast<char *>(&this_res_name_size), sizeof(this_res_name_size)); //size of residue name
+
+            this_res_name.resize(this_res_name_size);
+
+            be_file.read(reinterpret_cast<char *>(&this_res_name[0]),   this_res_name_size);         //lipid number
+            be_file.read(reinterpret_cast<char *>(&this_bi),            sizeof(int));                //bi
+            be_file.read(reinterpret_cast<char *>(&this_bf),            sizeof(int));                //bf
+            be_file.read(reinterpret_cast<char *>(&this_time),          sizeof(int));                //time
+
+            lipid_nr.push_back(this_lipid_nr);
+            res_nr.push_back(this_res_nr);
+            res_name.push_back(this_res_name);
+            bind_i.push_back(this_bi);
+            bind_f.push_back(this_bf);
+            dwell_t.push_back(this_time);
+        }
+	be_file.close();
+
+	result = 1;
+    }
+
+    return result;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function reads binding events files for the grid and builds the lipid tessellations for each frame   //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int Binding_events::get_tessellations(string in_file_name,int my_gi,int my_gf,int my_num_g,int stride,int my_ef_frames,int world_rank)
+{
+    int i          = 0;    //standard variable used in loops
+    int j          = 0;    //standard variable used in loops 
+    int k          = 0;    //standard variable used in loops
+    int l          = 0;    //standard variable used in loops
+    int grid_count = 0;    //How many lattice points have been looped over
+    int counter    = 0;    //How many times the "program run time" been displayed
+    clock_t t;             //Keeps the time for testing performance
+
+    //take the initial time
+    t = clock();
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //                                                                                                           //
+    // Report estimated memory requirement                                                                       //
+    //                                                                                                           //
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    long   num_entries  = (long)my_ef_frames*(long)my_num_g;
+    double mem_voro     = (double)num_entries*4.0/1000000.0;
+    double mem_voro_nan = (double)num_entries*4.0/1000000.0;
+
+    if(world_rank == 0)
+    {
+        printf("Collecting lipid tessellation data. Estimated memory required: %f MB. \n",mem_voro + mem_voro_nan);
+        printf("-----------------------------------------------------------------------------------------------------------------------------------\n");
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //                                                                                                           //
+    // Allocate memory for tessellation data                                                                     //
+    //                                                                                                           //
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    voro.resize(my_ef_frames);
+    voro_nan.resize(my_ef_frames);
+    for(i=0; i<my_ef_frames; i++)
+    {
+        voro[i].resize(my_num_g,0);
+        voro_nan[i].resize(my_num_g,1);
+    }
+
+    //read info file for binding events data 
+    int result = get_info(in_file_name);
+
+    if(result == 1)
+    {
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //                                                                                                           //
+        // Read binding events files and generate single frame tessellation data                                     //
+        //                                                                                                           //
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        for(i=0; i<num_g_x; i++) //loop over x
+        {
+            for(j=0; j<num_g_y; j++) //loop over y
+            {
+                if(grid_count >= my_gi && grid_count <= my_gf)
+                {
+                    int ef_g = grid_count - my_gi;
+
+                    result = get_binding_events_xy(in_file_name,i,j);
+
+                    if(lipid_nr.size() > 0)
+                    {
+                        get_binding_timeline();
+                        int ef_frame = 0;
+
+                        for(k=0; k<ef_frames; k+=stride) //loop over frames
+                        {
+                            for(l=0; l<num_lipids; l++) //loop over lipids
+                            {
+                                if(bound_time_line[k][l] == 1)
+                                {
+                                    voro[ef_frame][ef_g]     = time_line_lipid_nr[l];
+                                    voro_nan[ef_frame][ef_g] = 0;
+                                    break;
+                                }
+                            }
+                            ef_frame = ef_frame + 1;
+                        }
+                    }
+                    //report progress and estimated time to completion
+                    int current_step = ef_g + 1;
+                    int my_steps     = my_gf - my_gi + 1;
+                    be_time_stats(t,&counter,current_step,my_steps,world_rank,"lattice point");
+                }
+                grid_count++;
+            }
+        }
+    }
+    else
+    {
+        printf("failure opening %s. Make sure the file exists. \n",in_file_name.c_str());
+        MPI_Finalize();
+        exit(EXIT_SUCCESS);
+    }
+
+    return (clock() - t)/CLOCKS_PER_SEC;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function collects the lipid tessellation data for a single frame                                     //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void Binding_events::get_voro_frame(int this_frame,int world_size,int world_rank)
+{
+    int i          = 0;
+    int j          = 0;
+    int grid_count = 0;
+
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    voro_frame.resize(num_g_y);
+    voro_nan_frame.resize(num_g_y);
+    for(i=0; i<num_g_y; i++)
+    {
+        voro_frame[i].resize(num_g_x,0);
+        voro_nan_frame[i].resize(num_g_x,1);
+    } 
+
+    iv1d current_row_grid = collect_and_clone_iv1d(world_size,world_rank,voro[this_frame]);
+    iv1d current_row_nan  = collect_and_clone_iv1d(world_size,world_rank,voro_nan[this_frame]);
+
+    //put data back in the grid
+    if(world_rank == 0)
+    {	     
+        for(i=0; i<num_g_x; i++)
+        {
+            for(j=0; j<num_g_y; j++)
+            {
+                voro_frame[j][i]     = current_row_grid[grid_count];
+                voro_nan_frame[j][i] = current_row_nan[grid_count];
+                grid_count++;
+            }
+        }
+    }
+
+    MPI_Barrier(MPI_COMM_WORLD);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function writes the current frame tessellation data to file                                          //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void Binding_events::write_voro_frame(string out_file_name)
+{
+    int j = 0;
+    int k = 0;
+
+    FILE *out_file = fopen(out_file_name.c_str(),"w");
+
+    if(out_file == NULL)
+    {
+        printf("failure writing %s. Make sure there is enough disc space available and that the target directory exists. \n",out_file_name.c_str());
+        fflush(stdin);
+    }
+    else
+    {
+        for(j=0; j<num_g_y; j++) //loop over y-dimension
+        {
+            for(k=0; k<num_g_x; k++) //loop over x-dimension
+            {
+                if(voro_nan_frame[j][k] == 0)
+                {
+                    fprintf(out_file," %10d",voro_frame[j][k]);
+                }
+                else //data excluded
+                {
+                    fprintf(out_file," %10s ","NaN");
+                }
+            }
+            fprintf(out_file,"\n");
+        }
+        fclose(out_file);
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function reads in a binary binding events file and adds events to an existing set of data            //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int Binding_events::add_binding_events(string binding_events_file_name,int compound_lipid_count,int lipid_nr_offset)
+{
+    int i          = 0;  //standard variable used in loops
+    int num_events = 0;  //how many binding events
+    int result     = 0;  //tells if the file was read successfully or not
+
+    int num_lipids_store = num_lipids;
+
+    ifstream be_file(binding_events_file_name, ios::out | ios::binary);
+    if(!be_file)
+    {
+
+    }
+    else
+    {
+        //read header info
+        be_file.read(reinterpret_cast<char *>(&ef_dt),      sizeof(double)); //ef_dt
+        be_file.read(reinterpret_cast<char *>(&ef_frames),  sizeof(int));    //ef_frames
+        be_file.read(reinterpret_cast<char *>(&num_lipids), sizeof(int));    //num_lipids
+        be_file.read(reinterpret_cast<char *>(&num_g_x),    sizeof(int));    //number of grid points in x
+        be_file.read(reinterpret_cast<char *>(&num_g_y),    sizeof(int));    //number of grid points in y
+        be_file.read(reinterpret_cast<char *>(&APS),        sizeof(double)); //APS
+        be_file.read(reinterpret_cast<char *>(&x_i),        sizeof(int));    //grid points index in x
+        be_file.read(reinterpret_cast<char *>(&y_i),        sizeof(int));    //grid points index in y
+        be_file.read(reinterpret_cast<char *>(&num_events), sizeof(int));    //number of binding events
+
+        for(i=0; i<num_events; i++) //loop over binding events
+        {
+            int this_lipid_nr       = 0;
+            int this_res_nr         = 0;
+            int this_bi             = 0;
+            int this_bf             = 0;
+            int this_time           = 0;
+            string this_res_name;
+            size_t this_res_name_size;
+
+            be_file.read(reinterpret_cast<char *>(&this_lipid_nr),      sizeof(int));                //lipid number
+            be_file.read(reinterpret_cast<char *>(&this_res_nr),        sizeof(int));                //residue id
+            be_file.read(reinterpret_cast<char *>(&this_res_name_size), sizeof(this_res_name_size)); //size of residue name
+
+            this_res_name.resize(this_res_name_size);
+
+            be_file.read(reinterpret_cast<char *>(&this_res_name[0]),   this_res_name_size);         //lipid number
+            be_file.read(reinterpret_cast<char *>(&this_bi),            sizeof(int));                //bi
+            be_file.read(reinterpret_cast<char *>(&this_bf),            sizeof(int));                //bf
+            be_file.read(reinterpret_cast<char *>(&this_time),          sizeof(int));                //time
+
+            lipid_nr.push_back(this_lipid_nr + lipid_nr_offset);
+            res_nr.push_back(this_res_nr);
+            res_name.push_back(this_res_name);
+            bind_i.push_back(this_bi);
+            bind_f.push_back(this_bf);
+            dwell_t.push_back(this_time);
+        }
+        be_file.close();
+
+        result = 1;
+    }
+
+    if(compound_lipid_count == 1)
+    {
+        num_lipids = num_lipids + num_lipids_store;
+    }
+
+    return result;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function writes the binding events to file                                                           //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void Binding_events::write_binding_events_legacy(string binding_events_file_name)
+{
+    int i = 0;
+
+    FILE *binding_events_file = fopen(binding_events_file_name.c_str(), "w");
+    if(binding_events_file == NULL)
+    {
+        printf("failure opening %s. Make sure the file exists. \n",binding_events_file_name.c_str());
+    }
+    else
+    {
+        fprintf(binding_events_file," x_i %10d y_i %10d ef_dt(ps) %10f ef_frames %d num_lipids %10d num_g_x %10d num_g_y %10d APS(nm^2) %10f \n\n",x_i,y_i,ef_dt,ef_frames,num_lipids,num_g_x,num_g_y,APS);
+        fprintf(binding_events_file," %10s %10s %10s %15s %15s %20s \n","lipid","res_nr","res_name","bind_i(frame)","bind_f(frame)","dwell time(frames)");
+        fprintf(binding_events_file," %10s-%10s-%10s-%15s-%15s-%20s \n","----------","----------","----------","---------------","---------------","--------------------");
+
+        for(i=0; i<dwell_t.size(); i++)
+        {
+            fprintf(binding_events_file," %10d %10d %10s %15d %15d %20d \n",lipid_nr[i],res_nr[i],res_name[i].c_str(),bind_i[i],bind_f[i],dwell_t[i]);
+        }
+        fclose(binding_events_file);
+    }
 }

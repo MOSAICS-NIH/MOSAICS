@@ -36,6 +36,7 @@ using namespace std;
 #include "headers/protein.h"                                 //This has routines used for working with protein data
 #include "headers/force_serial.h"                            //This has routines used for forcing the code to run on a single mpi process
 #include "headers/param.h"                                   //This has routines used for reading complex parameter data
+#include "headers/grid_lt.h"                                 //This has routines used for reading in grid data
 #include "headers/voronoi.h"                                 //This has routines used for computing voronoi diagrams
 #include "headers/histo.h"                                   //This has routines used for making histograms
 
@@ -54,9 +55,11 @@ void area(Trajectory &traj,Trajectory &traj_v,system_variables &s,program_variab
     int pbc          = 1;                      //account for periodic boundary conditions in voronoi diagrams?
     double hx        = 0;                      //x coord of mapping atom
     double hy        = 0;                      //y coord of mapping atom
-    
+  
+    Grid_lt dummy_prot_mask;                   //this is needed for voronoi_diagram() but not used with APL.cpp
+  
     //get the voronoi diagram
-    Grid_i voronoi = voronoi_diagram(traj_v,apl.get_aps(),apl.num_x(),apl.num_y(),param2,p.c_dist,p.voro_stamp_rad,p.v_prot,dynamic,pbc); 
+    Grid_i voronoi = voronoi_diagram(traj_v,apl.get_aps(),apl.num_x(),apl.num_y(),param2,p.c_dist,p.voro_stamp_rad,p.v_prot,dynamic,pbc,dummy_prot_mask,0); 
 
     //write the voronoi diagram to file
     if(p.b_voronoi == 1)

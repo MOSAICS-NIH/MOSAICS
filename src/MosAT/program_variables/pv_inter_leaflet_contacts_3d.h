@@ -44,6 +44,7 @@ struct program_variables
     double bin_width;                             //Width of bin for ilc histogram 
     double temp;                                  //Temperature in k of simulation
     double ex_val;                                //Set excluded lattice points to this value
+    double screen_dist;                           //Screening distance for checking resi centers
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -77,6 +78,7 @@ void initialize_program_variables(program_variables *p)
     p->num_lip_t       = 0;
     p->b_histo         = 0;
     p->ex_val          = 0.0;
+    p->screen_dist     = 4.0;
 
     //here we set the program description
     p->program_description = "Inter-Leaflet Contacts 3d is a program that measures the degree of interdigitation between two leaflets. This is done by counting the number of inter-leaflet contacts. Highly interdigitated leaflets will have more inter-leaflet contacts than less interdigitated bilayers. The number of interleaflet contacts is projected onto a 3D lattice.";  

@@ -40,6 +40,7 @@ struct program_variables
     string leaflet_finder_param_name;             //Name of the leaflet finder param file
     string pf_pdb_file_name;                      //Name of the output pdb file with the protein indicated by B-factor
     string protein_finder_param_name;             //Name of the protein finder param file
+    string prot_mask_file_name;                   //Name of protein mask file
     int b_lf_param;                               //Tells if the user included a lipid types parameter file
     int num_g_x;                                  //This is the number of grid points in x direction
     int num_g_y;                                  //This is the number of grid points in y direction
@@ -54,6 +55,7 @@ struct program_variables
     int b_clean;                                  //Remove voronoi diagrams after computing dwell times
     int dump;                                     //Dump all bound lipids at the end of the trajectory? i.e. record how long they have been bound?
     int com;                                      //Use the lipid center of mass in voronoi tesselations?
+    int b_prot_mask;                              //Was a protein mask provided?
     double APS;                                   //This is the area of a grid square
     double radius;                                //Radius of the atom
     double cell_size;                             //This is the lengh between grid points
@@ -62,6 +64,7 @@ struct program_variables
     double delta_t;                               //User specified time step (overwrites from trajectory)
     double voro_stamp_rad;                        //The stamping radius used to find candidates for the voronoi diagram
     double c_dist;                                //Distance cutoff for counting protein atoms in voronoi diagram
+    double ram;                                   //How much memory to use for storing tessellation data
 };
 
 
@@ -103,6 +106,8 @@ void initialize_program_variables(program_variables *p)
     p->b_clean                 = 0;
     p->dump                    = 0;
     p->com                     = 0;
+    p->b_prot_mask             = 0;
+    p->ram                     = 0.0;
 
     //here we set the program description
     p->program_description = "2D Kinetics is an analysis program designed for characterizing the lipid residence time and projecting this data onto ";

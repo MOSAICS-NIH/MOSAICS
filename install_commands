@@ -1,4 +1,10 @@
 
+#########################################################################################
+#                                                                                       #
+# Working programs                                                                      #
+#                                                                                       #
+#########################################################################################
+
 #MosAT based programs
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/2d_enrichment.cpp              src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/2d_enrichment_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/2d_enrichment.cpp              src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/2d_enrichment_mpi
@@ -88,4 +94,22 @@ $CPP_COMP  -I src -std=c++11 src/other_tools/mean_coords_row_selector.cpp       
 $CPP_COMP  -I src -std=c++11 src/other_tools/bilayer_free_energy.cpp                      -o build/bilayer_free_energ
 $CPP_COMP  -I src -std=c++11 src/other_tools/histogram.cpp                                -o build/histogram
 $CPP_COMP  -I src -std=c++11 src/other_tools/data_averager.cpp                            -o build/data_averager
+
+#########################################################################################
+#                                                                                       #
+# Set permissions                                                                       #
+#                                                                                       #
+#########################################################################################
+
+#for user
+chmod u+rx build/*
+
+#for group 
+chmod g+rx build/*
+
+#for others
+chmod o+rx build/*
+
+#for all
+chmod a+rx build/*
 

@@ -1843,6 +1843,12 @@ class Trajectory
         vector <int>    world_atoms{};                //How many atoms is the mpi process responsible for (world)
         vector <int>    world_atom_start{};           //The first atom the mpi process is reponsible for (world)
         vector <int>    world_atom_end{};             //The last atom the mpi process is responsible for (world)
+        int             my_num_g   = 0;               //How many grid points in xy is the mpi process responsible for
+        int             my_gi      = 0;               //The mpi processes first grid point 
+        int             my_gf      = 0;               //The mpi processes last grid point
+        vector <int>    world_num_g{};                //How many grid points in xy is the mpi process responsible for (world)
+        vector <int>    world_gi{};                   //The start grid point for each mpi process
+        vector <int>    world_gf{};                   //The end grid point for each mpi process
 
     public:
         void        set_input_arguments(int argc, const char * argv[]);                                 //give the traj the command line args
@@ -1887,6 +1893,14 @@ class Trajectory
         void        check_broken_molecule(int flag_beta);                                               //checks current frame for broken residues
         double      get_dist(dv1d &vec_a,dv1d &vec_b);                                                  //returns the distance between 2 vectors
         void        expand_traj(Trajectory traj_ref);                                                   //generates surrounding 8 periodic images for the reference traj
+        dv2d        get_centers_target_lf();                                                            //returns the centers of the lipids in the target leaflet
+        dv2d        get_centers_opposing_lf();                                                          //returns the centers of the lipids in the opposing leaflet
+        dv2d        get_centers_full_mem();                                                             //returns the centers of the lipids in the full membrane
+        dv2d        get_centers_prot();                                                                 //returns the center of the residues in the protein 
+        dv2d        get_centers_sol();                                                                  //returns the center of the residues in the solvent
+        dv2d        get_centers_system();                                                               //returns the center of the residues in the molecular system
+        int         get_global_frame_i();                                                               //returns the global index of the first frame to be read by the core
+        int         get_global_frame_f();                                                               //returns the global index of the last frame to be read by the core
 
         //leaflet finder 
         void        get_leaflets(int leaf,string leaflet_finder_param_name,int b_lf_param);             //assign atoms to the leaflets
@@ -1940,6 +1954,8 @@ class Trajectory
         void        workload_water();                                                                   //prints the workload distribution for waters
         void        parallelize_by_selection(int num_atoms_1);                                          //distribute workload by a custom atom selection
         void        workload_sel();                                                                     //prints the workload distribution for custom atom selections
+        void        parallelize_by_grid_alt(int num_g_x,int num_g_y);                                   //distribute the workload by the grid points (num_g_x and num_g_y)
+        void        workload_grid_alt();                                                                //prints the workload distribution for grid point (num_g_x and num_g_y)
 
         const char **argv;                                                                              //The command line arguments
 };
@@ -3681,3 +3697,250 @@ void Trajectory::expand_traj(Trajectory traj_ref)
     MPI_Barrier(MPI_COMM_WORLD);
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function returns the centers of the lipids in the target leaflet                                     //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+dv2d Trajectory::get_centers_target_lf()
+{
+    int i = 0;                                //standard variable used in loops
+    int j = 0;                                //standard variable used in loops
+
+    dv2d lipid_centers(0,dv1d(3,0.0));        //hold the center of each lipid molecule in the target leaflet
+
+    for(i=0; i<target_leaflet.size(); i++) //loop over target leaflet
+    {
+        //get the first and last atom of the current lipid
+        int min = t_lip_start(i);
+        int max = t_lip_end(i);
+
+        //jump to the next lipid
+        i = next_target_lipid(i);
+
+        iv1d target_atoms(0);
+
+        for(j=min; j<=max; j++) //loop over current lipid
+        {
+            if(atom_name[j].at(0) != 'H') //atom is not a hydrogen
+            {
+                target_atoms.push_back(atom_nr[j]);
+            }
+        }
+
+        dv1d this_center = center_i(target_atoms);
+        lipid_centers.push_back(this_center);
+    }
+
+    return lipid_centers; 
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function returns the centers of the lipids in the opposing leaflet                                   //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+dv2d Trajectory::get_centers_opposing_lf()
+{
+    int i = 0;                                //standard variable used in loops
+    int j = 0;                                //standard variable used in loops
+
+    dv2d opposing_centers(0,dv1d(3,0.0));     //hold the center of each lipid molecule in the opposing leaflet
+
+    for(i=0; i<opposing_leaflet.size(); i++) //loop over opposing leaflet
+    {
+        //get the first and last atom of the current lipid
+        int min = o_lip_start(i);
+        int max = o_lip_end(i);
+
+        //jump to the next lipid
+        i = next_opposing_lipid(i);
+
+        iv1d target_atoms(0);
+
+        for(j=min; j<=max; j++) //loop over current lipid
+        {
+            if(atom_name[j].at(0) != 'H') //atom is not a hydrogen
+            {
+                target_atoms.push_back(atom_nr[j]);
+            }
+        }
+
+        dv1d this_center = center_i(target_atoms);
+        opposing_centers.push_back(this_center);
+    }
+
+    return opposing_centers;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function returns the centers of the lipids in the full leaflet                                       //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+dv2d Trajectory::get_centers_full_mem()
+{
+    int i = 0;                                //standard variable used in loops
+    int j = 0;                                //standard variable used in loops
+
+    dv2d full_mem_centers(0,dv1d(3,0.0));     //hold the center of each lipid molecule in the full mem
+
+    for(i=0; i<full_membrane.size(); i++) //loop over full membrane 
+    {
+        //get the first and last atom of the current lipid
+        int min = fm_lip_start(i);
+        int max = fm_lip_end(i);
+
+        //jump to the next lipid
+        i = next_full_mem_lipid(i);
+
+        iv1d target_atoms(0);
+
+        for(j=min; j<=max; j++) //loop over current lipid
+        {
+            if(atom_name[j].at(0) != 'H') //atom is not a hydrogen
+            {
+                target_atoms.push_back(atom_nr[j]);
+            }
+        }
+
+        dv1d this_center = center_i(target_atoms);
+        full_mem_centers.push_back(this_center);
+    }
+
+    return full_mem_centers;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function returns the centers of the residues in the protein                                          //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+dv2d Trajectory::get_centers_prot()
+{
+    int i = 0;                                //standard variable used in loops
+    int j = 0;                                //standard variable used in loops
+
+    dv2d protein_centers(0,dv1d(3,0.0));      //hold the center of each residue in the protein
+
+    for(i=0; i<prot.size(); i++)  //loop over protein atoms
+    {
+        //get the first and last atom of the current residue
+        int min = p_res_start(i);
+        int max = p_res_end(i);
+
+        //jump to the next residue
+        i = next_prot_res(i);
+
+        iv1d target_atoms(0);
+
+        for(j=min; j<=max; j++) //loop over current residue
+        {
+            if(atom_name[j].at(0) != 'H') //atom is not a hydrogen
+            {
+                target_atoms.push_back(atom_nr[j]);
+            }
+        }
+
+        dv1d this_center = center_i(target_atoms);
+        protein_centers.push_back(this_center);
+    }
+
+    return protein_centers; 
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function returns the centers of the residues in the solvent                                          //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+dv2d Trajectory::get_centers_sol()
+{
+    int i = 0;                                //standard variable used in loops
+    int j = 0;                                //standard variable used in loops
+
+    dv2d sol_centers(0,dv1d(3,0.0));          //hold the center of each residue in the solvent
+
+        for(i=0; i<sol.size(); i++)  //loop over solvent atoms
+        {
+            //get the first and last atom of the current water
+            int min = sol_start(i);
+            int max = sol_end(i);
+
+            //jump to the next water
+            i = next_water(i);
+
+            iv1d target_atoms(0);
+
+            for(j=min; j<=max; j++) //loop over current water
+            {
+                if(atom_name[j].at(0) != 'H') //atom is not a hydrogen
+                {
+                    target_atoms.push_back(atom_nr[j]);
+                }
+            }
+
+            dv1d this_center = center_i(target_atoms);
+            sol_centers.push_back(this_center);
+        }
+
+    return sol_centers;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function returns the centers of the residues in the system                                           //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+dv2d Trajectory::get_centers_system()
+{
+    int i = 0;                                //standard variable used in loops
+    int j = 0;                                //standard variable used in loops
+
+    dv2d system_centers(0,dv1d(3,0.0));       //hold the center of each residue in the system
+
+    for(i=0; i<atoms(); i++)  //loop over system atoms
+    {
+        //get the first and last atom of the current residue
+        int min = get_res_start(i);
+        int max = get_res_end(i);
+
+        //jump to the next residue
+        i = next_residue(i);
+
+        iv1d target_atoms(0);
+
+        for(j=min; j<=max; j++) //loop over current residue
+        {
+            if(atom_name[j].at(0) != 'H') //atom is not a hydrogen
+            {
+                target_atoms.push_back(atom_nr[j]);
+            }
+        }
+
+        dv1d this_center = center_i(target_atoms);
+        system_centers.push_back(this_center);
+    }
+
+    return system_centers;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function returns the first frame to be read for the core in the global index                         //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int Trajectory::get_global_frame_i()
+{
+    return world_frame_i[world_rank]; 
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function returns the last frame to be read for the core in the global index                          //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int Trajectory::get_global_frame_f()
+{
+    return world_frame_f[world_rank];
+}

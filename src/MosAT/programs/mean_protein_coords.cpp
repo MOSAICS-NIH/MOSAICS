@@ -439,12 +439,16 @@ int main(int argc, const char * argv[])
         time_stats(s.t,&s.counter,traj.current_frame,traj.get_num_frames(),s.world_rank);
     }
 
+    //log time spent in main loop
+    perf.log_time((clock() - s.t)/CLOCKS_PER_SEC,"Main Loop");
+
     //collect coords from mpi processes and compute average
     perf.log_time(finalize_analysis(traj,s,p),"Fin Ana");
 
     //print that analysis is beginning
     traj.report_progress();
 
+    s.t = clock();
     //loop over trajectory a second time to compute the average distance from average coords
     if(p.b_mean_dist == 1)
     {
@@ -459,7 +463,7 @@ int main(int argc, const char * argv[])
     }
 
     //log time spent in main loop
-    perf.log_time((clock() - s.t)/CLOCKS_PER_SEC,"Main Loop");
+    perf.log_time((clock() - s.t)/CLOCKS_PER_SEC,"Mean Dist");
 
     //collect distances from mpi processes and compute average
     finalize_analysis_dist(traj,s,p,avg_dist,largest_dist);

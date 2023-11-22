@@ -42,7 +42,6 @@ struct program_variables
     int count_sol;                                //Count sol?
     int b_stdev;                                  //Compute the z-coord standard deviation?
     int b_clean;                                  //Delete single frame rmsd files after computing average?
-    int b_mol;                                    //Count molecules instead of contacts?
     int b_sel_text;                               //Refine the selection of protein atoms?
     double APS;                                   //This is the area of a grid square
     double radius;                                //Radius of the atom
@@ -52,6 +51,7 @@ struct program_variables
     double box_z;                                 //Grid z dimension
     double contact_cutoff;                        //Cutoff for counting contacts
     double ex_val;                                //Set excluded lattice points to this value
+    double screen_dist;                           //Screening distance for checking resi centers
 };
 
 
@@ -88,9 +88,9 @@ void initialize_program_variables(program_variables *p)
     p->b_clean         = 0;
     p->b_lf_pdb        = 0;
     p->b_lf_param      = 0;
-    p->b_mol           = 0;
     p->ex_val          = 0.0;
     p->b_sel_text      = 0;
+    p->screen_dist     = 4.0;
 
     //here we set the program description
     p->program_description = "Lipid Contacts 3d is a program designed for quantifying contacts between lipids and other molecules. The program can measure lipid-lipid, lipid-protein, and lipid-solvent contacts or a mixture of the three. The number of contacts formed is projected onto a 3d lattice.";   

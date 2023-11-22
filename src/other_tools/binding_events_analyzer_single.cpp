@@ -18,6 +18,7 @@ using namespace std;
 #include "../headers/switch.h"
 #include "../headers/common_routines.h"
 #include "../headers/common_routines_mpi.h"
+#include "../headers/file_naming.h"
 #include "../headers/binding_events.h"
 #include "../headers/fit.h"
 #include "../headers/index.h"
@@ -119,7 +120,7 @@ int main(int argc, const char * argv[])
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     Binding_events events;
-    int result = events.get_binding_events(binding_events_file_name);
+    int result = events.get_binding_events_bin(binding_events_file_name);
 
     if(result == 1) //bind events file exists
     { 

@@ -4,7 +4,8 @@
 // This function return a voronoi diagram                                                                   //
 //                                                                                                          //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-Grid_i voronoi_diagram(Trajectory &traj,double aps,int num_g_x,int num_g_y,Param &param,double c_dist,double radius,int b_prot,int b_dynamic,int b_pbc)
+Grid_i voronoi_diagram(Trajectory &traj,double aps,int num_g_x,int num_g_y,Param &param,double c_dist,double radius,
+		       int b_prot,int b_dynamic,int b_pbc,Grid_lt &prot_mask,int b_prot_mask)
 {
     //when a dynamic box is used then the number of lattice points is chosen to best match the area of the box.
     //otherwise, the number of lattice points in each direction is specified by the user which might overestimate
@@ -96,7 +97,7 @@ Grid_i voronoi_diagram(Trajectory &traj,double aps,int num_g_x,int num_g_y,Param
                                         //check that atoms has not been counted already
                                         for(n=0; n<protein_atoms.size(); n++) //loop over protein atoms
                                         {
-                                            if(protein_atoms[n] == k) //atom already added
+                                            if(protein_atoms[n] == traj.prot[m]-1) //atom already added
                                             {
                                                 duplicate = 1;
                                                 break;
@@ -257,41 +258,49 @@ Grid_i voronoi_diagram(Trajectory &traj,double aps,int num_g_x,int num_g_y,Param
             }
             else //check all lipids and protein atoms 
             {
-                //printf("Could not find a candidate. Computing all distances. x %d y %d \n",i,j);
-
-                //check lipid atoms for shortest distance
-                for(k=0; k<traj.target_leaflet.size(); k++) //loop over the target leaflet atoms
+                //check for a protein mask
+                if(b_prot_mask == 1 && prot_mask.grid[i][j][2][0] == 1.0) //grid point belongs to the protein
                 {
-                    //get the first and last atom of the current lipid
-                    int min = traj.t_lip_start(k);
-                    int max = traj.t_lip_end(k);
+                    winner = -1;
+                }  
+                else
+                {
+                    //printf("Could not find a candidate. Computing all distances. x %d y %d \n",i,j);
 
-                    //jump to the next lipid
-                    k = traj.next_target_lipid(k);
-
-                    for(l=0; l<param.main_size_y(); l++) //loop over lipid types
+                    //check lipid atoms for shortest distance
+                    for(k=0; k<traj.target_leaflet.size(); k++) //loop over the target leaflet atoms
                     {
-                        if(strcmp(traj.res_name[min].c_str(), param.param_main_s[l][0].c_str() ) == 0) //lipid type is correct
+                        //get the first and last atom of the current lipid
+                        int min = traj.t_lip_start(k);
+                        int max = traj.t_lip_end(k);
+
+                        //jump to the next lipid
+                        k = traj.next_target_lipid(k);
+
+                        for(l=0; l<param.main_size_y(); l++) //loop over lipid types
                         {
-                            for(m=min; m<=max; m++) //loop over current residue atoms
+                            if(strcmp(traj.res_name[min].c_str(), param.param_main_s[l][0].c_str() ) == 0) //lipid type is correct
                             {
-                                for(n=0; n<param.sec_size_y(l); n++) //loop over target atoms
+                                for(m=min; m<=max; m++) //loop over current residue atoms
                                 {
-                                    if(strcmp(traj.atom_name[m].c_str(), param.param_sec_s[l][n][0].c_str() ) == 0) //atom is a target atom
+                                    for(n=0; n<param.sec_size_y(l); n++) //loop over target atoms
                                     {
-                                        for(x=x_min; x<=x_max; x++) //shift in x direction
+                                        if(strcmp(traj.atom_name[m].c_str(), param.param_sec_s[l][n][0].c_str() ) == 0) //atom is a target atom
                                         {
-                                            for(y=y_min; y<=y_max; y++) //shift in y direction
+                                            for(x=x_min; x<=x_max; x++) //shift in x direction
                                             {
-                                                double dx = traj.r[m][0] + (double)x*traj.box[XX][XX] - i*voronoi.get_cell_size();
-                                                double dy = traj.r[m][1] + (double)y*traj.box[YY][YY] - j*voronoi.get_cell_size();
-
-                                                double distance = sqrt(dx*dx + dy*dy);
-
-                                                if(distance < min_dist)
+                                                for(y=y_min; y<=y_max; y++) //shift in y direction
                                                 {
-                                                    min_dist = distance;
-                                                    winner   = traj.res_nr[min];
+                                                    double dx = traj.r[m][0] + (double)x*traj.box[XX][XX] - i*voronoi.get_cell_size();
+                                                    double dy = traj.r[m][1] + (double)y*traj.box[YY][YY] - j*voronoi.get_cell_size();
+
+                                                    double distance = sqrt(dx*dx + dy*dy);
+
+                                                    if(distance < min_dist)
+                                                    {
+                                                        min_dist = distance;
+                                                        winner   = traj.res_nr[min];
+                                                    }
                                                 }
                                             }
                                         }
@@ -300,22 +309,22 @@ Grid_i voronoi_diagram(Trajectory &traj,double aps,int num_g_x,int num_g_y,Param
                             }
                         }
                     }
-                }
 
-                //check protein atoms for shortest distance
-                for(k=0; k<protein_atoms.size(); k++) //loop over protein atoms
-                {
-                    double dx = traj.r[protein_atoms[k]][0] - i*voronoi.get_cell_size();
-                    double dy = traj.r[protein_atoms[k]][1] - j*voronoi.get_cell_size();
-
-                    double distance = sqrt(dx*dx + dy*dy);
-
-                    if(distance < min_dist)
+                    //check protein atoms for shortest distance
+                    for(k=0; k<protein_atoms.size(); k++) //loop over protein atoms
                     {
-                        min_dist = distance;
-                        winner   = -1;
+                        double dx = traj.r[protein_atoms[k]][0] - i*voronoi.get_cell_size();
+                        double dy = traj.r[protein_atoms[k]][1] - j*voronoi.get_cell_size();
+
+                        double distance = sqrt(dx*dx + dy*dy);
+
+                        if(distance < min_dist)
+                        {
+                            min_dist = distance;
+                            winner   = -1;
+                        }
                     }
-                }
+		}
             }
 
             //set the grid point
@@ -331,7 +340,8 @@ Grid_i voronoi_diagram(Trajectory &traj,double aps,int num_g_x,int num_g_y,Param
 // This function return a voronoi diagram using the center of mass of the atoms selection                   //
 //                                                                                                          //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-Grid_i voronoi_diagram_com(Trajectory &traj,double aps,int num_g_x,int num_g_y,Param &param,double c_dist,double radius,int b_prot,int b_dynamic,int b_pbc)
+Grid_i voronoi_diagram_com(Trajectory &traj,double aps,int num_g_x,int num_g_y,Param &param,double c_dist,double radius,
+	 	           int b_prot,int b_dynamic,int b_pbc,Grid_lt &prot_mask,int b_prot_mask)
 {
     //when a dynamic box is used then the number of lattice points is chosen to best match the area of the box.
     //otherwise, the number of lattice points in each direction is specified by the user which might overestimate
@@ -479,39 +489,47 @@ Grid_i voronoi_diagram_com(Trajectory &traj,double aps,int num_g_x,int num_g_y,P
                     }
                 }
             }
-            else //check all lipids center of mass 
+            else
             {
-                int counter = -1; //count lipids as they are encountered
-
-                //check lipid atoms for shortest distance
-                for(k=0; k<traj.target_leaflet.size(); k++) //loop over the target leaflet atoms
+                //check for a protein mask
+                if(b_prot_mask == 1 && prot_mask.grid[i][j][2][0] == 1.0) //grid point belongs to the protein
                 {
-                    //get the first and last atom of the current lipid
-                    int min = traj.t_lip_start(k);
-                    int max = traj.t_lip_end(k);
+                    winner = -1;
+                }
+                else //check all lipids center of mass 
+                {
+                    int counter = -1; //count lipids as they are encountered
 
-                    //jump to the next lipid
-                    k = traj.next_target_lipid(k);
-
-                    for(l=0; l<param.main_size_y(); l++) //loop over lipid types
+                    //check lipid atoms for shortest distance
+                    for(k=0; k<traj.target_leaflet.size(); k++) //loop over the target leaflet atoms
                     {
-                        if(strcmp(traj.res_name[min].c_str(), param.param_main_s[l][0].c_str() ) == 0) //lipid type is correct
+                        //get the first and last atom of the current lipid
+                        int min = traj.t_lip_start(k);
+                        int max = traj.t_lip_end(k);
+
+                        //jump to the next lipid
+                        k = traj.next_target_lipid(k);
+
+                        for(l=0; l<param.main_size_y(); l++) //loop over lipid types
                         {
-                            counter++;
-
-                            for(x=x_min; x<=x_max; x++) //shift in x direction
+                            if(strcmp(traj.res_name[min].c_str(), param.param_main_s[l][0].c_str() ) == 0) //lipid type is correct
                             {
-                                for(y=y_min; y<=y_max; y++) //shift in y direction
+                                counter++;
+
+                                for(x=x_min; x<=x_max; x++) //shift in x direction
                                 {
-                                    double dx = com_all[counter][0] + (double)x*traj.box[XX][XX] - i*voronoi.get_cell_size();
-                                    double dy = com_all[counter][1] + (double)y*traj.box[YY][YY] - j*voronoi.get_cell_size();
-
-                                    double distance = sqrt(dx*dx + dy*dy);
-
-                                    if(distance < min_dist)
+                                    for(y=y_min; y<=y_max; y++) //shift in y direction
                                     {
-                                        min_dist = distance;
-                                        winner   = traj.res_nr[min];
+                                        double dx = com_all[counter][0] + (double)x*traj.box[XX][XX] - i*voronoi.get_cell_size();
+                                        double dy = com_all[counter][1] + (double)y*traj.box[YY][YY] - j*voronoi.get_cell_size();
+
+                                        double distance = sqrt(dx*dx + dy*dy);
+
+                                        if(distance < min_dist)
+                                        {
+                                            min_dist = distance;
+                                            winner   = traj.res_nr[min];
+                                        }
                                     }
                                 }
                             }

@@ -394,3 +394,168 @@ void broadcast_dv1d(int world_size,int world_rank,dv1d &my_vec)
     }
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function broadcasts a 1-d vector of ints                                                             //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void broadcast_iv1d(int world_size,int world_rank,iv1d &my_vec)
+{
+    int i = 0;
+    int j = 0;
+
+    if(world_size > 0)
+    {
+        for(i=1; i<world_size; i++)
+        {
+            if(world_rank == 0)
+            {
+                int size = my_vec.size();  //how many items to send
+
+                MPI_Send(&size, 1, MPI_INT, i, 13, MPI_COMM_WORLD);
+
+                int snd[size];
+                for(j=0; j<size; j++)
+                {
+                    snd[j] = my_vec[j];
+                }
+                MPI_Send(snd, size, MPI_INT, i, 13, MPI_COMM_WORLD);
+            }
+            else if(world_rank == i)
+            {
+                int size;                     //how many items to be received
+                MPI_Recv(&size, 1, MPI_INT, 0, 13, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+                int recv[size];            //array to hold received items
+                MPI_Recv(recv, size, MPI_INT, 0, 13, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+                for(j=0; j<size; j++)
+                {
+                    my_vec[j] = recv[j];
+                }
+            }
+        }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function collects a 2D vectors of long ints to make a 3D vec                                         //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void collect_lv3d(int world_size,int world_rank,lv3d &my_vec)
+{
+    int i = 0;
+    int j = 0;
+    int k = 0;
+
+    if(world_size > 0)
+    {
+        for(i=1; i<world_size; i++)
+        {
+            if(world_rank == 0)
+            {
+                int size_x = my_vec[0].size();    //how many items to receive in x
+                int size_y = my_vec[0][0].size(); //how many items to receive in y
+
+                long recv[size_x*size_y];     //array to hold received items
+                MPI_Recv(recv, size_x*size_y, MPI_LONG, i, 13, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+                int counter = 0;
+
+                //add the items to the vector
+                for(j=0; j<size_x; j++)
+                {
+                    for(k=0; k<size_y; k++)
+                    {
+                        my_vec[i][j][k] = recv[counter];
+                        counter++;
+                    }
+                }
+            }
+            else if(world_rank == i)
+            {
+                int size_x = my_vec[0].size();    //how many items to send in x
+                int size_y = my_vec[0][0].size(); //how many items to send in y
+
+                long snd[size_x*size_y];
+                int counter = 0;
+                for(j=0; j<size_x; j++)
+                {
+                    for(k=0; k<size_y; k++)
+                    {
+                        snd[counter] = my_vec[i][j][k];
+                        counter++;
+                    }
+                }
+                MPI_Send(snd, size_x*size_y, MPI_LONG, 0, 13, MPI_COMM_WORLD);
+            }
+        }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function broadcasts a 3D vector of long ints                                                         //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void broadcast_lv3d(int world_size,int world_rank,lv3d &my_vec)
+{
+    int i = 0;
+    int j = 0;
+    int k = 0;
+    int l = 0;
+
+    for(i=1; i<world_size; i++)
+    {
+        if(world_rank == 0) //send data
+        {
+            int size_x = my_vec.size(); 
+            int size_y = my_vec[0].size();
+            int size_z = my_vec[0][0].size();
+
+            long snd[size_x*size_y*size_z]; 
+
+            int counter = 0;
+
+            for(j=0; j<size_x; j++)
+            {
+                for(k=0; k<size_y; k++)
+                {
+                    for(l=0; l<size_z; l++)
+                    {
+                        snd[counter] = my_vec[j][k][l];
+                        counter++;
+                    }
+                }
+            }
+            MPI_Send(snd, size_x*size_y*size_z, MPI_LONG, i, 13, MPI_COMM_WORLD);
+        }
+        else if(i==world_rank) //receive data
+        {
+            int size_x = my_vec.size();
+            int size_y = my_vec[0].size();
+            int size_z = my_vec[0][0].size();
+
+            long recv[size_x*size_y*size_z];     //array to hold received items
+
+            MPI_Recv(recv, size_x*size_y*size_z, MPI_LONG, 0, 13, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+            int counter = 0;
+            for(j=0; j<size_x; j++)
+            {
+                for(k=0; k<size_y; k++)
+                {
+                    for(l=0; l<size_z; l++)
+                    {
+                       my_vec[j][k][l] = recv[counter];
+                       counter++;
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+

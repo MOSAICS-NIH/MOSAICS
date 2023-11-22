@@ -17,12 +17,94 @@ using namespace std;
 #include "../headers/vector_mpi.h"
 #include "../headers/common_routines_mpi.h"
 #include "../headers/common_routines.h"
+#include "../headers/file_naming.h"
 #include "../headers/binding_events.h"
 #include "../headers/grid_lt.h"
 #include "../headers/fit.h"
 #include "../headers/command_line_args_mpi.h"
 #include "../headers/array.h"
 #include "../headers/file_naming_mpi.h"     
+#include "../headers/performance.h"
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function checks if the grid point is an exterior point for the lipid                                 //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int check_exterior(int x,int y,int num_g_x,int num_g_y,iv2d &voro_frame,iv2d &voro_nan_frame)
+{
+    int i        = 0;      //standard variable used in loops
+    int j        = 0;      //standard variable used in loops    
+    int exterior = 0;      //is the grid point on the lipid surface or not
+    int upper_x  = x + 1;  //upper bound for x
+    int lower_x  = x - 1;  //lower bound for x
+    int upper_y  = y + 1;  //upper bound for y
+    int lower_y  = y - 1;  //lower bound for y
+
+    //check that boundaries do not exceed those of the grid
+    if(upper_x > num_g_x - 1)
+    {
+        upper_x = num_g_x - 1;
+    }
+    if(lower_x < 0)
+    {
+        lower_x = 0;
+    }
+    if(upper_y > num_g_y - 1)
+    {
+        upper_y = num_g_y - 1;
+    }
+    if(lower_y < 0)
+    {
+        lower_y = 0;
+    }
+
+    //check if the lattice point is on the surface
+    for(i=lower_x; i<=upper_x; i++) //loop over x
+    {
+        for(j=lower_y; j<=upper_y; j++) //loop over y
+        {
+            if(voro_frame[j][i] != voro_frame[y][x] || voro_nan_frame[j][i] == 1)
+            {
+                exterior = 1; 
+                goto end_ext;
+            }
+        }
+    }
+    end_ext:;
+
+    return exterior; 
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function gets the upper and lower range for the lattice point                                        //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void get_range(double cutoff,double cell_size,int *upper_x,int *lower_x,int *upper_y,int *lower_y,int x,int y,int num_g_x,int num_g_y)
+{
+    *upper_x = x + (int)ceil(cutoff/cell_size);
+    *lower_x = x - (int)ceil(cutoff/cell_size);
+    *upper_y = y + (int)ceil(cutoff/cell_size);
+    *lower_y = y - (int)ceil(cutoff/cell_size);
+
+    if(*upper_x > num_g_x)
+    {
+        *upper_x = num_g_x;
+    }
+    if(*lower_x < 0)
+    {
+        *lower_x = 0;
+    }
+    if(*upper_y > num_g_y)
+    {
+        *upper_y = num_g_y;
+    }
+    if(*lower_y < 0)
+    {
+        *lower_y = 0;
+    }
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                           //
@@ -33,16 +115,10 @@ int main(int argc, const char * argv[])
 {
     //Here we define some variables used throughout
     string in_file_name;                //Name of input file 
-    string base_file_name_i;            //Base file name of input binding events files
     string base_file_name_o;            //Base file name of output files
     string out_file_name;               //Name of the output files with the grid point selection and the big mask
     string prot_file_name;              //Name of the protein mask file
     string mask_file_name;              //Name of the mask file
-    FILE *first_shell_file;             //File for writing first shell binding events
-    FILE *second_shell_file;            //File for writing second shell binding events
-    FILE *third_shell_file;             //File for writing third shell binding events
-    FILE *fourth_shell_file;            //File for writing fourth shell binding events
-    FILE *fifth_shell_file;             //File for writing fifth shell binding events
     int i                 = 0;          //General variable used in loops
     int j                 = 0;          //General variable used in loops
     int k                 = 0;          //General variable used in loops
@@ -65,11 +141,33 @@ int main(int argc, const char * argv[])
     int range_y           = 0;          //The half width of y in the rectangular selection
     int invert            = 0;          //Invert rectangular selection (select everything outside rectangle)
     int b_mask            = 0;          //Did the user provide a mask?
+    int counter           = 0;          //How many times the "program run time" been displayed
+    int shell_index       = 0;          //used to loop over the shells
+    int test              = 0;          //print tessellation data with highlighted shells?
+    int dump              = 0;          //dump lipids on the last frame?
     double cell_size      = 1;          //Distance between grid points
     double dt             = 0;          //Time step used for converting frames to time. set equal to ef_dt
     double cutoff_1       = 1;          //Cutoff distance for first shell lipids
     double cutoff_n       = 1;          //Cutoff distance for other shells
+    clock_t t;                          //Keeps the time for testing performance
     sv1d cl_tags;                       //Holds a list of command line tags for the program
+  
+    //NOTES:
+    //This program uses two noise filters. One tells if the lipid is inside the shell and another tells if it is 
+    //inside the box. The halfwidth of the filters are chosen independent of each other. To enable this, we determine
+    //which half-width (range_shell vs range_box) is larger. Then a noise filter is created with this larger range. 
+    //The age of each entry in the filter is maintained as shown in the example below. We can then analye a subset of the filter alone for 
+    //the smaller filter using the check if(age[k][j] > delta_shell && age[k][j] <= (2*range_big + 1) - delta_shell).
+    //where delta_shell is range_big - range_shell and tells the difference in size of the shell filter and the largest filter. 
+    //Assignments are only made once the larger filter is full. Still the smaller filter is considered for making the assignments. 
+
+    // age[pos][lipid]
+    //          |4 5 1 2 3| 
+    //          |4 5 1 2 3|
+    // lipids   |4 5 1 2 3|
+    //          |4 5 1 2 3|
+    //          |4 5 1 2 3|
+    //             pos
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -79,6 +177,12 @@ int main(int argc, const char * argv[])
     MPI_Init(NULL, NULL);;
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);      //get the world size
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);      //get the process rank
+
+    //create object for logging performance data
+    Performance perf;
+
+    //take the initial time
+    t = clock();
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -99,14 +203,14 @@ int main(int argc, const char * argv[])
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     start_input_arguments_mpi(argc,argv,world_rank,program_description);
-    add_argument_mpi_s(argc,argv,"-d"     , base_file_name_i,           "Base filename for input binding events files"                          , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-d"     , in_file_name,               "Input binding events file (be)"                                        , world_rank, cl_tags, nullptr,      1);
     add_argument_mpi_s(argc,argv,"-prot"  , prot_file_name,             "Input file with protein mask (dat)"                                    , world_rank, cl_tags, nullptr,      1);
     add_argument_mpi_s(argc,argv,"-mask"  , mask_file_name,             "Input file with selection mask (overrides rectangular selection, dat)" , world_rank, cl_tags, &b_mask,      0);
-    add_argument_mpi_s(argc,argv,"-o"     , base_file_name_o,           "Base filename for output data files"                                   , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-o"     , base_file_name_o,           "Filename for deriving output data filenames (be)"                      , world_rank, cl_tags, nullptr,      1);
     add_argument_mpi_i(argc,argv,"-odf"   , &odf,                       "Data file format (0:matrix 1:vector)"                                  , world_rank, cl_tags, nullptr,      1);
     add_argument_mpi_i(argc,argv,"-stride", &stride,                    "Skip stride frames"                                                    , world_rank, cl_tags, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-b"     , &begin,                     "Start at this frame"                                                   , world_rank, cl_tags, &b_end,       0);
-    add_argument_mpi_i(argc,argv,"-e"     , &end,                       "End on this frame"                                                     , world_rank, cl_tags, nullptr,      0);
+    add_argument_mpi_i(argc,argv,"-b"     , &begin,                     "Start at this frame"                                                   , world_rank, cl_tags, nullptr,      0);
+    add_argument_mpi_i(argc,argv,"-e"     , &end,                       "End on this frame"                                                     , world_rank, cl_tags, &b_end,       0);
     add_argument_mpi_d(argc,argv,"-dist_1", &cutoff_1,                  "Cutoff distance for first shell lipids (nm)"                           , world_rank, cl_tags, nullptr,      1);
     add_argument_mpi_d(argc,argv,"-dist_n", &cutoff_n,                  "Cutoff distance for first outer shells (nm)"                           , world_rank, cl_tags, nullptr,      1);
     add_argument_mpi_i(argc,argv,"-n_shel", &range_shell,               "Noise filter half width for assigning lipids to the shells? (frames)"  , world_rank, cl_tags, nullptr,      0);
@@ -116,6 +220,8 @@ int main(int argc, const char * argv[])
     add_argument_mpi_i(argc,argv,"-rx"    , &range_x,                   "Rectangle half width x (grid points)  "                                , world_rank, cl_tags, nullptr,      1);
     add_argument_mpi_i(argc,argv,"-ry"    , &range_y,                   "Rectangle half width y (grid points)  "                                , world_rank, cl_tags, nullptr,      1);
     add_argument_mpi_i(argc,argv,"-invert", &invert,                    "Invert rectangular selection? (0:no 1:yes)"                            , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-test",   &test,                      "Write voronoi tessellations with shells highlighted? (0:no 1:yes)"     , world_rank, cl_tags, nullptr,      0);
+    add_argument_mpi_i(argc,argv,"-dump",   &dump,                      "Dump lipids from each shell on the last frame? (0:no 1:yes)"           , world_rank, cl_tags, nullptr,      0);
     conclude_input_arguments_mpi(argc,argv,world_rank,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -123,6 +229,8 @@ int main(int argc, const char * argv[])
     // Check file extensions                                                                                     //
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    check_extension_mpi(world_rank,"-d",in_file_name,".be");
+    check_extension_mpi(world_rank,"-o",base_file_name_o,".be");
     check_extension_mpi(world_rank,"-prot",prot_file_name,".dat");
     if(b_mask == 1)
     {
@@ -176,12 +284,11 @@ int main(int argc, const char * argv[])
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
-    // Read binding events file 0_0 to get the header info                                                       //
+    // Read binding events file to get the header info                                                           //
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     Binding_events events_ref;
-    in_file_name = base_file_name_i + "_" + to_string(0) + "_" + to_string(0) + ".be";
-    int result    = events_ref.get_binding_events(in_file_name);
+    int result = events_ref.get_info(in_file_name);
 
     if(result == 0)
     {
@@ -192,8 +299,9 @@ int main(int argc, const char * argv[])
         MPI_Finalize();
         return 0;
     }
-    else 
+    else
     {
+        result = events_ref.get_binding_events_xy(in_file_name,0,0);
         events_ref.get_binding_timeline();
     }
 
@@ -207,29 +315,30 @@ int main(int argc, const char * argv[])
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
-    // Distribute the workload across the cores                                                                  //
+    // Distribute the workload across the cores for getting tessellations                                        //
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    int my_num_g_x = count_workload(world_size,world_rank,events_ref.num_g_x);
+    int my_num_g = count_workload(world_size,world_rank,events_ref.num_g_x*events_ref.num_g_y);
 
-    //create array to hold each mpi processes num_g_x; Used for communication
-    int world_num_g_x_ary[world_size];
-    MPI_Allgather(&my_num_g_x, 1,MPI_INT,world_num_g_x_ary, 1, MPI_INT, MPI_COMM_WORLD );
+    //create array to hold each mpi processes my_num_g; Used for communication
+    int world_num_g_ary[world_size];
+    MPI_Allgather(&my_num_g, 1,MPI_INT,world_num_g_ary, 1, MPI_INT, MPI_COMM_WORLD );
 
-    //allocate memory for world_num_g_x and copy data from the array
-    iv1d world_num_g_x(world_size,0);
+    //allocate memory for world_num_g and copy data from the array
+    iv1d world_num_g(world_size,0);
     for(i=0; i<world_size; i++)
     {
-        world_num_g_x[i] = world_num_g_x_ary[i];
+        world_num_g[i] = world_num_g_ary[i];
     }
 
-    //print stats for distributing the num_g_x and distribute the num_g_x to each core
-    int my_xi = 0;
-    int my_xf = 0;
-    int world_xi[world_size];
-    int world_xf[world_size];
-    get_workload(&my_xi,&my_xf,world_rank,world_num_g_x,events_ref.num_g_x,world_xi,world_xf);
-    print_workload_stats(world_rank,world_xi,world_xf,world_num_g_x,world_size,"num_g_x","init","fin");
+    //print stats for distributing the grid and distribute the grid to each core
+    int my_gi = 0;
+    int my_gf = 0;
+    iv1d world_gi(world_size);
+    iv1d world_gf(world_size);
+    get_grid_points_alt(&my_gi,&my_gf,world_rank,world_size,world_num_g,events_ref.num_g_x,events_ref.num_g_y,world_gi,world_gf);
+    print_workload_stats_alt(world_rank,world_gi,world_gf,world_num_g,world_size);
+    MPI_Barrier(MPI_COMM_WORLD);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -243,110 +352,80 @@ int main(int argc, const char * argv[])
     // Allocate memory to hold residue names and numbers                                                         //
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    iv1d lipid_nr(0,0);
-    iv1d res_nr(0,0);
-    sv1d res_name(0);
+    iv1d lipid_nr(0,0);    //holds the lipid number (complete set) 
+    iv1d res_nr(0,0);      //holds the residue id (complete set)
+    sv1d res_name(0);      //holds the residue names (complete set)
+
+    //log time spent performing misc tasks
+    perf.log_time((clock() - t)/CLOCKS_PER_SEC,"Other");
+
+    //reset the clock
+    t = clock();
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
-    // Read binding events files until a complete list of lipids is found                                        //
+    // Read lipid info file or read binding events files until a complete list of lipids is found                //
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     if(world_rank == 0)
     {
-        events_ref.get_complete_set(base_file_name_i,lipid_nr,res_nr,res_name);
+        events_ref.get_complete_set(in_file_name,lipid_nr,res_nr,res_name);
     }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //                                                                                                           //
-    // Get lipid blobs                                                                                           //
-    //                                                                                                           //
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    events_ref.get_blobs(base_file_name_i,my_xi,my_xf,my_num_g_x,stride,ef_frames,world_rank);
 
     MPI_Barrier(MPI_COMM_WORLD);
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //                                                                                                           //
-    // Open binding events files and print header information                                                    //
-    //                                                                                                           //
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //create file names for binding events
-    string first_shell_file_name  = base_file_name_o + "_first_shell.be";
-    string second_shell_file_name = base_file_name_o + "_second_shell.be";
-    string third_shell_file_name  = base_file_name_o + "_third_shell.be";
-    string fourth_shell_file_name = base_file_name_o + "_fourth_shell.be";
-    string fifth_shell_file_name  = base_file_name_o + "_fifth_shell.be";
+    //log time spent getting a complete set
+    perf.log_time((clock() - t)/CLOCKS_PER_SEC,"Get Set");
 
-    if(world_rank == 0)
+    //reset the clock
+    t = clock();
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //                                                                                                           //
+    // Get lipid tessellations                                                                                   //
+    //                                                                                                           //
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    perf.log_time(events_ref.get_tessellations(in_file_name,my_gi,my_gf,my_num_g,stride,ef_frames,world_rank),"Get Tessellations");
+
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    //reset the clock
+    t = clock();
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //                                                                                                           //
+    // Create binding events objects and set the header information                                              //
+    //                                                                                                           //
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    vector <Binding_events> be_shells(5);     //store the binding events data for each shell
+
+    //set the header info
+    for(i=0; i<5; i++)
     {
-        //open file for writing 
-        first_shell_file  = fopen(first_shell_file_name.c_str(), "w");
-        second_shell_file = fopen(second_shell_file_name.c_str(), "w");
-        third_shell_file  = fopen(third_shell_file_name.c_str(), "w");
-        fourth_shell_file = fopen(fourth_shell_file_name.c_str(), "w");
-        fifth_shell_file  = fopen(fifth_shell_file_name.c_str(), "w");
+        be_shells[i].lipid_nr.resize(0,0);
+        be_shells[i].res_nr.resize(0,0);
+        be_shells[i].res_name.resize(0);
+        be_shells[i].bind_i.resize(0,0);
+        be_shells[i].bind_f.resize(0,0);
+        be_shells[i].dwell_t.resize(0,0);
 
-        //print header first shell
-        if(first_shell_file == NULL)
-        {
-            printf("failure opening %s. Make sure the file exists. \n",first_shell_file_name.c_str());
-        }
-        else
-        {
-            fprintf(first_shell_file," x_i %10d y_i %10d ef_dt(ps) %10f ef_frames %d num_lipids %10d num_g_x %10d num_g_y %10d APS(nm^2) %10f \n\n",-1,-1,events_ref.ef_dt,events_ref.ef_frames,events_ref.num_lipids,events_ref.num_g_x,events_ref.num_g_y,events_ref.APS);
-            fprintf(first_shell_file," %10s %10s %10s %15s %15s %20s \n","lipid","res_nr","res_name","bind_i(frame)","bind_f(frame)","dwell time(frames)");
-            fprintf(first_shell_file," %10s-%10s-%10s-%15s-%15s-%20s \n","----------","----------","----------","---------------","---------------","--------------------");
-        }
-
-        //print header second shell
-        if(second_shell_file == NULL)
-        {
-            printf("failure opening %s. Make sure the file exists. \n",second_shell_file_name.c_str());
-        }
-        else
-        {
-            fprintf(second_shell_file," x_i %10d y_i %10d ef_dt(ps) %10f ef_frames %d num_lipids %10d num_g_x %10d num_g_y %10d APS(nm^2) %10f \n\n",-1,-1,events_ref.ef_dt,events_ref.ef_frames,events_ref.num_lipids,events_ref.num_g_x,events_ref.num_g_y,events_ref.APS);
-            fprintf(second_shell_file," %10s %10s %10s %15s %15s %20s \n","lipid","res_nr","res_name","bind_i(frame)","bind_f(frame)","dwell time(frames)");
-            fprintf(second_shell_file," %10s-%10s-%10s-%15s-%15s-%20s \n","----------","----------","----------","---------------","---------------","--------------------");
-        }
-
-        //print header third shell
-        if(third_shell_file == NULL)
-        {
-            printf("failure opening %s. Make sure the file exists. \n",third_shell_file_name.c_str());
-        }
-        else
-        {
-            fprintf(third_shell_file," x_i %10d y_i %10d ef_dt(ps) %10f ef_frames %d num_lipids %10d num_g_x %10d num_g_y %10d APS(nm^2) %10f \n\n",-1,-1,events_ref.ef_dt,events_ref.ef_frames,events_ref.num_lipids,events_ref.num_g_x,events_ref.num_g_y,events_ref.APS);
-            fprintf(third_shell_file," %10s %10s %10s %15s %15s %20s \n","lipid","res_nr","res_name","bind_i(frame)","bind_f(frame)","dwell time(frames)");
-            fprintf(third_shell_file," %10s-%10s-%10s-%15s-%15s-%20s \n","----------","----------","----------","---------------","---------------","---------------");
-        }
-
-        //print header fourth shell
-        if(fourth_shell_file == NULL)
-        {
-            printf("failure opening %s. Make sure the file exists. \n",fourth_shell_file_name.c_str());
-        }
-        else
-        {
-            fprintf(fourth_shell_file," x_i %10d y_i %10d ef_dt(ps) %10f ef_frames %d num_lipids %10d num_g_x %10d num_g_y %10d APS(nm^2) %10f \n\n",-1,-1,events_ref.ef_dt,events_ref.ef_frames,events_ref.num_lipids,events_ref.num_g_x,events_ref.num_g_y,events_ref.APS);
-            fprintf(fourth_shell_file," %10s %10s %10s %15s %15s %20s \n","lipid","res_nr","res_name","bind_i(frame)","bind_f(frame)","dwell time(frames)");
-            fprintf(fourth_shell_file," %10s-%10s-%10s-%15s-%15s-%20s \n","----------","----------","----------","---------------","---------------","--------------------");
-        }
-
-        //print header fifth shell
-        if(fifth_shell_file == NULL)
-        {
-            printf("failure opening %s. Make sure the file exists. \n",fifth_shell_file_name.c_str());
-        }
-        else
-        {
-            fprintf(fifth_shell_file," x_i %10d y_i %10d ef_dt(ps) %10f ef_frames %d num_lipids %10d num_g_x %10d num_g_y %10d APS(nm^2) %10f \n\n",-1,-1,events_ref.ef_dt,events_ref.ef_frames,events_ref.num_lipids,events_ref.num_g_x,events_ref.num_g_y,events_ref.APS);
-            fprintf(fifth_shell_file," %10s %10s %10s %15s %15s %20s \n","lipid","res_nr","res_name","bind_i(frame)","bind_f(frame)","dwell time(frames)");
-            fprintf(fifth_shell_file," %10s-%10s-%10s-%15s-%15s-%20s \n","----------","----------","----------","---------------","---------------","--------------------");
-        }
+    	be_shells[i].x_i          = -1;                                                                                                        
+        be_shells[i].y_i          = -1;                                                                                                        
+        be_shells[i].ef_frames    = events_ref.ef_frames;                                                                                               
+        be_shells[i].num_lipids   = events_ref.num_lipids;                                                                                                
+        be_shells[i].num_g_x      = events_ref.num_g_x;                                                                                                   
+        be_shells[i].num_g_y      = events_ref.num_g_y;                                                                                                   
+        be_shells[i].ef_dt        = events_ref.ef_dt;                                                                                                     
+        be_shells[i].APS          = events_ref.APS;  
     }
+
+    //create file names for binding events
+    sv1d shell_file_names(5);                //store the filename for each shell's binding events file
+    shell_file_names[0] = add_tag(base_file_name_o, "_first_shell");
+    shell_file_names[1] = add_tag(base_file_name_o, "_second_shell");
+    shell_file_names[2] = add_tag(base_file_name_o, "_third_shell");
+    shell_file_names[3] = add_tag(base_file_name_o, "_fourth_shell");
+    shell_file_names[4] = add_tag(base_file_name_o, "_fifth_shell");
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -362,86 +441,57 @@ int main(int argc, const char * argv[])
 
     if(world_rank == 0)
     {
-        printf("Collecting grid data and assigning lipids to solvation shells. \n");
+        printf("\nCollecting grid data and assigning lipids to solvation shells. \n");
+        printf("-----------------------------------------------------------------------------------------------------------------------------------\n");
     }
 
-    for(i=0; i<events_ref.ef_frames; i+=stride)
+    for(i=0; i<events_ref.ef_frames; i+=stride) //loop over frames
     {
         if(i >= begin && i <= end) //check start and end frame condition
         {
-            if(world_rank == 0)
-            {
-                printf("Working on frame %d \n",i);
-            }
-
             int this_frame = (int)(i/stride);
 
-            events_ref.get_blobs_frame(this_frame,world_size,world_rank);
+            events_ref.get_voro_frame(this_frame,world_size,world_rank);
 
             if(world_rank == 0)
             {
+                iv1d current_shell(lipid_nr.size(),6);  //store the shell for each lipid
+
                 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 //                                                                                                           //
                 // Find first shell lipids                                                                                   //
                 //                                                                                                           //
                 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                iv1d first_shell(0,0);
-
                 for(j=0; j<events_ref.num_g_y; j++) //loop over y
                 {
                     for(k=0; k<events_ref.num_g_x; k++) //loop over x
                     {
-                        if(events_ref.blob_nan_frame[j][k] == 0) //check nan
+                        if(events_ref.voro_nan_frame[j][k] == 0) //check nan
                         {
-                            int present = 0;
-
-                            for(l=0; l<first_shell.size(); l++) //loop over first shell lipids
+                            if(current_shell[events_ref.voro_frame[j][k]] == 6) //not assigned yet
                             {
-                                if(events_ref.blob_frame[j][k] == first_shell[l])
+                                if(check_exterior(k,j,events_ref.num_g_x,events_ref.num_g_y,events_ref.voro_frame,events_ref.voro_nan_frame) == 1)
                                 {
-                                    present = 1;
-                                }
-                            }
+                                    int upper_x, lower_x, upper_y, lower_y; 
 
-                            if(present == 0)
-                            {
-                                int upper_x = k + (int)ceil(cutoff_1/cell_size);
-                                int lower_x = k - (int)ceil(cutoff_1/cell_size);
-                                int upper_y = j + (int)ceil(cutoff_1/cell_size);
-                                int lower_y = j - (int)ceil(cutoff_1/cell_size);
+                                    get_range(cutoff_1,cell_size,&upper_x,&lower_x,&upper_y,&lower_y,k,j,events_ref.num_g_x,events_ref.num_g_y); 
 
-                                if(upper_x > events_ref.num_g_x)
-                                {
-                                    upper_x = events_ref.num_g_x;
-                                }
-                                if(lower_x < 0)
-                                {
-                                    lower_x = 0;
-                                }
-                                if(upper_y > events_ref.num_g_y)
-                                {
-                                    upper_y = events_ref.num_g_y;
-                                }
-                                if(lower_y < 0)
-                                {
-                                    lower_y = 0;
-                                }
- 
-                                for(l=lower_x; l<upper_x; l++) //loop over x
-                                {
-                                    for(m=lower_y; m<upper_y; m++) //loop over y 
+                                    for(l=lower_x; l<upper_x; l++) //loop over x
                                     {
-                                        if(prot_mask.grid[l][m][2][0] == 1) //check if grid point belongs to protein
+                                        for(m=lower_y; m<upper_y; m++) //loop over y 
                                         {
-                                            double dx = (k - l)*cell_size;
-                                            double dy = (j - m)*cell_size;
-
-                                            double dist = sqrt(dx*dx + dy*dy);
-
-                                            if(dist < cutoff_1)
+                                            if(prot_mask.grid[l][m][2][0] == 1) //check if grid point belongs to protein
                                             {
-                                                first_shell.push_back(events_ref.blob_frame[j][k]);
-                                                goto end_loop;
+                                                double dx = (k - l)*cell_size;
+                                                double dy = (j - m)*cell_size;
+
+                                                double dist = sqrt(dx*dx + dy*dy);
+
+                                                if(dist < cutoff_1)
+                                                {
+                                                    current_shell[events_ref.voro_frame[j][k]] = 1;
+                                                    goto end_loop;
+                                                }
                                             }
                                         }
                                     }
@@ -454,78 +504,45 @@ int main(int argc, const char * argv[])
 
                 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 //                                                                                                           //
-                // Find second shell lipids                                                                                  //
+                // Find remaining shells                                                                                     //
                 //                                                                                                           //
                 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                iv1d second_shell(0,0);
-
-                for(j=0; j<events_ref.num_g_y; j++) //loop over y
-                {
-                    for(k=0; k<events_ref.num_g_x; k++) //loop over x
+                for(shell_index=2; shell_index<=5; shell_index++) //loop over the shells
+                {                
+                    int previous_shell = shell_index - 1; 
+ 
+                    for(j=0; j<events_ref.num_g_y; j++) //loop over y
                     {
-                        if(events_ref.blob_nan_frame[j][k] == 0) //check nan
+                        for(k=0; k<events_ref.num_g_x; k++) //loop over x
                         {
-                            int present = 0;
-
-                            for(l=0; l<first_shell.size(); l++) //loop over first shell lipids
+                            if(events_ref.voro_nan_frame[j][k] == 0) //check nan
                             {
-                                if(events_ref.blob_frame[j][k] == first_shell[l])
+                                if(current_shell[events_ref.voro_frame[j][k]] == 6) //not assigned yet
                                 {
-                                    present = 1;
-                                }
-                            }
-
-                            for(l=0; l<second_shell.size(); l++) //loop over second shell lipids
-                            {
-                                if(events_ref.blob_frame[j][k] == second_shell[l])
-                                {
-                                    present = 1;
-                                }
-                            }
-
-                            if(present == 0)
-                            {
-                                int upper_x = k + (int)ceil(cutoff_1/cell_size);
-                                int lower_x = k - (int)ceil(cutoff_1/cell_size);
-                                int upper_y = j + (int)ceil(cutoff_1/cell_size);
-                                int lower_y = j - (int)ceil(cutoff_1/cell_size);
-
-                                if(upper_x > events_ref.num_g_x)
-                                {
-                                    upper_x = events_ref.num_g_x;
-                                }
-                                if(lower_x < 0)
-                                {
-                                    lower_x = 0;
-                                }
-                                if(upper_y > events_ref.num_g_y)
-                                {
-                                    upper_y = events_ref.num_g_y;
-                                }
-                                if(lower_y < 0)
-                                {
-                                    lower_y = 0;
-                                }
-
-                                for(l=lower_x; l<upper_x; l++) //loop over x
-                                {
-                                    for(m=lower_y; m<upper_y; m++) //loop over y
+                                    if(check_exterior(k,j,events_ref.num_g_x,events_ref.num_g_y,events_ref.voro_frame,events_ref.voro_nan_frame) == 1)
                                     {
-                                        if(events_ref.blob_nan_frame[m][l] == 0) //grid point contains a lipid
+                                        int upper_x, lower_x, upper_y, lower_y;
+
+                                        get_range(cutoff_n,cell_size,&upper_x,&lower_x,&upper_y,&lower_y,k,j,events_ref.num_g_x,events_ref.num_g_y);
+
+                                        for(l=lower_x; l<upper_x; l++) //loop over x
                                         {
-                                            for(n=0; n<first_shell.size(); n++) //loop over first shell lipids
+                                            for(m=lower_y; m<upper_y; m++) //loop over y
                                             {
-                                                if(events_ref.blob_frame[m][l] == first_shell[n]) //check if grid point belongs to a first shell lipid
+                                                if(events_ref.voro_nan_frame[m][l] == 0) //grid point contains a lipid
                                                 {
-                                                    double dx = (k - l)*cell_size;
-                                                    double dy = (j - m)*cell_size;
-
-                                                    double dist = sqrt(dx*dx + dy*dy);
-
-                                                    if(dist < cutoff_n)
+                                                    if(current_shell[events_ref.voro_frame[m][l]] == previous_shell) //a previous shell lipid
                                                     {
-                                                        second_shell.push_back(events_ref.blob_frame[j][k]);
-                                                        goto end_loop_1;
+                                                        double dx = (k - l)*cell_size;
+                                                        double dy = (j - m)*cell_size;
+
+                                                        double dist = sqrt(dx*dx + dy*dy);
+
+                                                        if(dist < cutoff_n)
+                                                        {
+                                                            current_shell[events_ref.voro_frame[j][k]] = shell_index;
+                                                            goto end_loop_1;
+                                                        }
                                                     }
                                                 }
                                             }
@@ -533,455 +550,39 @@ int main(int argc, const char * argv[])
                                     }
                                 }
                             }
+                            end_loop_1:;
                         }
-                        end_loop_1:;
                     }
                 }
 
                 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 //                                                                                                           //
-                // Find third shell lipids                                                                                  //
-                //                                                                                                           //
-                ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                iv1d third_shell(0,0);
-
-                for(j=0; j<events_ref.num_g_y; j++) //loop over y
-                {
-                    for(k=0; k<events_ref.num_g_x; k++) //loop over x
-                    {
-                        if(events_ref.blob_nan_frame[j][k] == 0) //check nan
-                        {
-                            int present = 0;
-
-                            for(l=0; l<first_shell.size(); l++) //loop over first shell lipids
-                            {
-                                if(events_ref.blob_frame[j][k] == first_shell[l])
-                                {
-                                    present = 1;
-                                }
-                            }
-
-                            for(l=0; l<second_shell.size(); l++) //loop over second shell lipids
-                            {
-                                if(events_ref.blob_frame[j][k] == second_shell[l])
-                                {
-                                    present = 1;
-                                }
-                            }
-
-                            for(l=0; l<third_shell.size(); l++) //loop over third shell lipids
-                            {
-                                if(events_ref.blob_frame[j][k] == third_shell[l])
-                                {
-                                    present = 1;
-                                }
-                            }
-
-                            if(present == 0)
-                            {
-                                int upper_x = k + (int)ceil(cutoff_1/cell_size);
-                                int lower_x = k - (int)ceil(cutoff_1/cell_size);
-                                int upper_y = j + (int)ceil(cutoff_1/cell_size);
-                                int lower_y = j - (int)ceil(cutoff_1/cell_size);
-
-                                if(upper_x > events_ref.num_g_x)
-                                {
-                                    upper_x = events_ref.num_g_x;
-                                }
-                                if(lower_x < 0)
-                                {
-                                    lower_x = 0;
-                                }
-                                if(upper_y > events_ref.num_g_y)
-                                {
-                                    upper_y = events_ref.num_g_y;
-                                }
-                                if(lower_y < 0)
-                                {
-                                    lower_y = 0;
-                                }
-
-                                for(l=lower_x; l<upper_x; l++) //loop over x
-                                {
-                                    for(m=lower_y; m<upper_y; m++) //loop over y
-                                    {
-                                        if(events_ref.blob_nan_frame[m][l] == 0) //grid point contains a lipid
-                                        {
-                                            for(n=0; n<second_shell.size(); n++) //loop over second shell lipids
-                                            {
-                                                if(events_ref.blob_frame[m][l] == second_shell[n]) //check if grid point belongs to a second shell lipid
-                                                {
-                                                    double dx = (k - l)*cell_size;
-                                                    double dy = (j - m)*cell_size;
-
-                                                    double dist = sqrt(dx*dx + dy*dy);
-
-                                                    if(dist < cutoff_n)
-                                                    {
-                                                        third_shell.push_back(events_ref.blob_frame[j][k]);
-                                                        goto end_loop_2;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        end_loop_2:;
-                    }
-                }
-
-                ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                //                                                                                                           //
-                // Find fourth shell lipids                                                                                  //
-                //                                                                                                           //
-                ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                iv1d fourth_shell(0,0);
-
-                for(j=0; j<events_ref.num_g_y; j++) //loop over y
-                {
-                    for(k=0; k<events_ref.num_g_x; k++) //loop over x
-                    {
-                        if(events_ref.blob_nan_frame[j][k] == 0) //check nan
-                        {
-                            int present = 0;
-
-                            for(l=0; l<first_shell.size(); l++) //loop over first shell lipids
-                            {
-                                if(events_ref.blob_frame[j][k] == first_shell[l])
-                                {
-                                    present = 1;
-                                }
-                            }
-
-                            for(l=0; l<second_shell.size(); l++) //loop over second shell lipids
-                            {
-                                if(events_ref.blob_frame[j][k] == second_shell[l])
-                                {
-                                    present = 1;
-                                }
-                            }
-
-                            for(l=0; l<third_shell.size(); l++) //loop over third shell lipids
-                            {
-                                if(events_ref.blob_frame[j][k] == third_shell[l])
-                                {
-                                    present = 1;
-                                }
-                            }
-
-                            for(l=0; l<fourth_shell.size(); l++) //loop over fourth shell lipids
-                            {
-                                if(events_ref.blob_frame[j][k] == fourth_shell[l])
-                                {
-                                    present = 1;
-                                }
-                            }
-
-                            if(present == 0)
-                            {
-                                int upper_x = k + (int)ceil(cutoff_1/cell_size);
-                                int lower_x = k - (int)ceil(cutoff_1/cell_size);
-                                int upper_y = j + (int)ceil(cutoff_1/cell_size);
-                                int lower_y = j - (int)ceil(cutoff_1/cell_size);
-
-                                if(upper_x > events_ref.num_g_x)
-                                {
-                                    upper_x = events_ref.num_g_x;
-                                }
-                                if(lower_x < 0)
-                                {
-                                    lower_x = 0;
-                                }
-                                if(upper_y > events_ref.num_g_y)
-                                {
-                                    upper_y = events_ref.num_g_y;
-                                }
-                                if(lower_y < 0)
-                                {
-                                    lower_y = 0;
-                                }
-
-                                for(l=lower_x; l<upper_x; l++) //loop over x
-                                {
-                                    for(m=lower_y; m<upper_y; m++) //loop over y
-                                    {
-                                        if(events_ref.blob_nan_frame[m][l] == 0) //grid point contains a lipid
-                                        {
-                                            for(n=0; n<third_shell.size(); n++) //loop over third shell lipids
-                                            {
-                                                if(events_ref.blob_frame[m][l] == third_shell[n]) //check if grid point belongs to a third shell lipid
-                                                {
-                                                    double dx = (k - l)*cell_size;
-                                                    double dy = (j - m)*cell_size;
-
-                                                    double dist = sqrt(dx*dx + dy*dy);
-
-                                                    if(dist < cutoff_n)
-                                                    {
-                                                        fourth_shell.push_back(events_ref.blob_frame[j][k]);
-                                                        goto end_loop_3;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        end_loop_3:;
-                    }
-                }
-
-                ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                //                                                                                                           //
-                // Find fifth shell lipids                                                                                   //
-                //                                                                                                           //
-                ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                iv1d fifth_shell(0,0);
-
-                for(j=0; j<events_ref.num_g_y; j++) //loop over y
-                {
-                    for(k=0; k<events_ref.num_g_x; k++) //loop over x
-                    {
-                        if(events_ref.blob_nan_frame[j][k] == 0) //check nan
-                        {
-                            int present = 0;
-
-                            for(l=0; l<first_shell.size(); l++) //loop over first shell lipids
-                            {
-                                if(events_ref.blob_frame[j][k] == first_shell[l])
-                                {
-                                    present = 1;
-                                }
-                            }
-
-                            for(l=0; l<second_shell.size(); l++) //loop over second shell lipids
-                            {
-                                if(events_ref.blob_frame[j][k] == second_shell[l])
-                                {
-                                    present = 1;
-                                }
-                            }
-
-                            for(l=0; l<third_shell.size(); l++) //loop over third shell lipids
-                            {
-                                if(events_ref.blob_frame[j][k] == third_shell[l])
-                                {
-                                    present = 1;
-                                }
-                            }
-
-                            for(l=0; l<fourth_shell.size(); l++) //loop over fourth shell lipids
-                            {
-                                if(events_ref.blob_frame[j][k] == fourth_shell[l])
-                                {
-                                    present = 1;
-                                }
-                            }
-
-                            for(l=0; l<fifth_shell.size(); l++) //loop over fifth shell lipids
-                            {
-                                if(events_ref.blob_frame[j][k] == fifth_shell[l])
-                                {
-                                    present = 1;
-                                }
-                            }
-
-                            if(present == 0)
-                            {
-                                int upper_x = k + (int)ceil(cutoff_1/cell_size);
-                                int lower_x = k - (int)ceil(cutoff_1/cell_size);
-                                int upper_y = j + (int)ceil(cutoff_1/cell_size);
-                                int lower_y = j - (int)ceil(cutoff_1/cell_size);
-
-                                if(upper_x > events_ref.num_g_x)
-                                {
-                                    upper_x = events_ref.num_g_x;
-                                }
-                                if(lower_x < 0)
-                                {
-                                    lower_x = 0;
-                                }
-                                if(upper_y > events_ref.num_g_y)
-                                {
-                                    upper_y = events_ref.num_g_y;
-                                }
-                                if(lower_y < 0)
-                                {
-                                    lower_y = 0;
-                                }
-
-                                for(l=lower_x; l<upper_x; l++) //loop over x
-                                {
-                                    for(m=lower_y; m<upper_y; m++) //loop over y
-                                    {
-                                        if(events_ref.blob_nan_frame[m][l] == 0) //grid point contains a lipid
-                                        {
-                                            for(n=0; n<fourth_shell.size(); n++) //loop over fourth shell lipids
-                                            {
-                                                if(events_ref.blob_frame[m][l] == fourth_shell[n]) //check if grid point belongs to a fourth shell lipid
-                                                {
-                                                    double dx = (k - l)*cell_size;
-                                                    double dy = (j - m)*cell_size;
-
-                                                    double dist = sqrt(dx*dx + dy*dy);
-
-                                                    if(dist < cutoff_n)
-                                                    {
-                                                        fifth_shell.push_back(events_ref.blob_frame[j][k]);
-                                                        goto end_loop_4;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        end_loop_4:;
-                    }
-                }
-
-                ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                //                                                                                                           //
-                // Assign other lipids                                                                                       //
-                //                                                                                                           //
-                ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                iv1d other_shells(0,0);
-
-                for(j=0; j<events_ref.num_lipids; j++) //loop over lipids
-                {
-                    int present = 0;
-
-                    for(k=0; k<first_shell.size(); k++)
-                    {
-                        if(first_shell[k] == j)
-                        {
-                            present = 1;
-                        }
-                    }
-
-                    for(k=0; k<second_shell.size(); k++)
-                    {
-                        if(second_shell[k] == j)
-                        {
-                            present = 1;
-                        }
-                    }
-
-                    for(k=0; k<third_shell.size(); k++)
-                    {
-                        if(third_shell[k] == j)
-                        {
-                            present = 1;
-                        }
-                    }
-
-                    for(k=0; k<fourth_shell.size(); k++)
-                    {
-                        if(fourth_shell[k] == j)
-                        {
-                            present = 1;
-                        }
-                    }
-
-                    for(k=0; k<fifth_shell.size(); k++)
-                    {
-                        if(fifth_shell[k] == j)
-                        {
-                            present = 1;
-                        }
-                    }
-
-                    if(present == 0)
-                    {
-                        other_shells.push_back(j);
-                    }
-                }
-
-                ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                //                                                                                                           //
-                // Store assignments                                                                                         //
+                // Store assignments and tessellations and monitor the age of each entry in the window                       //
                 //                                                                                                           //
                 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 int pos = this_frame%(2*range_big + 1);
                 
-                for(j=0; j<events_ref.num_lipids; j++)
+                for(j=0; j<events_ref.num_lipids; j++) //loop over lipids
                 {
                     age[pos][j] = 0;
                     for(k=0; k<2*range_big + 1; k++) //loop over window
                     {
                         age[k][j] = age[k][j] + 1;
                     }
- 
-                    for(k=0; k<first_shell.size(); k++)
-                    {
-                        if(first_shell[k] == j)
-                        {
-                            shells[pos][j] = 1;
-                            goto end_loop_5;
-                        }
-                    }
 
-                    for(k=0; k<second_shell.size(); k++)
-                    {
-                        if(second_shell[k] == j)
-                        {
-                            shells[pos][j] = 2;
-                            goto end_loop_5;
-                        }
-                    }
-
-                    for(k=0; k<third_shell.size(); k++)
-                    {
-                        if(third_shell[k] == j)
-                        {
-                            shells[pos][j] = 3;
-                            goto end_loop_5;
-                        }
-                    }
-
-                    for(k=0; k<fourth_shell.size(); k++)
-                    {
-                        if(fourth_shell[k] == j)
-                        {
-                            shells[pos][j] = 4;
-                            goto end_loop_5;
-                        }
-                    }
-
-                    for(k=0; k<fifth_shell.size(); k++)
-                    {
-                        if(fifth_shell[k] == j)
-                        {
-                            shells[pos][j] = 5;
-                            goto end_loop_5;
-                        }
-                    }
-
-                    for(k=0; k<other_shells.size(); k++)
-                    {
-                        if(other_shells[k] == j)
-                        {
-                            shells[pos][j] = 6;
-                            goto end_loop_5;
-                        }
-                    }
-                    end_loop_5:;
+                    shells[pos][j] = current_shell[j];
                 }
-                grid_window[pos] = events_ref.blob_frame;
-                nan_window[pos]  = events_ref.blob_nan_frame; 
+                grid_window[pos] = events_ref.voro_frame;
+                nan_window[pos]  = events_ref.voro_nan_frame; 
 
                 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 //                                                                                                           //
                 // Find the center of each lipid                                                                             //
                 //                                                                                                           //
                 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                dv1d centers_x(events_ref.num_lipids,0.0);
-                dv1d centers_y(events_ref.num_lipids,0.0);
-                iv1d centers_count(events_ref.num_lipids,0);
+                dv1d centers_x(events_ref.num_lipids,0.0);        //holds the center x-component for each lipid
+                dv1d centers_y(events_ref.num_lipids,0.0);        //holds the center y-component for each lipid
+                iv1d centers_count(events_ref.num_lipids,0);      //holds the number of lattice points occupied by each lipid
 
                 for(j=0; j<events_ref.num_g_y; j++) //loop over y-dimension
                 {
@@ -989,9 +590,9 @@ int main(int argc, const char * argv[])
                     {
                         if(prot_mask.grid[k][j][2][0] == 0) //check that grid point is not the protein
                         {
-                            if(events_ref.blob_nan_frame[j][k] == 0)
+                            if(events_ref.voro_nan_frame[j][k] == 0) //not a NaN lattice point
                             {
-                                int lip_index = events_ref.blob_frame[j][k];
+                                int lip_index = events_ref.voro_frame[j][k];
 
                                 centers_x[lip_index]     = centers_x[lip_index] + (double)k*cell_size;
                                 centers_y[lip_index]     = centers_y[lip_index] + (double)j*cell_size;
@@ -1010,8 +611,8 @@ int main(int argc, const char * argv[])
                     }
                     else
                     {
-                        centers_x[j] = -999999;
-                        centers_y[j] = -999999;
+                        centers_x[j] = -999999.9;
+                        centers_y[j] = -999999.9;
                     }
                 }
 
@@ -1022,8 +623,8 @@ int main(int argc, const char * argv[])
                 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 for(j=0; j<events_ref.num_lipids; j++)
                 {
-                    int closest_x = (int)ceil(centers_x[j]/cell_size);
-                    int closest_y = (int)ceil(centers_y[j]/cell_size);
+                    int closest_x = (int)ceil(centers_x[j]/cell_size);   //find the lattice point in x that is closest to the lipid center
+                    int closest_y = (int)ceil(centers_y[j]/cell_size);   //find the lattice point in y that is closest to the lipid center
                     int rectangular_selection_pass = 0;
 
                     if(centers_x[j] == -999999.0 && centers_y[j] == -999999.0) //first frame may have no data (empty grid)
@@ -1051,28 +652,28 @@ int main(int argc, const char * argv[])
                 // Analyze assignments over window                                                                           //
                 //                                                                                                           //
                 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                iv1d final_assignment(events_ref.num_lipids,0);
-                iv1d final_assignment_box(events_ref.num_lipids,0);
+                iv1d final_assignment(events_ref.num_lipids,0);        //holds the final shell assignment for each lipid after noise filtering
+                iv1d final_assignment_box(events_ref.num_lipids,0);    //holds the final box assignment for each lipid after noise filtering
 
-                if(this_frame >= 2*range_big + 1)
+                if(this_frame >= 2*range_big + 1) //filter is full
                 {
-                    for(j=0; j<events_ref.num_lipids; j++)
+                    for(j=0; j<events_ref.num_lipids; j++) //loop over lipids
                     { 
-                        int delta_shell = range_big - range_shell; 
-                        int delta_box   = range_big - range_box; 
+                        int delta_shell = range_big - range_shell;   //tells difference in size between shell filter and largest filter
+                        int delta_box   = range_big - range_box;     //tells difference in size between box filter and largest filter
 
-                        int count_1   = 0;
-                        int count_2   = 0;
-                        int count_3   = 0;
-                        int count_4   = 0;
-                        int count_5   = 0;
-                        int count_6   = 0;
-                        int count_box = 0;
+                        int count_1   = 0;                           //how many timis is the lipid in shell 1 over the window
+                        int count_2   = 0;                           //how many timis is the lipid in shell 2 over the window
+                        int count_3   = 0;                           //how many timis is the lipid in shell 3 over the window
+                        int count_4   = 0;                           //how many timis is the lipid in shell 4 over the window
+                        int count_5   = 0;                           //how many timis is the lipid in shell 5 over the window
+                        int count_6   = 0;                           //how many timis is the lipid in shell other over the window
+                        int count_box = 0;                           //how many timis is the lipid in the box over the window
 
                         //count frequency of shells and being in box
-                        for(k=0; k<2*range_big + 1; k++)
+                        for(k=0; k<2*range_big + 1; k++) //loop over filter
                         {
-                            if(age[k][j] > delta_shell && age[k][j] <= (2*range_big + 1) - delta_shell)
+                            if(age[k][j] > delta_shell && age[k][j] <= (2*range_big + 1) - delta_shell)  //chooses frames to use in the shells filter (whether it is the bigger or smaller filter) 
                             {
                                 if(shells[k][j] == 1)
                                 {
@@ -1100,7 +701,7 @@ int main(int argc, const char * argv[])
                                 }
                             }
                             
-                            if(age[k][j] > delta_box && age[k][j] <= (2*range_big + 1) - delta_box)
+                            if(age[k][j] > delta_box && age[k][j] <= (2*range_big + 1) - delta_box) //chooses frames to use in the box filter (whether it is the bigger or smaller filter) 
                             {
                                 if(box_window[k][j] == 1)
                                 {
@@ -1109,34 +710,34 @@ int main(int argc, const char * argv[])
                             }
                         }
 
-                        final_assignment[j] = j;
+                        final_assignment[j] = j;  //set equal to the lipid number for lipids that are outside the box
 
-                        if((double)count_box/(double)(2*range_box + 1) > 0.5)
+                        if((double)count_box/(double)(2*range_box + 1) > 0.5) //lipid is inside the box
                         {
                             final_assignment_box[j] = 1;
                         }
 
-                        if(count_1 >= count_2 && count_1 >= count_3 && count_1 >= count_4 && count_1 >= count_5 && count_1 >= count_6 && final_assignment_box[j] == 1)
+                        if(count_1 >= count_2 && count_1 >= count_3 && count_1 >= count_4 && count_1 >= count_5 && count_1 >= count_6 && final_assignment_box[j] == 1) //inside the box and shell 1
                         {
                             final_assignment[j] = -1;
                         }
-                        else if(count_2 >= count_1 && count_2 >= count_3 && count_2 >= count_4 && count_2 >= count_5 && count_2 >= count_6 && final_assignment_box[j] == 1)
+                        else if(count_2 >= count_1 && count_2 >= count_3 && count_2 >= count_4 && count_2 >= count_5 && count_2 >= count_6 && final_assignment_box[j] == 1) //inside the box and shell 2
                         {
                             final_assignment[j] = -2;
                         }
-                        else if(count_3 >= count_1 && count_3 >= count_2 && count_3 >= count_4 && count_3 >= count_5 && count_3 >= count_6 && final_assignment_box[j] == 1)
+                        else if(count_3 >= count_1 && count_3 >= count_2 && count_3 >= count_4 && count_3 >= count_5 && count_3 >= count_6 && final_assignment_box[j] == 1) //inside the box and shell 3
                         {
                             final_assignment[j] = -3;
                         }
-                        else if(count_4 >= count_1 && count_4 >= count_2 && count_4 >= count_3 && count_4 >= count_5 && count_4 >= count_6 && final_assignment_box[j] == 1)
+                        else if(count_4 >= count_1 && count_4 >= count_2 && count_4 >= count_3 && count_4 >= count_5 && count_4 >= count_6 && final_assignment_box[j] == 1) //inside the box and shell 4
                         {
                             final_assignment[j] = -4;
                         }
-                        else if(count_5 >= count_1 && count_5 >= count_2 && count_5 >= count_3 && count_5 >= count_4 && count_5 >= count_6 && final_assignment_box[j] == 1)
+                        else if(count_5 >= count_1 && count_5 >= count_2 && count_5 >= count_3 && count_5 >= count_4 && count_5 >= count_6 && final_assignment_box[j] == 1) //inside the box and shell 5
                         {
                             final_assignment[j] = -5;
                         }
-                        else if(count_6 >= count_1 && count_6 >= count_2 && count_6 >= count_3 && count_6 >= count_4 && count_6 >= count_5 && final_assignment_box[j] == 1)
+                        else if(count_6 >= count_1 && count_6 >= count_2 && count_6 >= count_3 && count_6 >= count_4 && count_6 >= count_5 && final_assignment_box[j] == 1) //inside the box and shell 6 (other)
                         {
                             final_assignment[j] = -6;
                         }
@@ -1147,164 +748,112 @@ int main(int argc, const char * argv[])
                     // Check for tansitions between shells and record dwell times                                                //
                     //                                                                                                           //
                     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                    for(j=0; j<events_ref.num_lipids; j++) //loop over lipids
-                    {
-                        if(final_assignment[j] == -1) //first shell
+                    for(j=0; j<5; j++) //loop over shells
+	            { 
+                        for(k=0; k<events_ref.num_lipids; k++) //loop over lipids
                         {
-                            bound[j][0] = bound[j][0] + 1;
-                        }
-                        else
-                        {
-                            if(bound[j][0] > 0) //record dwell time
+                            if(final_assignment[k] == -1*(j+1) && (dump == 0 || i < end) ) //belong to shell j
                             {
-                                int dwell_t = bound[j][0]*stride; 
-                                int bind_f  = stride*(this_frame - range_big);
-                                int bind_i  = bind_f - dwell_t;
+                                bound[k][j] = bound[k][j] + 1;
+                            }
+                            else
+                            {
+                                if(bound[k][j] > 0) //record dwell time
+                                {
+                                    int dwell_t = bound[k][j]*stride;
+                                    int bind_f  = stride*(this_frame - range_big);
+                                    int bind_i  = bind_f - dwell_t;
+
+                                    //store binding events info
+                                    be_shells[j].lipid_nr.push_back(k);
+                                    be_shells[j].res_nr.push_back(res_nr[k]);
+                                    be_shells[j].res_name.push_back(res_name[k]);
+                                    be_shells[j].bind_i.push_back(bind_i);
+                                    be_shells[j].bind_f.push_back(bind_f);
+                                    be_shells[j].dwell_t.push_back(dwell_t);
+
+                                    bound[k][j] = 0;
+                                }
+                            }
+                        }
+		    }
+
+                    if(test == 1)
+                    {
+                        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                        //                                                                                                           //
+                        // Get the old grid and highlight shells selection                                                           //
+                        //                                                                                                           //
+                        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                        int prev_pos = (this_frame-range_big)%(2*range_big + 1);
+
+                        events_ref.voro_frame = grid_window[prev_pos]; 
+                        events_ref.voro_nan_frame  = nan_window[prev_pos];
  
-                                //report binding event
-                                fprintf(first_shell_file," %10d %10d %10s %15d %15d %20d \n",j,res_nr[j],res_name[j].c_str(),bind_i,bind_f,dwell_t);
-
-                                bound[j][0] = 0;   
-                            }
-                        }
-
-                        if(final_assignment[j] == -2) //second shell
+                        for(j=0; j<events_ref.num_g_x; j++) //loop over x
                         {
-                            bound[j][1] = bound[j][1] + 1;
-                        }
-                        else
-                        {
-                            if(bound[j][1] > 0) //record dwell time
+                            for(k=0; k<events_ref.num_g_y; k++) //loop over y
                             {
-                                int dwell_t = bound[j][1]*stride;
-                                int bind_f  = stride*(this_frame - range_big);
-                                int bind_i  = bind_f - dwell_t;
-
-                                //report binding event
-                                fprintf(second_shell_file," %10d %10d %10s %15d %15d %20d \n",j,res_nr[j],res_name[j].c_str(),bind_i,bind_f,dwell_t);
-
-                                bound[j][1] = 0;
+                                if(events_ref.voro_nan_frame[k][j] == 0) //not a NaN 
+                                {
+                                    events_ref.voro_frame[k][j] = final_assignment[events_ref.voro_frame[k][j]];
+                                }
                             }
                         }
 
-                        if(final_assignment[j] == -3) //third shell
+                        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                        //                                                                                                           //
+                        // Write grid to file                                                                                        //
+                        //                                                                                                           //
+                        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                        //set nan flags for the protein lattice points
+                        for(j=0; j<events_ref.num_g_y; j++) //loop over y-dimension
                         {
-                            bound[j][2] = bound[j][2] + 1;
-                        }
-                        else
-                        {
-                            if(bound[j][2] > 0) //record dwell time
+                            for(k=0; k<events_ref.num_g_x; k++) //loop over x-dimension
                             {
-                                int dwell_t = bound[j][2]*stride;
-                                int bind_f  = stride*(this_frame - range_big);
-                                int bind_i  = bind_f - dwell_t;
-
-                                //report binding event
-                                fprintf(third_shell_file," %10d %10d %10s %15d %15d %20d \n",j,res_nr[j],res_name[j].c_str(),bind_i,bind_f,dwell_t);
-
-                                bound[j][2] = 0;
+                                if(prot_mask.grid[k][j][2][0] == 1) //belongs to the protein
+                                {
+                                    events_ref.voro_nan_frame[j][k] = 1;
+                                }
                             }
                         }
 
-                        if(final_assignment[j] == -4) //fourth shell
-                        {
-                            bound[j][3] = bound[j][3] + 1;
-                        }
-                        else
-                        {
-                            if(bound[j][3] > 0) //record dwell time
-                            {
-                                int dwell_t = bound[j][3]*stride;
-                                int bind_f  = stride*(this_frame - range_big);
-                                int bind_i  = bind_f - dwell_t;
-
-                                //report binding event
-                                fprintf(fourth_shell_file," %10d %10d %10s %15d %15d %20d \n",j,res_nr[j],res_name[j].c_str(),bind_i,bind_f,dwell_t);
-
-                                bound[j][3] = 0;
-                            }
-                        }
-
-                        if(final_assignment[j] == -5) //fifth shell
-                        {
-                            bound[j][4] = bound[j][4] + 1;
-                        }
-                        else
-                        {
-                            if(bound[j][4] > 0) //record dwell time
-                            {
-                                int dwell_t = bound[j][4]*stride;
-                                int bind_f  = stride*(this_frame - range_big);
-                                int bind_i  = bind_f - dwell_t;
-
-                                //report binding event
-                                fprintf(fifth_shell_file," %10d %10d %10s %15d %15d %20d \n",j,res_nr[j],res_name[j].c_str(),bind_i,bind_f,dwell_t);
-
-                                bound[j][4] = 0;
-                            }
-                        }
+                        out_file_name = chop_and_add_tag(base_file_name_o, "_" + to_string(stride*(this_frame - range_big)) + ".dat");
+                        events_ref.write_voro_frame(out_file_name);
                     }
-
-                    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                    //                                                                                                           //
-                    // Get the old grid and highlight shells selection                                                           //
-                    //                                                                                                           //
-                    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                    int prev_pos = (this_frame-range_big)%(2*range_big + 1);
-
-                    events_ref.blob_frame = grid_window[prev_pos]; 
-                    events_ref.blob_nan_frame  = nan_window[prev_pos];
- 
-                    for(j=0; j<events_ref.num_g_x; j++) //loop over x
-                    {
-                        for(k=0; k<events_ref.num_g_y; k++) //loop over y
-                        {
-                            if(events_ref.blob_nan_frame[k][j] == 0)
-                            {
-                                events_ref.blob_frame[k][j] = final_assignment[events_ref.blob_frame[k][j]];
-                            }
-                        }
-                    }
-
-                    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                    //                                                                                                           //
-                    // Write grid to file                                                                                        //
-                    //                                                                                                           //
-                    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                    //set nan flags for the protein lattice points
-                    for(j=0; j<events_ref.num_g_y; j++) //loop over y-dimension
-                    {
-                        for(k=0; k<events_ref.num_g_x; k++) //loop over x-dimension
-                        {
-                            if(prot_mask.grid[k][j][2][0] == 1)
-                            {
-                                events_ref.blob_nan_frame[j][k] = 1;
-                            }
-                        }
-                    }
-
-                    out_file_name = base_file_name_o + "_" + to_string(stride*(this_frame - range_big)) + ".dat";
-                    events_ref.write_blobs_frame(out_file_name);
                 }
             }
 
-            MPI_Barrier(MPI_COMM_WORLD);            
+            MPI_Barrier(MPI_COMM_WORLD);  
+
+            //report time stats
+            int current_step = i - begin + 1;
+            int my_steps     = end - begin + 1;
+            ot_time_stats(t,&counter,current_step,my_steps,world_rank,"frames");
         }
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
-    // Close binding events files                                                                                //
+    // Write binding events to file                                                                              //
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     if(world_rank == 0)
     {
-        fclose(first_shell_file);
-        fclose(second_shell_file);
-        fclose(third_shell_file);
-        fclose(fourth_shell_file);
-        fclose(fifth_shell_file);
+        for(i=0; i<5; i++) //loop over the shells
+        {
+            be_shells[i].write_binding_events_bin(shell_file_names[i]);
+        }
     }
+
+    //log time spent in main loop
+    perf.log_time((clock() - t)/CLOCKS_PER_SEC,"Assign Shells");
+
+    //reset the clock
+    t = clock();
+
+    //print the performance stats
+    perf.print_stats();
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //

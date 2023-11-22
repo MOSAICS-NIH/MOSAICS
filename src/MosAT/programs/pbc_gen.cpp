@@ -37,6 +37,7 @@ using namespace std;
 #include "headers/parallel.h"                                //This has routines for different parallelization schemes
 #include "headers/force_serial.h"                            //This has routines used for forcing the code to run on a single mpi process
 #include "headers/param.h"                                   //This has routines used for reading complex parameter data
+#include "headers/grid_lt.h"                                 //This has routines used for reading in grid data
 #include "headers/voronoi.h"                                 //This has routines used for computing voronoi diagrams
 #include "headers/atom_select.h"                             //This has routines used for making atom selections using a selection text
 

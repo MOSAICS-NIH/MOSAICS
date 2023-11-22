@@ -143,6 +143,162 @@ void Trajectory::workload_grid()
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                           //
+// This function determines which grid points each core is responsible for.                                  //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int count_grid_points_alt(int world_size,int world_rank,int num_g_x,int num_g_y)
+{
+    int i         = 0;
+    int j         = 0;
+    int my_points = 0;
+    int count     = 0;
+
+    //count how many grid points each core is responsible for
+    for(i=0; i<num_g_x; i++)
+    {
+        for(j=0; j<num_g_y; j++)
+        {
+            if(count%world_size == world_rank)
+            {
+                my_points++;
+            }
+            count++;
+        }
+    }
+    return my_points;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function determines the upper and lower bounds for num_g_x for each core.                            //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void get_grid_points_alt(int *my_gi,int *my_gf,int world_rank,int world_size,vector <int> &world_num_g,int num_g_x,int num_g_y,vector <int> &world_gi,vector <int> &world_gf)
+{
+    int i     = 0;
+    int j     = 0;
+    int rank  = 0;
+    int count = 0;
+    int first = 1;
+    int world_gi_ary[world_size];
+    int world_gf_ary[world_size];
+    int grid_count = 0;
+
+    for(i=0; i<num_g_x; i++)
+    {
+        for(j=0; j<num_g_y; j++)
+        {
+            if(rank == world_rank)
+            {
+                if(first == 1)
+                {
+                    *my_gi = grid_count;
+                    first = 0;
+                }
+                *my_gf = grid_count;
+            }
+
+            count++;
+	    if(count == world_num_g[rank])
+            {
+                rank++;
+                count = 0;
+            }
+
+	    grid_count++;
+        }
+    }
+
+    //collect xi and xf
+    MPI_Allgather(my_gi, 1,MPI_INT,world_gi_ary, 1, MPI_INT, MPI_COMM_WORLD );
+    MPI_Allgather(my_gf, 1,MPI_INT,world_gf_ary, 1, MPI_INT, MPI_COMM_WORLD );
+
+    //copy world_xi/xf arrays to the vectors
+    for(i=0; i<world_size; i++)
+    {
+        world_gi[i] = world_gi_ary[i];
+        world_gf[i] = world_gf_ary[i];
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function prints statistics for each core describing how the grid was split between them.             //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void print_workload_stats_alt(int world_rank,vector <int> &world_gi,vector <int> &world_gf,vector <int> &world_num_g,int world_size)
+{
+    int i =0;
+
+    if(world_rank == 0)
+    {
+        printf("Distributing the workload (the grid) accross %d mpi processes. \n",world_size);
+        printf(" %4s %8s %8s %8s \n","rank","num_g","gi","gf");
+        printf("-%4s-%8s-%8s-%8s \n","--------","--------","--------","--------");
+        for(i=0; i<world_size; i++)
+        {
+            printf(" %4d %8d %8d %8d \n",i,world_num_g[i],world_gi[i],world_gf[i]);
+        }
+        printf("\n");
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function breaks up the workload by grid points (num_g_x and num_g_y)                                 //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void Trajectory::parallelize_by_grid_alt(int num_g_x,int num_g_y)
+{
+    int i = 0;
+
+    //compute how many grid points each frame is responsible for
+    my_num_g = count_grid_points_alt(world_size,world_rank,num_g_x,num_g_y);
+
+    //create array to hold each mpi processes my_num_g_x; Used for communication
+    int world_num_g_ary[world_size];
+    MPI_Allgather(&my_num_g, 1,MPI_INT,world_num_g_ary, 1, MPI_INT, MPI_COMM_WORLD );
+
+    //allocate memory for world_num_g_x and copy data from the array
+    world_num_g.resize(world_size,0);
+    for(i=0; i<world_size; i++)
+    {
+        world_num_g[i] = world_num_g_ary[i];
+    }
+
+    //allocate memory for world_xi and world_xf
+    world_gi.resize(world_size,0);
+    world_gf.resize(world_size,0);
+
+    //compute each mpi processes start and end grid point
+    get_grid_points_alt(&my_gi,&my_gf,world_rank,world_size,world_num_g,num_g_x,num_g_y,world_gi,world_gf);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function prints the workload distribution for grid points                                            //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void Trajectory::workload_grid_alt()
+{
+    print_workload_stats_alt(world_rank,world_gi,world_gf,world_num_g,world_size);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
 // This function determines how many lipids each core is responsible for                                     //
 //                                                                                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////

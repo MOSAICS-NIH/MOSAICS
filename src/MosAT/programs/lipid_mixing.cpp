@@ -65,66 +65,87 @@ void check_proj(Trajectory &traj,system_variables &s,program_variables &p)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                           //
-// This function prints to file binding events as they are encountered.                                      //
+// This function stores the binding events in memory                                                         //
 //                                                                                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void report_binding_events(Trajectory &traj,system_variables &s,program_variables &p,int time,int lip_nr_1,int res_nr_1,int lip_count,string res_name_lip,int res_nr_lip)
+void store_binding_events(Trajectory &traj,system_variables &s,program_variables &p,int time,int lip_nr_1,int res_nr_1,
+                           int lip_count,string res_name_lip,int res_nr_lip,iv2d &be_lipid_nr,iv2d &be_res_id,
+                           sv2d &be_lip_name,iv2d &be_bind_i,iv2d &be_bind_f,iv2d &be_dwell_t,iv1d &be_header_lipid_nr,
+                           iv1d &be_header_res_id)
 {
     if(p.b_report_binding_events == 1)
     {
         int bind_i    = traj.current_frame - time;      //first frame binding was noted 
         int bind_f    = traj.current_frame - 1;         //last time binding was noted
-        int num_lines = 0;                              //num lines in binding events file
 
-        //create file name 
-        string tag = "_" + to_string(lip_nr_1) + ".be";
-        string binding_events_file_name = chop_and_add_tag(p.mix_file_name,tag);
+        be_lipid_nr[lip_nr_1].push_back(lip_count);
+        be_res_id  [lip_nr_1].push_back(res_nr_lip);
+        be_lip_name[lip_nr_1].push_back(res_name_lip);
+        be_bind_i  [lip_nr_1].push_back(bind_i);
+        be_bind_f  [lip_nr_1].push_back(bind_f);
+        be_dwell_t [lip_nr_1].push_back(time);
 
-        //check if header information has been printed
-        FILE *binding_events_file = fopen(binding_events_file_name.c_str(), "r");
-        if(binding_events_file == NULL)
+        //store header info
+        be_header_lipid_nr[lip_nr_1] = lip_nr_1;
+        be_header_res_id  [lip_nr_1] = res_nr_1;
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function prints to file binding events as they are encountered.                                      //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void report_binding_events(Trajectory &traj,system_variables &s,program_variables &p,iv2d &be_lipid_nr,iv2d &be_res_id,
+                           sv2d &be_lip_name,iv2d &be_bind_i,iv2d &be_bind_f,iv2d &be_dwell_t,iv1d &be_header_lipid_nr,
+                           iv1d &be_header_res_id)
+{
+    if(p.b_report_binding_events == 1)
+    {
+        int i = 0;         //standard variable used in loops
+        int j = 0;         //standard variable used in loops
+
+        ofstream be_file;  //file used to write out binding events data
+
+        for(i=0; i<p.num_lipids_1; i++) //loop over files
         {
-            //file does not yet exits. print header
-        }
-        else //file exists but could be empty. count lines
-        {
-            int c = 0;
-            do
+            string tag = "_" + to_string(i) + ".be";
+            string binding_events_file_name = chop_and_add_tag(p.mix_file_name,tag);
+            be_file.open(binding_events_file_name, ios::out | ios::binary);
+
+            //write header information
+            int    this_x_i            = be_header_lipid_nr[i];
+            int    this_y_i            = be_header_res_id  [i];
+            double this_delta_t        = p.ef_dt;
+            int    this_num_ef_frames  = traj.get_ef_frames();
+            int    this_num_lipids     = p.num_lipids_2;
+            int    this_num_g_x        = p.num_lipids_1;
+            int    this_num_g_y        = -1;
+            double this_APS            = p.APS;
+            int    this_num_events     = be_dwell_t[i].size();
+
+            be_file.write(reinterpret_cast<const char *>(&this_delta_t),        sizeof(double)); //ef_dt
+            be_file.write(reinterpret_cast<const char *>(&this_num_ef_frames),  sizeof(int));    //ef_frames
+            be_file.write(reinterpret_cast<const char *>(&this_num_lipids),     sizeof(int));    //num_lipids
+            be_file.write(reinterpret_cast<const char *>(&this_num_g_x),        sizeof(int));    //number of grid points in x
+            be_file.write(reinterpret_cast<const char *>(&this_num_g_y),        sizeof(int));    //number of grid points in y
+            be_file.write(reinterpret_cast<const char *>(&this_APS),            sizeof(double)); //APS
+            be_file.write(reinterpret_cast<const char *>(&this_x_i),            sizeof(int));    //grid points index in x
+            be_file.write(reinterpret_cast<const char *>(&this_y_i),            sizeof(int));    //grid points index in y
+            be_file.write(reinterpret_cast<const char *>(&this_num_events),     sizeof(int));    //number of binding events
+            for(j=0; j<this_num_events; j++) //loop over binding events
             {
-              c = fgetc(binding_events_file);
-              if (c == '\n')
-              {
-                  num_lines++;
-                  break;       //header must exist. exit loop
-              }
-            }
-            while (c != EOF);
+                size_t this_lip_name_size = be_lip_name[i][j].size();
 
-            //close file
-            fclose(binding_events_file);
-        }
-
-        //open file for writing (append)
-        binding_events_file = fopen(binding_events_file_name.c_str(), "a");
-        if(binding_events_file == NULL)
-        {
-            printf("failure opening %s. Make sure the file exists. \n",binding_events_file_name.c_str());
-        }
-        else //file exists or was created succesfully
-        {
-            //print header information
-            if(num_lines == 0)
-            {
-                fprintf(binding_events_file," lip_nr %10d res_nr %10d ef_dt(ps) %10f ef_frames %d num_lipids_2 %10d num_lip_1 %10d junk %10d APS(nm^2) %10f \n\n",lip_nr_1,res_nr_1,p.ef_dt,traj.get_ef_frames(),p.num_lipids_2,p.num_lipids_1,-1,p.APS);
-                fprintf(binding_events_file," %10s %10s %10s %15s %15s %20s \n","lipid","res_nr","res_name","bind_i(frame)","bind_f(frame)","dwell time(frames)");
-                fprintf(binding_events_file," %10s-%10s-%10s-%15s-%15s-%20s \n","----------","----------","----------","---------------","---------------","--------------------");
-            }
-
-            //report binding events
-            fprintf(binding_events_file," %10d %10d %10s %15d %15d %20d \n",lip_count,res_nr_lip,res_name_lip.c_str(),bind_i,bind_f,time);
-
-            //close file
-            fclose(binding_events_file);
+                be_file.write(reinterpret_cast<const char *>(&be_lipid_nr[i][j]),        sizeof(int));                //lipid number
+		be_file.write(reinterpret_cast<const char *>(&be_res_id[i][j]),          sizeof(int));                //residue id
+		be_file.write(reinterpret_cast<const char *>(&this_lip_name_size),    sizeof(this_lip_name_size)); //size of residue name
+		be_file.write(reinterpret_cast<const char *>(be_lip_name[i][j].c_str()), this_lip_name_size);         //lipid number
+		be_file.write(reinterpret_cast<const char *>(&be_bind_i[i][j]),          sizeof(int));                //bi
+		be_file.write(reinterpret_cast<const char *>(&be_bind_f[i][j]),          sizeof(int));                //bf
+		be_file.write(reinterpret_cast<const char *>(&be_dwell_t[i][j]),         sizeof(int));                //time
+	    }
+            be_file.close();
         }
     }
 }
@@ -136,7 +157,9 @@ void report_binding_events(Trajectory &traj,system_variables &s,program_variable
 //                                                                                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void update_neighbors(Trajectory &traj,system_variables &s,program_variables &p,Param &param_1,Param &param_2,vector <vector <double>> &neighbors,
-                      vector <double> &percent_visited,vector <vector <int>> &bound,int dwell_times[],Grid &nbrs,iv3d &contacts)
+                      vector <double> &percent_visited,vector <vector <int>> &bound,int dwell_times[],Grid &nbrs,iv3d &contacts,
+                      iv2d &be_lipid_nr,iv2d &be_res_id,sv2d &be_lip_name,iv2d &be_bind_i,iv2d &be_bind_f,iv2d &be_dwell_t,
+                      iv1d &be_header_lipid_nr,iv1d &be_header_res_id)
 
 {
     //Notes: Here the strategy is to loop over the target leaflet atoms and look for lipid types of the correct type. Once a target lipid is
@@ -290,7 +313,7 @@ void update_neighbors(Trajectory &traj,system_variables &s,program_variables &p,
                                    dwell_times[time-1] = dwell_times[time-1] + 1;
 
                                    //report binding event for checking
-                                   report_binding_events(traj,s,p,time,lip_count_1,traj.res_nr[min],m,res_name_lip[m],res_nr_lip[m]);
+                                   store_binding_events(traj,s,p,time,lip_count_1,traj.res_nr[min],m,res_name_lip[m],res_nr_lip[m],be_lipid_nr,be_res_id,be_lip_name,be_bind_i,be_bind_f,be_dwell_t,be_header_lipid_nr,be_header_res_id);
                                 }
                                 bound[lip_count_1][m] = 0;
                             }
@@ -677,6 +700,18 @@ int main(int argc, const char * argv[])
         nbrs.print_dim();
     }
 
+    //allocate memory to store binding events
+    iv2d be_lipid_nr(p.num_lipids_1, iv1d(0,0));        //holds the lipid number for each lipid_1 and each binding event
+    iv2d be_res_id  (p.num_lipids_1, iv1d(0,0));        //holds the residue id for each lipid_1 and each binding event
+    sv2d be_lip_name(p.num_lipids_1, sv1d(0));          //holds the lipid residue name for each lipid_1 and each binding event
+    iv2d be_bind_i  (p.num_lipids_1, iv1d(0,0));        //holds the b_i for each lipid_1 and each binding event
+    iv2d be_bind_f  (p.num_lipids_1, iv1d(0,0));        //holds the b_f for each lipid_1 and each binding event
+    iv2d be_dwell_t (p.num_lipids_1, iv1d(0,0));        //holds the dwell time for each lipid_1 and each binding event
+
+    //allocate memory for header info 
+    iv1d be_header_lipid_nr(p.num_lipids_1,0);
+    iv1d be_header_res_id  (p.num_lipids_1,0);
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     //print info about the worlk load distribution
@@ -693,7 +728,7 @@ int main(int argc, const char * argv[])
 
         traj.do_fit();
 
-        update_neighbors(traj,s,p,param_1,param_2,neighbors,percent_visited,bound,dwell_times,nbrs,contacts);
+        update_neighbors(traj,s,p,param_1,param_2,neighbors,percent_visited,bound,dwell_times,nbrs,contacts,be_lipid_nr,be_res_id,be_lip_name,be_bind_i,be_bind_f,be_dwell_t,be_header_lipid_nr,be_header_res_id);
 
         time_stats(s.t,&s.counter,traj.current_frame,traj.get_num_frames(),s.world_rank);
     }
@@ -703,6 +738,9 @@ int main(int argc, const char * argv[])
 
     //collect num neighbors and write grid to file. Also collect dwell times and write distribution to file. 
     perf.log_time(finalize_analyisis(traj,s,p,neighbors,percent_visited,bound,dwell_times,nbrs),"Fin Ana");
+
+    //write binding events files
+    report_binding_events(traj,s,p,be_lipid_nr,be_res_id,be_lip_name,be_bind_i,be_bind_f,be_dwell_t,be_header_lipid_nr,be_header_res_id);
 
     //print the performance stats
     perf.print_stats();

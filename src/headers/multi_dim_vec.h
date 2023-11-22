@@ -18,7 +18,7 @@ typedef vector<sv2d>    sv3d;
 typedef vector<sv3d>    sv4d;
 
 //define up to 4-dimensional vector of chars
-typedef vector<char>  cv1d;
+typedef vector<char>    cv1d;
 typedef vector<cv1d>    cv2d;
 typedef vector<cv2d>    cv3d;
 typedef vector<cv3d>    cv4d;
@@ -29,3 +29,14 @@ typedef vector<Fv1d>    Fv2d;
 typedef vector<Fv2d>    Fv3d;
 typedef vector<Fv3d>    Fv4d;
 
+//define up to a 4-dimensional vector of int64_t
+typedef vector<int64_t> i64v1d;
+typedef vector<i64v1d>  i64v2d;
+typedef vector<i64v2d>  i64v3d;
+typedef vector<i64v3d>  i64v4d;
+
+//define up to 4-dimensional vector of long ints
+typedef vector<long>  lv1d;
+typedef vector<lv1d>  lv2d;
+typedef vector<lv2d>  lv3d;
+typedef vector<lv3d>  lv4d;

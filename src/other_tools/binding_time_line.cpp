@@ -18,6 +18,7 @@ using namespace std;
 #include "../headers/switch.h"
 #include "../headers/common_routines.h"
 #include "../headers/common_routines_mpi.h"
+#include "../headers/file_naming.h"
 #include "../headers/binding_events.h"
 #include "../headers/command_line_args_mpi.h"
 #include "../headers/array.h"
@@ -38,6 +39,11 @@ int main(int argc, const char * argv[])
     int j          = 0;               //General variable used in loops
     int world_size = 0;               //Size of the mpi world
     int world_rank = 0;               //Rank in the mpi world
+    int b_x        = 0;               //Was a grid point in x-direction specified
+    int b_y        = 0;               //Was a grid point in y-direction specified
+    int x          = 0;               //Grid point in x-direction
+    int y          = 0;               //Grid point in y-direction
+    int result     = 0;               //Tells if the binding events file was read sucressfully
     sv1d cl_tags;                     //Holds a list of command line tags for the program
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -74,6 +80,8 @@ int main(int argc, const char * argv[])
     start_input_arguments_mpi(argc,argv,world_rank,program_description);
     add_argument_mpi_s(argc,argv,"-d"        , binding_events_file_name,  "Binding events file (be)"                              , world_rank, cl_tags, nullptr,      1);
     add_argument_mpi_s(argc,argv,"-o"        , out_file_name,             "Output data file with binding events timeline (dat)"   , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-x"        , &x,                        "Grid point in x-direction"                             , world_rank, cl_tags, &b_x,         0);
+    add_argument_mpi_i(argc,argv,"-y"        , &y,                        "Grid point in y-direction"                             , world_rank, cl_tags, &b_y,         0);
     conclude_input_arguments_mpi(argc,argv,world_rank,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -86,12 +94,44 @@ int main(int argc, const char * argv[])
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
+    // Check if a lattice point was specified                                                                    //
+    //                                                                                                           //
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    if(world_rank == 0)
+    {
+        if(b_x == 1 && b_y == 0)
+        {
+            printf("A lattice point was specified for the x-direction but not y. Please include the y-direction if analyzing binding events for a lattice point. \n");
+            MPI_Finalize();
+            exit(EXIT_SUCCESS);
+        }
+        else if(b_x == 0 && b_y == 1)
+        {
+            printf("A lattice point was specified for the y-direction but not x. Please include the x-direction if analyzing binding events for a lattice point. \n");
+            MPI_Finalize();
+            exit(EXIT_SUCCESS);
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //                                                                                                           //
     // Read in binding events                                                                                    //
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     Binding_events events;
 
-    int result = events.get_binding_events(binding_events_file_name);
+    if(b_x == 1 && b_y == 1)
+    {
+        result = events.get_info(binding_events_file_name);
+        if(result == 1)
+        {
+            result = events.get_binding_events_xy(binding_events_file_name,x,y);
+        }
+    }
+    else 
+    { 
+        result = events.get_binding_events_bin(binding_events_file_name);
+    }
 
     if(result == 1) //binding events file exists
     {
@@ -100,7 +140,8 @@ int main(int argc, const char * argv[])
         // Make bound_time_line_ij                                                                                   //
         //                                                                                                           //
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        events.get_binding_timeline();
+
+    	    events.get_binding_timeline();
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //                                                                                                           //
