@@ -524,22 +524,22 @@ int main(int argc, const char * argv[])
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     if(world_rank == 0)
     {
-	out_file_name = add_tag(base_file_name_o,"_num_events.dat");
+	out_file_name = add_tag(base_file_name_o,"_num_events");
         write_grid_to_file(events_ref.num_g_x,events_ref.num_g_y,nan,out_file_name,num_events_global);
 
-        out_file_name = add_tag(base_file_name_o,"_dwell_time.dat");
+        out_file_name = add_tag(base_file_name_o,"_dwell_time");
 	write_grid_to_file(events_ref.num_g_x,events_ref.num_g_y,nan,out_file_name,dwell_time_global);
 
-        out_file_name = add_tag(base_file_name_o,"_stdev.dat");
+        out_file_name = add_tag(base_file_name_o,"_stdev");
         write_grid_to_file(events_ref.num_g_x,events_ref.num_g_y,nan,out_file_name,stdev_global);
 
-        out_file_name = add_tag(base_file_name_o,"_r2.dat");
+        out_file_name = add_tag(base_file_name_o,"_r2");
         write_grid_to_file(events_ref.num_g_x,events_ref.num_g_y,nan,out_file_name,r2_global);
 
-        out_file_name = add_tag(base_file_name_o,"_koff.dat");
+        out_file_name = add_tag(base_file_name_o,"_koff");
         write_grid_to_file(events_ref.num_g_x,events_ref.num_g_y,nan,out_file_name,koff_global);
 
-        out_file_name = add_tag(base_file_name_o,"_largest_dwell_time.dat");
+        out_file_name = add_tag(base_file_name_o,"_largest_dwell_time");
         write_grid_to_file(events_ref.num_g_x,events_ref.num_g_y,nan,out_file_name,largest_global);
     }
 

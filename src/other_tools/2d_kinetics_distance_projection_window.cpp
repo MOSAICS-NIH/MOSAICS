@@ -584,10 +584,10 @@ int main(int argc, const char * argv[])
     if(world_rank == 0)
     {
         //create name for output files
-        string dwell_time_file_name = add_tag(base_file_name_o, "_dwell_time.dat");
-        string r2_file_name         = add_tag(base_file_name_o, "_r2.dat");
-        string koff_file_name       = add_tag(base_file_name_o, "_koff.dat");
-        string num_events_file_name = add_tag(base_file_name_o, "_num_events.dat");
+        string dwell_time_file_name = add_tag(base_file_name_o, "_dwell_time");
+        string r2_file_name         = add_tag(base_file_name_o, "_r2");
+        string koff_file_name       = add_tag(base_file_name_o, "_koff");
+        string num_events_file_name = add_tag(base_file_name_o, "_num_events");
 
         //open output files
         FILE *dwell_time_file = fopen(dwell_time_file_name.c_str(), "w");
