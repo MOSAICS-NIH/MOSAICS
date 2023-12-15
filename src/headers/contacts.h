@@ -141,7 +141,7 @@ void Contacts::merge_profiles()
 
     if(world_rank == 0)
     {
-        printf("\nanalyzing contacts file %s \n\n",cont_file_name.c_str());
+        printf("\nAnalyzing contacts file %s \n\n",cont_file_name.c_str());
     }
 
     //analyze contacts file to get the position of each frame

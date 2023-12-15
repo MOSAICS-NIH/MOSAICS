@@ -513,7 +513,7 @@ int main(int argc, const char * argv[])
                         }
                         else
                         {
-                            printf("failed to open binding events file %s \n",in_file_name);
+                            printf("failed to open binding events file %s \n",in_file_name.c_str());
                         }
 
                         mask_count++;

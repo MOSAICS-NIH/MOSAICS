@@ -33,7 +33,9 @@ foreach(CMD
     b_stamp_grid
     bilayer_z
     check_broken_mols
-    mosat
+    contact_kinetics
+    contact_rmsf
+    h_bond_kinetics
     interdigitation
     inter_leaflet_contacts
     inter_leaflet_contacts_3d
@@ -49,12 +51,14 @@ foreach(CMD
     lipid_msd
     lipid_orientation
     lipid_orientation_3d
+    lipid_protein_min_dist
     lipid_salt_bridges
     mean_coords
     mean_lipid_coords
     mean_lipid_coords_3d
     mean_protein_coords
     membrane_thickness
+    mosat
     nearest_neighbors
     nearest_neighbors_3d
     p2

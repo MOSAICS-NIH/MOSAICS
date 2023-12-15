@@ -557,5 +557,32 @@ void broadcast_lv3d(int world_size,int world_rank,lv3d &my_vec)
     }
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function collects an integer and sums it                                                             //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void collect_and_sum_int(int world_size,int world_rank,int *my_val)
+{
+    int i = 0;
+    int j = 0;
 
+    if(world_size > 0)
+    {
+        for(i=1; i<world_size; i++)
+        {
+            if(world_rank == 0)
+            {
+                int rcv_val = 0;
+                MPI_Recv(&rcv_val, 1, MPI_INT, i, 13, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+                *my_val = *my_val + rcv_val;
+            }
+            else if(world_rank == i)
+            {
+                MPI_Send(my_val, 1, MPI_INT, 0, 13, MPI_COMM_WORLD);
+            }
+        }
+    }
+}
 
