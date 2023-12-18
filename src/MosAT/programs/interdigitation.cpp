@@ -38,10 +38,52 @@ using namespace std;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                           //
+// This function determines the rank of the atoms in the opposing leaflet.                                   //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void get_ranks(Trajectory &traj,system_variables &s,program_variables &p,Param &param_2,dv1d &lipid_ranks)
+{
+    int i = 0;                               //loop variable
+    int j = 0;                               //loop variable
+    int k = 0;                               //loop variable
+    int l = 0;                               //loop variable
+
+    for(i=0; i<traj.opposing_leaflet.size(); i++) //loop over opposing leaflet atoms
+    {
+        //get the first and last atom of the current lipid
+        int min = traj.o_lip_start(i);
+        int max = traj.o_lip_end(i);
+
+        //jump to the next lipid
+        i = traj.next_opposing_lipid(i);
+
+        //count contacts for target lipids 
+        for(j=0; j<param_2.main_size_y(); j++) //loop over lipid types 
+        {
+            if(strcmp(traj.res_name[min].c_str(), param_2.param_main_s[j][0].c_str()) == 0) //residue is a target lipid
+            {
+                for(k=min; k<=max; k++) //loop over current lipid atoms
+                {
+                    for(l=0; l<param_2.sec_size_y(j); l++) //loop over target atoms
+                    {
+                        if(strcmp(traj.atom_name[k].c_str(), param_2.param_sec_s[j][l][0].c_str()) == 0) //atom is a target atom
+                        {
+                            lipid_ranks[k] = param_2.param_sec_d[j][l][1];
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
 // This function computes the interdigitation (rank) and adds it to the grid                                 //
 //                                                                                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void interdigitate(Trajectory &traj,system_variables &s,program_variables &p,Index &param_1,Param &param_2,Grid &digi)
+void interdigitate(Trajectory &traj,system_variables &s,program_variables &p,Index &param_1,Param &param_2,Grid &digi,
+		   dv1d &lipid_ranks)
 {
     //Strategy used here is to loop over the target leaflet and select lipids of the correct type. Then loop over the lipid atoms 
     //and find the tail atom and mapping atom. Once these atoms are identified, we loop over the opposing leaflet atoms and look for lipids of 
@@ -104,22 +146,19 @@ void interdigitate(Trajectory &traj,system_variables &s,program_variables &p,Ind
                                         {
                                             for(o=min_2; o<=max_2; o++) //loop over current lipid atoms 
                                             {
-                                                for(q=0; q<param_2.sec_size_y(n); q++) //loop over ranked atoms
+                                                if(lipid_ranks[o] != 0.0)
                                                 {
-                                                    if(strcmp(traj.atom_name[o].c_str(), param_2.param_sec_s[n][q][0].c_str()) == 0) //atoms is a ranked atom
+                                                    //compute the distance between the atoms
+                                                    double dx = traj.r[k][0] - traj.r[o][0];
+                                                    double dy = traj.r[k][1] - traj.r[o][1];
+                                                    double dz = traj.r[k][2] - traj.r[o][2];
+
+                                                    double distance = sqrt(dx*dx + dy*dy + dz*dz);
+
+                                                    if(distance < p.contact_cutoff) //atoms make a contact
                                                     {
-                                                        //compute the distance between the atoms
-                                                        double dx = traj.r[k][0] - traj.r[o][0];
-                                                        double dy = traj.r[k][1] - traj.r[o][1];
-                                                        double dz = traj.r[k][2] - traj.r[o][2];
-
-                                                        double distance = sqrt(dx*dx + dy*dy + dz*dz);
-
-                                                        if(distance < p.contact_cutoff) //atoms make a contact
-                                                        {
-                                                            contacts = contacts + 1.0;
-                                                            sum_rank = sum_rank + param_2.param_sec_d[n][q][1]; 
-                                                        }
+                                                        contacts = contacts + 1.0;
+						        sum_rank = sum_rank + lipid_ranks[o]; 
                                                     }
                                                 }
                                             }
@@ -167,22 +206,19 @@ void interdigitate(Trajectory &traj,system_variables &s,program_variables &p,Ind
                                         {
                                             for(o=min_2; o<=max_2; o++) //loop over current lipid atoms 
                                             {
-                                                for(q=0; q<param_2.sec_size_y(n); q++) //loop over ranked atoms
+                                                if(lipid_ranks[o] != 0.0)
                                                 {
-                                                    if(strcmp(traj.atom_name[o].c_str(), param_2.param_sec_s[n][q][0].c_str()) == 0) //atoms is a ranked atom
+                                                    //compute the distance between the atoms
+                                                    double dx = traj.r[k][0] - traj.r[o][0];
+                                                    double dy = traj.r[k][1] - traj.r[o][1];
+                                                    double dz = traj.r[k][2] - traj.r[o][2];
+
+                                                    double distance = sqrt(dx*dx + dy*dy + dz*dz);
+
+                                                    if(distance < p.contact_cutoff) //atoms make a contact
                                                     {
-                                                        //compute the distance between the atoms
-                                                        double dx = traj.r[k][0] - traj.r[o][0];
-                                                        double dy = traj.r[k][1] - traj.r[o][1];
-                                                        double dz = traj.r[k][2] - traj.r[o][2];
-
-                                                        double distance = sqrt(dx*dx + dy*dy + dz*dz);
-
-                                                        if(distance < p.contact_cutoff) //atoms make a contact
-                                                        {
-                                                            contacts = contacts + 1.0;
-                                                            sum_rank = sum_rank + param_2.param_sec_d[n][q][1];
-                                                        }
+                                                        contacts = contacts + 1.0;
+                                                        sum_rank = sum_rank + lipid_ranks[o];
                                                     }
                                                 }
                                             }
@@ -380,6 +416,12 @@ int main(int argc, const char * argv[])
     traj.get_lipid_selection_stats(param_1.get_column_s(5,0),"-crd_1");
     traj.get_lipid_selection_stats(param_2.get_column_s(0),  "-crd_2");
 
+    //allocate memory to store atom ranks (improves performance)
+    dv1d lipid_ranks(traj.atoms(),0.0);
+
+    //get atom ranks
+    get_ranks(traj,s,p,param_2,lipid_ranks);
+
     //create a grid to hold interdigitation
     Grid digi;
 
@@ -407,7 +449,7 @@ int main(int argc, const char * argv[])
 
         traj.do_fit();
 
-        interdigitate(traj,s,p,param_1,param_2,digi);
+        interdigitate(traj,s,p,param_1,param_2,digi,lipid_ranks);
 
         traj.set_beta_lf();
 

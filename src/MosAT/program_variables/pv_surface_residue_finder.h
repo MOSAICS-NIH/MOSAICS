@@ -46,6 +46,7 @@ struct program_variables
     double cutoff;                                //Above what percentage is significant?
     double contact_cutoff;                        //How far away before no longer counted as a contact
     double bulk;                                  //Lipid ratio in the bulk
+    double screen_dist;                           //Screening distance for checking resi centers
 };
 
 
@@ -77,6 +78,7 @@ void initialize_program_variables(program_variables *p)
     p->b_lf_param     = 0;
     p->bin            = 1;
     p->b_sel_text     = 0;
+    p->screen_dist    = 4.0;
 
     //here we set the program description
     p->program_description = "Surface Residue Finder is a program that selects the surface atoms of a protein. This is done by counting the number of lipids that form one or more contacts with a given protein atom. Then, atopms with too few contacting lipids are excluded from the surface. The output is a pdb with surface residues indicated by the beta factor as well as PyMOL commands used for selecting the surace and core atoms.";

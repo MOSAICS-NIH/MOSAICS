@@ -43,19 +43,63 @@ using namespace std;
 // This function counts how many lipids make contact with each protein residue.                              //
 //                                                                                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void tag_lipid_atoms(Trajectory &traj,system_variables &s,program_variables &p,Param &param,iv1d &lipid_atoms)
+{
+    int i = 0;                               //loop variable
+    int j = 0;                               //loop variable
+    int k = 0;                               //loop variable
+    int l = 0;                               //loop variable
+
+    for(i=0; i<traj.target_leaflet.size(); i++) //loop over target leaflet atoms
+    {
+        //get the first and last atom of the current lipid
+        int min = traj.t_lip_start(i);
+        int max = traj.t_lip_end(i);
+
+        //jump to the next lipid
+        i = traj.next_target_lipid(i);
+
+        //count contacts for target lipids 
+        for(j=0; j<param.main_size_y(); j++) //loop over lipid types 
+        {
+            if(strcmp(traj.res_name[min].c_str(), param.param_main_s[j][0].c_str()) == 0) //residue is a target lipid
+            {
+                for(k=min; k<=max; k++) //loop over current lipid atoms
+                {
+                    for(l=0; l<param.sec_size_y(j); l++) //loop over target atoms
+                    {
+                        if(strcmp(traj.atom_name[k].c_str(), param.param_sec_s[j][l][0].c_str()) == 0) //atom is a target atom
+                        {
+                            lipid_atoms[k] = 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function counts how many lipids make contact with each protein residue.                              //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void protein_surface(Trajectory &traj,system_variables &s,program_variables &p,Param &param,int contacts_sum[],
-                     iv1d &surface_count,iv1d &refined_sel)
+                     iv1d &surface_count,iv1d &refined_sel,iv1d &lipid_atoms)
 {
     int i          = 0;                               //loop variable
     int j          = 0;                               //loop variable
     int k          = 0;                               //loop variable
     int l          = 0;                               //loop variable
     int m          = 0;                               //loop variable
-    int n          = 0;                               //loop variable
-    int prot_count = 0;
 
     //allocate memory to hold contact information for current frame
     iv1d contact(traj.prot.size(),0);  //number of contacts between the atom and lipids
+
+    dv2d protein_centers = traj.get_centers_prot(); 
+    dv2d target_centers  = traj.get_centers_target_lf();
+
+    int counter_p = 0;
 
     //count contacts with each atom
     for(i=0; i<traj.prot.size(); i++) //loop over protein atoms
@@ -63,41 +107,47 @@ void protein_surface(Trajectory &traj,system_variables &s,program_variables &p,P
         int min_p = traj.p_res_start(i);
         int max_p = traj.p_res_end(i);
 
-        i = traj.next_prot_res(i);
+        int counter_l = 0;
 
-        for(j=min_p; j<=max_p; j++) //loop over current residue atoms
+        for(j=0; j<traj.target_leaflet.size(); j++) //loop over target leaflet atoms
         {
-            if(refined_sel[j] == 1) //check refined selection
+            //get the first and last atom of the current lipid
+            int min_l = traj.t_lip_start(j);
+            int max_l = traj.t_lip_end(j);
+
+            //jump to the next lipid
+            j = traj.next_target_lipid(j);
+
+            //count contacts for target lipids 
+            for(k=0; k<param.main_size_y(); k++) //loop over lipid types 
             {
-                for(k=0; k<traj.target_leaflet.size(); k++) //loop over target leaflet atoms
+                if(strcmp(traj.res_name[min_l].c_str(), param.param_main_s[k][0].c_str()) == 0) //residue is a target lipid
                 {
-                    //get the first and last atom of the current lipid
-                    int min = traj.t_lip_start(k);
-                    int max = traj.t_lip_end(k);
+                    double center_dx = target_centers[counter_l][0] - protein_centers[counter_p][0];
+                    double center_dy = target_centers[counter_l][1] - protein_centers[counter_p][1];
+                    double center_dz = target_centers[counter_l][2] - protein_centers[counter_p][2];
 
-                    //jump to the next lipid
-                    k = traj.next_target_lipid(k);
+                    double center_dist = sqrt(center_dx*center_dx + center_dy*center_dy + center_dz*center_dz);
 
-                    //count contacts for target lipids 
-                    for(l=0; l<param.main_size_y(); l++) //loop over lipid types 
+                    if(center_dist < p.screen_dist) //count contacts
                     {
-                        if(strcmp(traj.res_name[min].c_str(), param.param_main_s[l][0].c_str()) == 0) //residue is a target lipid
+                        for(l=min_p; l<=max_p; l++) //loop over current residue atoms
                         {
-                            for(m=min; m<=max; m++) //loop over current lipid atoms
+                            if(refined_sel[l] == 1) //check refined selection
                             {
-                                for(n=0; n<param.sec_size_y(l); n++) //loop over target atoms
+                                for(m=min_l; m<=max_l; m++) //loop over current lipid atoms
                                 {
-                                    if(strcmp(traj.atom_name[m].c_str(), param.param_sec_s[l][n][0].c_str()) == 0) //atom is a target atom
-                                    {
-                                        double dif_x = traj.r[j][0] - traj.r[m][0];
-                                        double dif_y = traj.r[j][1] - traj.r[m][1];
-                                        double dif_z = traj.r[j][2] - traj.r[m][2];
+	                            if(lipid_atoms[m] == 1)
+                                    { 
+                                        double dif_x = traj.r[l][0] - traj.r[m][0];
+                                        double dif_y = traj.r[l][1] - traj.r[m][1];
+                                        double dif_z = traj.r[l][2] - traj.r[m][2];
 
                                         double dist = sqrt(dif_x*dif_x + dif_y*dif_y + dif_z*dif_z);
 
                                         if(dist < p.contact_cutoff)
                                         {
-                                            contact[prot_count] = 1;
+                                            contact[i+l-min_p] = 1;
                                         }
                                     }
                                 }
@@ -106,8 +156,13 @@ void protein_surface(Trajectory &traj,system_variables &s,program_variables &p,P
                     }
                 }
             }
-            prot_count++;
+	    counter_l++;
         }
+
+        //jump to next protein residue
+	i = traj.next_prot_res(i);
+
+        counter_p++;
     }
 
     //add contacts to long term sums and count contacts for the curren frame
@@ -309,26 +364,27 @@ int main(int argc, const char * argv[])
 
     //analyze the command line arguments 
     start_input_arguments_mpi(argc,argv,s.world_rank,p.program_description);
-    add_argument_mpi_s(argc,argv,"-traj",   p.in_file_name,               "Input trajectory file (xtc, trr, pdb, gro)",                    s.world_rank, s.cl_tags, nullptr,      1);
-    add_argument_mpi_s(argc,argv,"-ref",    p.ref_file_name,              "Refference file (pdb, gro)",                                    s.world_rank, s.cl_tags, nullptr,      1);
-    add_argument_mpi_s(argc,argv,"-o",      p.out_file_name,              "Output trajectory file (xtc, trr, pdb, gro)",                   s.world_rank, s.cl_tags, &p.b_print,   0);
-    add_argument_mpi_i(argc,argv,"-stride", &p.stride,                    "Read every 'stride' frame",                                     s.world_rank, s.cl_tags, nullptr,      0);
-    add_argument_mpi_i(argc,argv,"-b",      &p.start_frame,               "Skip frames before this number",                                s.world_rank, s.cl_tags, nullptr,      0);
-    add_argument_mpi_i(argc,argv,"-e",      &p.end_frame,                 "Skip frames after this number",                                 s.world_rank, s.cl_tags, nullptr,      0);
-    add_argument_mpi_s(argc,argv,"-lsq",    p.lsq_index_file_name,        "Index for lsq fitting (ndx)",                                   s.world_rank, s.cl_tags, &p.b_lsq,     0);
-    add_argument_mpi_i(argc,argv,"-lsq_d",  &p.lsq_dim,                   "Dimension for lsq fitting (3:x,y,z 2:x,y)",                     s.world_rank, s.cl_tags, nullptr,      0);
-    add_argument_mpi_i(argc,argv,"-lsq_r",  &p.lsq_ref,                   "Reference structure for lsq fitting (0:ref 1:first_frame)",     s.world_rank, s.cl_tags, nullptr,      0);
-    add_argument_mpi_s(argc,argv,"-crd",    p.param_file_name,            "Selection card with lipid types and target atoms (crd)",        s.world_rank, s.cl_tags, nullptr,      1);
-    add_argument_mpi_s(argc,argv,"-histo",  p.histo_file_name,            "Output file with surface atoms histogram (dat)",                s.world_rank, s.cl_tags, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-bin",    &p.lsq_ref,                   "Bin width for the surface atoms histogram (atoms, int)",        s.world_rank, s.cl_tags, nullptr,      0);
-    add_argument_mpi_s(argc,argv,"-s_pdb",  p.surface_pdb_file_name,      "Output file with surface residues indicated by B-factor (pdb)", s.world_rank, s.cl_tags, nullptr,      1);
-    add_argument_mpi_s(argc,argv,"-lf_pdb", p.lf_pdb_file_name,           "PDB file with sorted leaflets (B-factor) (pdb)",                s.world_rank, s.cl_tags, &p.b_lf_pdb,  0);
-    add_argument_mpi_s(argc,argv,"-lf_prm", p.leaflet_finder_param_name,  "File with additional leaflet finder parameters (prm)",          s.world_rank, s.cl_tags, &p.b_lf_param,0);
-    add_argument_mpi_s(argc,argv,"-pf_pdb", p.pf_pdb_file_name,           "PDB file with selected protein (B-factor) (pdb)",               s.world_rank, s.cl_tags, &p.b_pf_pdb,  0);
-    add_argument_mpi_s(argc,argv,"-pf_prm", p.protein_finder_param_name,  "File with additional protein finder parameters (prm)",          s.world_rank, s.cl_tags, &p.b_pf_param,0);
-    add_argument_mpi_d(argc,argv,"-cutoff", &p.cutoff,                    "Cutoff for selecting the N surface atoms (chi)",                s.world_rank, s.cl_tags, nullptr,      0);
-    add_argument_mpi_d(argc,argv,"-cdist",  &p.contact_cutoff,            "The contact cutoff distance (nm)",                              s.world_rank, s.cl_tags, nullptr,      1);
-    add_argument_mpi_s(argc,argv,"-sel",    p.selection_text_file_name,   "Input file with the atom selection text (sel)",                 s.world_rank, s.cl_tags, &p.b_sel_text,0);
+    add_argument_mpi_s(argc,argv,"-traj",   p.in_file_name,               "Input trajectory file (xtc, trr, pdb, gro)",                                 s.world_rank, s.cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-ref",    p.ref_file_name,              "Refference file (pdb, gro)",                                                 s.world_rank, s.cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-o",      p.out_file_name,              "Output trajectory file (xtc, trr, pdb, gro)",                                s.world_rank, s.cl_tags, &p.b_print,   0);
+    add_argument_mpi_i(argc,argv,"-stride", &p.stride,                    "Read every 'stride' frame",                                                  s.world_rank, s.cl_tags, nullptr,      0);
+    add_argument_mpi_i(argc,argv,"-b",      &p.start_frame,               "Skip frames before this number",                                             s.world_rank, s.cl_tags, nullptr,      0);
+    add_argument_mpi_i(argc,argv,"-e",      &p.end_frame,                 "Skip frames after this number",                                              s.world_rank, s.cl_tags, nullptr,      0);
+    add_argument_mpi_s(argc,argv,"-lsq",    p.lsq_index_file_name,        "Index for lsq fitting (ndx)",                                                s.world_rank, s.cl_tags, &p.b_lsq,     0);
+    add_argument_mpi_i(argc,argv,"-lsq_d",  &p.lsq_dim,                   "Dimension for lsq fitting (3:x,y,z 2:x,y)",                                  s.world_rank, s.cl_tags, nullptr,      0);
+    add_argument_mpi_i(argc,argv,"-lsq_r",  &p.lsq_ref,                   "Reference structure for lsq fitting (0:ref 1:first_frame)",                  s.world_rank, s.cl_tags, nullptr,      0);
+    add_argument_mpi_s(argc,argv,"-crd",    p.param_file_name,            "Selection card with lipid types and target atoms (crd)",                     s.world_rank, s.cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-histo",  p.histo_file_name,            "Output file with surface atoms histogram (dat)",                             s.world_rank, s.cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-bin",    &p.lsq_ref,                   "Bin width for the surface atoms histogram (atoms, int)",                     s.world_rank, s.cl_tags, nullptr,      0);
+    add_argument_mpi_s(argc,argv,"-s_pdb",  p.surface_pdb_file_name,      "Output file with surface residues indicated by B-factor (pdb)",              s.world_rank, s.cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-lf_pdb", p.lf_pdb_file_name,           "PDB file with sorted leaflets (B-factor) (pdb)",                             s.world_rank, s.cl_tags, &p.b_lf_pdb,  0);
+    add_argument_mpi_s(argc,argv,"-lf_prm", p.leaflet_finder_param_name,  "File with additional leaflet finder parameters (prm)",                       s.world_rank, s.cl_tags, &p.b_lf_param,0);
+    add_argument_mpi_s(argc,argv,"-pf_pdb", p.pf_pdb_file_name,           "PDB file with selected protein (B-factor) (pdb)",                            s.world_rank, s.cl_tags, &p.b_pf_pdb,  0);
+    add_argument_mpi_s(argc,argv,"-pf_prm", p.protein_finder_param_name,  "File with additional protein finder parameters (prm)",                       s.world_rank, s.cl_tags, &p.b_pf_param,0);
+    add_argument_mpi_d(argc,argv,"-cutoff", &p.cutoff,                    "Cutoff for selecting the N surface atoms (chi)",                             s.world_rank, s.cl_tags, nullptr,      0);
+    add_argument_mpi_d(argc,argv,"-cdist",  &p.contact_cutoff,            "The contact cutoff distance (nm)",                                           s.world_rank, s.cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-sel",    p.selection_text_file_name,   "Input file with the atom selection text (sel)",                              s.world_rank, s.cl_tags, &p.b_sel_text,0);
+    add_argument_mpi_d(argc,argv,"-screen", &p.screen_dist,               "Screen residues whose centers are within this disatnce (nm) of each other",  s.world_rank, s.cl_tags, nullptr,      0);
     conclude_input_arguments_mpi(argc,argv,s.world_rank,s.program_name,s.cl_tags);
 
     //create a trajectory
@@ -408,6 +464,11 @@ int main(int argc, const char * argv[])
 
     iv1d surface_count(0,0);                      //Holds the number of surface atoms for each frame
 
+    iv1d lipid_atoms(traj.atoms(),0);             //Tags the target lipid atoms to improve performance
+
+    //tag target lipid atoms
+    tag_lipid_atoms(traj,s,p,param,lipid_atoms);
+
     //create object to hold protein atom refinement
     iv1d refined_sel(traj.atoms(),1);
 
@@ -445,7 +506,7 @@ int main(int argc, const char * argv[])
 
         traj.do_fit();
 
-        protein_surface(traj,s,p,param,contacts_sum,surface_count,refined_sel);
+        protein_surface(traj,s,p,param,contacts_sum,surface_count,refined_sel,lipid_atoms);
 
         traj.set_beta_lf();
 

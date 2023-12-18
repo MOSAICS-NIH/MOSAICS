@@ -52,7 +52,6 @@ struct program_variables
     int b_be;                                     //Tells if a binding events file was provided or not
     int b_x;                                      //Tells if the target x was specified
     int b_y;                                      //Tells if the target y was specified
-
     int min;                                      //First atom of the bound lipid
     int max;                                      //Last atom of the bound lipid
     int resi_size;                                //How many atoms in the target lipid type

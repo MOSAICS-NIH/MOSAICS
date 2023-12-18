@@ -36,6 +36,7 @@ struct program_variables
     string solvent_finder_param_name;             //Name of the solvent finder param file
     string selection_text_file_name;              //Name of the selection card with the selection text
     string report_file_name;                      //Name of the selection card holding the atom number for reporting h-bonds
+    string exclude_file_name;                     //Name of file with lids of excluded acceptor/donor pairs
     int b_sf_param;                               //Tells if the user included a solvent types parameter file
     int b_pf_param;                               //Tells if the user included a protein types parameter file
     int b_lf_param;                               //Tells if the user included a lipid types parameter file
@@ -49,6 +50,7 @@ struct program_variables
     int b_test;                                   //Write info for checking hydrogen bonds?
     int b_report;                                 //Report frame number when a target h-bond is found
     int b_sel_text;                               //Refine the selection of protein atoms?
+    int b_exclude;                                //Did the user provide and exclude list
     double APS;                                   //This is the area of a grid square
     double radius;                                //Radius of the atom
     double cutoff;                                //Percentage of average rho used for excluding data
@@ -89,6 +91,7 @@ void initialize_program_variables(program_variables *p)
     p->b_test          = 0;
     p->b_sel_text      = 0;
     p->b_report        = 0;
+    p->b_exclude       = 0;
 
     //here we set the program description
     p->program_description = "Lipid H Bonds is a program designed for quantifying hydrogen bonds between lipids and the protein. The number of hydrogen bonds formed per lipid is then projected onto the XY plane."; 

@@ -38,6 +38,31 @@ using namespace std;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                           //
+// This function checks if the acceptor/donor pair are on the exclude list                                   //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int check_exclusions(Trajectory &traj,system_variables &s,program_variables &p,Index &exclude,int acceptor,int donor)
+{
+    int i         = 0; //standard variable used in loops
+    int b_include = 1; //should the hydrogen bond be included
+
+    for(i=0; i<exclude.index_s.size(); i+=2) //loop over excluded pairs
+    {
+        if(strcmp(traj.atom_name[acceptor].c_str(), exclude.index_s[i].c_str()) == 0 && strcmp(traj.atom_name[donor].c_str(), exclude.index_s[i+1].c_str()) == 0) //first acceptor second donor
+        {
+            b_include = 0;
+        }
+        else if(strcmp(traj.atom_name[acceptor].c_str(), exclude.index_s[i+1].c_str()) == 0 && strcmp(traj.atom_name[donor].c_str(), exclude.index_s[i].c_str()) == 0) //first donor second acceptor
+        {
+            b_include = 0;
+        }
+    }
+
+    return b_include;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
 // This function computes the number of lipid-prot h-bonds and adds it to the grid                           //
 //                                                                                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -328,7 +353,7 @@ void store_h_bond(Trajectory &traj,system_variables &s,program_variables &p,int 
 void lip_h_bonds(Trajectory &traj,system_variables &s,program_variables &p,Index &param,Index &lip_a,Index &lip_d,
                  Index &prot_a,Index &prot_d,iv2d &bonds,Grid &hb,sv1d &types,iv1d &p_atom_id,sv1d &l_atom_type,
                  dv2d &freq,vector <vector <rvec*>> &coords,iv1d &types_count,dv1d &b_factor_freq,iv1d &refined_sel,
-		 Index &report)
+		 Index &report,Index &exclude)
 {
     int    i        = 0;                      //standard variable used in loops
     int    j        = 0;                      //standard variable used in loops
@@ -387,15 +412,18 @@ void lip_h_bonds(Trajectory &traj,system_variables &s,program_variables &p,Index
                                                 {
                                                     acceptor = traj.prot[o]-1;
 
-                                                    //check for h-bond
-                                                    int result = check_h_bond(traj,p,acceptor,donor,h,report);
-
-                                                    contacts = contacts + result;
- 
-                                                    if(result == 1)
+                                                    if(check_exclusions(traj,s,p,exclude,acceptor,donor) == 1)
                                                     {
-                                                        store_h_bond(traj,s,p,acceptor,donor,types,p_atom_id,l_atom_type,freq,coords,traj.res_name[k],min,max,types_count);
-                                                        b_factor_freq[acceptor] = b_factor_freq[acceptor] + 1.0/traj.get_ef_frames();
+                                                        //check for h-bond
+                                                        int result = check_h_bond(traj,p,acceptor,donor,h,report);
+
+                                                        contacts = contacts + result;
+ 
+                                                        if(result == 1)
+                                                        {
+                                                            store_h_bond(traj,s,p,acceptor,donor,types,p_atom_id,l_atom_type,freq,coords,traj.res_name[k],min,max,types_count);
+                                                            b_factor_freq[acceptor] = b_factor_freq[acceptor] + 1.0/traj.get_ef_frames();
+                                                        }
                                                     }
                                                 }
                                             }
@@ -425,23 +453,26 @@ void lip_h_bonds(Trajectory &traj,system_variables &s,program_variables &p,Index
                                         {
                                             donor = traj.prot[m]-1;
 
-                                            for(o=0; o<bonds[donor].size(); o++) //loop over bonds 
+                                            if(check_exclusions(traj,s,p,exclude,acceptor,donor) == 1)
                                             {
-                                                if(refined_sel[bonds[donor][o]-1] == 1)
+                                                for(o=0; o<bonds[donor].size(); o++) //loop over bonds 
                                                 {
-                                                    if(traj.atom_name[bonds[donor][o]-1].at(0) == 'H') //atom is a hydrogen
+                                                    if(refined_sel[bonds[donor][o]-1] == 1)
                                                     {
-                                                        h = bonds[donor][o]-1;
-
-                                                        //check for h-bond
-                                                        int result = check_h_bond(traj,p,acceptor,donor,h,report);
-                                                        
-                                                        contacts = contacts + result;
-
-                                                        if(result == 1)
+                                                        if(traj.atom_name[bonds[donor][o]-1].at(0) == 'H') //atom is a hydrogen
                                                         {
-                                                            store_h_bond(traj,s,p,donor,acceptor,types,p_atom_id,l_atom_type,freq,coords,traj.res_name[k],min,max,types_count);
-                                                            b_factor_freq[donor] = b_factor_freq[donor] + 1.0/traj.get_ef_frames();
+                                                            h = bonds[donor][o]-1;
+
+                                                            //check for h-bond
+                                                            int result = check_h_bond(traj,p,acceptor,donor,h,report);
+                                                            
+                                                            contacts = contacts + result;
+
+                                                            if(result == 1)
+                                                            {
+                                                                store_h_bond(traj,s,p,donor,acceptor,types,p_atom_id,l_atom_type,freq,coords,traj.res_name[k],min,max,types_count);
+                                                                b_factor_freq[donor] = b_factor_freq[donor] + 1.0/traj.get_ef_frames();
+                                                            }
                                                         }
                                                     }
                                                 }
@@ -1029,6 +1060,7 @@ int main(int argc, const char * argv[])
     add_argument_mpi_i(argc,argv,"-test",   &p.b_test,                    "Print info for checking hydrogen bonds? (0:no 1:yes)",         s.world_rank, s.cl_tags, nullptr,      0);
     add_argument_mpi_s(argc,argv,"-sel",    p.selection_text_file_name,   "Input file with the atom selection text (sel)",                s.world_rank, s.cl_tags, &p.b_sel_text,0);
     add_argument_mpi_s(argc,argv,"-report", p.report_file_name,           "Selection card with atom ids for h-bond to report when found", s.world_rank, s.cl_tags, &p.b_report,  0);
+    add_argument_mpi_s(argc,argv,"-ex",     p.exclude_file_name,          "Selection card with interaction pairs to exclude (crd)",       s.world_rank, s.cl_tags, &p.b_exclude, 0);
     conclude_input_arguments_mpi(argc,argv,s.world_rank,s.program_name,s.cl_tags);
 
     //create a trajectory
@@ -1054,6 +1086,10 @@ int main(int argc, const char * argv[])
     check_extension_mpi(s.world_rank,"-prot_d",p.prot_d_file_name,".crd");
     check_extension_mpi(s.world_rank,"-bond",p.prot_d_file_name,".crd");
 
+    if(p.b_exclude == 1)
+    {
+        check_extension_mpi(s.world_rank,"-ex",p.exclude_file_name,".crd");
+    }
     if(p.b_lf_pdb == 1)
     {
         check_extension_mpi(s.world_rank,"-lf_pdb",p.lf_pdb_file_name,".pdb");
@@ -1095,6 +1131,7 @@ int main(int argc, const char * argv[])
     Index bond;
     Index param;
     Index report;
+    Index exclude;
 
     //read the index files
     lip_a.get_index(p.lip_a_file_name);
@@ -1106,6 +1143,10 @@ int main(int argc, const char * argv[])
     if(p.b_report == 1)
     {
         report.get_index(p.report_file_name);
+    }
+    if(p.b_exclude == 1)
+    {
+        exclude.get_index(p.exclude_file_name);
     }
 
     //run leaflet/proten/solvent finder
@@ -1248,7 +1289,7 @@ int main(int argc, const char * argv[])
 
         traj.do_fit();
 
-        lip_h_bonds(traj,s,p,param,lip_a,lip_d,prot_a,prot_d,bonds,hb,types,p_atom_id,l_atom_type,freq,coords,types_count,b_factor_freq,refined_sel,report);
+        lip_h_bonds(traj,s,p,param,lip_a,lip_d,prot_a,prot_d,bonds,hb,types,p_atom_id,l_atom_type,freq,coords,types_count,b_factor_freq,refined_sel,report,exclude);
 
         traj.set_beta_lf();
 

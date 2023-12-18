@@ -1563,10 +1563,10 @@ int main(int argc, const char * argv[])
     add_argument_mpi_i(argc,argv,"-resi",   &p.resi,                      "Target residue for measuring contacts ",                              s.world_rank, s.cl_tags, nullptr,        1);
     add_argument_mpi_d(argc,argv,"-max",    &p.max_dash_rad,              "Maximum thickness of dash for PyMOL distance commands ",              s.world_rank, s.cl_tags, nullptr,        0);
     add_argument_mpi_d(argc,argv,"-min",    &p.min_dash_rad,              "Minimum thickness of dash for PyMOL distance commands ",              s.world_rank, s.cl_tags, nullptr,        0);
-    add_argument_mpi_s(argc,argv,"-be",     p.be_file_name,               "Input binding events file (be)",                                                   s.world_rank, s.cl_tags, &p.b_be,        0);
-    add_argument_mpi_i(argc,argv,"-x",      &p.target_x,                  "The target x lattice point used with the binding events file",                     s.world_rank, s.cl_tags, &p.b_x,         0);
-    add_argument_mpi_i(argc,argv,"-y",      &p.target_y,                  "The target y lattice point used with the binding events file",                     s.world_rank, s.cl_tags, &p.b_y,         0);
-    add_argument_mpi_s(argc,argv,"-type",   p.target_res,                 "Lipid type to select from the bound lipids timeline",                              s.world_rank, s.cl_tags, &p.b_target_res,0);
+    add_argument_mpi_s(argc,argv,"-be",     p.be_file_name,               "Input binding events file (be)",                                      s.world_rank, s.cl_tags, &p.b_be,        0);
+    add_argument_mpi_i(argc,argv,"-x",      &p.target_x,                  "The target x lattice point used with the binding events file",        s.world_rank, s.cl_tags, &p.b_x,         0);
+    add_argument_mpi_i(argc,argv,"-y",      &p.target_y,                  "The target y lattice point used with the binding events file",        s.world_rank, s.cl_tags, &p.b_y,         0);
+    add_argument_mpi_s(argc,argv,"-type",   p.target_res,                 "Lipid type to select from the bound lipids timeline",                 s.world_rank, s.cl_tags, &p.b_target_res,0);
     add_argument_mpi_s(argc,argv,"-ex",     p.exclude_file_name,          "Selection card with interaction pairs to exclude (crd)",              s.world_rank, s.cl_tags, &p.b_exclude,   0);
     conclude_input_arguments_mpi(argc,argv,s.world_rank,s.program_name,s.cl_tags);
 
