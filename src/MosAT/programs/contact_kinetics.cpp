@@ -642,7 +642,7 @@ double finalize_analysis(Trajectory &traj,system_variables &s,program_variables 
                 double dash_rad      = (winners[i]/winners[0])*(p.max_dash_rad - p.min_dash_rad) + p.min_dash_rad;
                 string dist_name     = "dist_" + to_string(i);
 
-                if(dash_rad >= 0.0)
+                if(dash_rad >= 0.0000005) //printf %f gives 6 decimal places. anything above 0.0000005 rounds up to 0.000001 giving a non zero radius. PyMOL shows a zero radius too big (maybe a default value)
                 {
                     fprintf(contacts_file,"\nContact %d: Residence time %f: Binding events %f: Frequency %f: Atom_nr b %d: Atom_nr a %d \n",i,winners[i],winners_events[i],freq,atom_nr_a[i],atom_nr_b[i]);
                     fprintf(contacts_file,"select atom_a, (resi %d & resn %s & name %s) \n",this_res_nr[atom_number_1-1]%10000,this_res_name[atom_number_1-1].c_str(),this_atom_name[atom_number_1-1].c_str());
@@ -720,7 +720,7 @@ double finalize_analysis(Trajectory &traj,system_variables &s,program_variables 
                 double dash_rad      = freq*(p.max_dash_rad - p.min_dash_rad) + p.min_dash_rad;
                 string dist_name     = "dist_" + to_string(i); 
 
-                if(dash_rad >= 0.0)
+                if(dash_rad >= 0.0000005) //printf %f gives 6 decimal places. anything above 0.0000005 rounds up to 0.000001 giving a non zero radius. PyMOL shows a zero radius too big (maybe a default value)
                 {
                     fprintf(contacts_file,"\nContact %d: Residence time %f: Binding events %f: Frequency %f: Atom_nr b %d: Atom_nr a %d \n",i,winners[i],winners_events[i],freq,atom_nr_a[i],atom_nr_b[i]);
                     fprintf(contacts_file,"select atom_a, (resi %d & resn %s & name %s) \n",this_res_nr[atom_number_1-1]%10000,this_res_name[atom_number_1-1].c_str(),this_atom_name[atom_number_1-1].c_str());
