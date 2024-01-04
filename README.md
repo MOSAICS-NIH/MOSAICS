@@ -58,3 +58,6 @@ Please cite Bernhardt N, Faraldo-Gómez JD, MOSAICS: A Software Suite for Analys
 
 ## Feedback
 Please report bugs identified within the source code and other errors like typos found in the user manual using the [issues](https://github.com/MOSAICS-NIH/MOSAICS/issues) feature. Other comments and suggestions are always welcome. Thank you for your help. 
+
+## Troubleshooting
+Are you having difficulty using MOSAICS? Not certain how to prepare your simulation for analysis? Need help adding an unrecognized lipid type or other basic inputs parameters? No problem! Please post your questions in the [issues](https://github.com/MOSAICS-NIH/MOSAICS/issues) section. 
