@@ -152,7 +152,7 @@ void leaflet_finder(int num_atoms,vector <int> &atom_nr,vector <int> &res_nr,vec
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                          //
 // This function sets the beta value according to whether an atom belongs to the upper leaflet, the lower   //
-// leaflet or neither.
+// leaflet or neither.                                                                                      //
 //                                                                                                          //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void set_beta_leaflet_finder(vector <double> &beta,vector <int> &leaflets,int num_atoms)
@@ -390,7 +390,7 @@ void dump_leaflets_pdb(int world_rank,int b_lf_pdb,string lf_pdb_file_name,vecto
 // This function returns the last atom index in mem[] for the current residue.                               //
 //                                                                                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-int jump_to_res_end(int i, int mem_size,vector <int> &res_end,vector <int> &res_nr,vector <int> &mem)
+int jump_to_res_end(int i, int mem_size,vector <int> &res_end,vector <int> &res_nr,vector <int> &mem,vector <string> &res_name,int world_rank,vector <int> &res_start)
 {
     int new_i = 0;       //index which is set to the last atom of the resideu and eventually returned.
     int j=0;             //standard variable used in loops
@@ -404,6 +404,33 @@ int jump_to_res_end(int i, int mem_size,vector <int> &res_end,vector <int> &res_
             break;
         }
     }
+
+    if(new_i < i)
+    {
+        if(world_rank == 0)
+        {
+            printf("New atom encountered with an index smaller than the previous when attemping to move to the next residue. This is often caused by an error in the reference file (-ref) where a new residue type is listed  \n");
+            printf("but the residue number is not changed from the previous. This causes errors because the leaflet, protein, and solvent finders are based on the residue name whereas the end of residues are determined by the residue number. \n"); 
+	    printf("Thus, the error is encountered in programs that use leaflet, protein, or solvent finders. Most often, this is an error caused by the protein finder when the ends of the protein are capped. This can happen if the caps are \n"); 
+	    printf("given a different name from the amino acid but the residue number is not increased. Please check your reference file for changes in residue name but not number. If this is the case, you can fix the error by giving each cap \n"); 
+	    printf("a unique residue number (cannot be the same number as the residue coming befor or after the cap). Alternatively, you can add the missing residue, likely the cap, to the leaflet, protein, or solvent finder using the -lf_prm, \n");
+	    printf("-pf_prm, or -sol_prm arguments. Note, the error occured on residue %d (internal numbering scheme). Printing info for problematic residue and terminating the program! \n\n",res_nr[i]);
+
+            int this_start = res_start[res_nr[mem[i]-1]-1];
+            int this_end   = res_end[res_nr[mem[i]-1]-1];
+
+            printf("%9s %9s \n","res_id","res_name");
+            printf("%9s-%9s \n","---------","---------");
+            for(j=this_start; j<this_end; j++)
+            {
+                printf("%9d %9s \n",res_nr[j],res_name[j].c_str());
+            }
+	}
+
+	MPI_Finalize();
+	exit(EXIT_SUCCESS);
+    }
+
     return new_i;
 }
 
@@ -653,7 +680,7 @@ int Trajectory::fm_lip_end(int i)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int Trajectory::next_target_lipid(int i)
 {
-    return jump_to_res_end(i,target_leaflet.size(),res_end,res_nr,target_leaflet);
+    return jump_to_res_end(i,target_leaflet.size(),res_end,res_nr,target_leaflet,res_name,world_rank,res_start);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -663,7 +690,7 @@ int Trajectory::next_target_lipid(int i)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int Trajectory::next_opposing_lipid(int i)
 {
-    return jump_to_res_end(i,opposing_leaflet.size(),res_end,res_nr,opposing_leaflet);
+    return jump_to_res_end(i,opposing_leaflet.size(),res_end,res_nr,opposing_leaflet,res_name,world_rank,res_start);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -673,7 +700,7 @@ int Trajectory::next_opposing_lipid(int i)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int Trajectory::next_full_mem_lipid(int i)
 {
-    return jump_to_res_end(i,full_membrane.size(),res_end,res_nr,full_membrane);
+    return jump_to_res_end(i,full_membrane.size(),res_end,res_nr,full_membrane,res_name,world_rank,res_start);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
