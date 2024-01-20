@@ -1695,6 +1695,67 @@ void lsq_fit(int dimension,int b_lsq,int num_atoms,vector <int> lsq_index_vec,re
     }
 }
 
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                          //
+// This function fits the atom selection in lsq_index and leaves the center at the origin                   //
+//                                                                                                          //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void this_lsq_fit(int dimension,int b_lsq,int num_atoms,Index &this_lsq_index,real mass_lsq[],
+                  real mass[],rvec *r_ref,rvec *r,int current_frame,vector <int> &atom_nr,int world_rank)
+{
+    if(b_lsq == 1)
+    {
+        int i=0;     //Standard variable used in loops
+        int j=0;     //Standard variable used in loops
+
+        //make a copy of the ref structure so no changes accumulate
+        rvec *r_ref_copy;
+        r_ref_copy = (rvec *)calloc(num_atoms , sizeof(*r_ref_copy));
+        for(i=0; i<num_atoms; i++)
+        {
+            r_ref_copy[i][0] = r_ref[i][0];
+            r_ref_copy[i][1] = r_ref[i][1];
+            r_ref_copy[i][2] = r_ref[i][2];
+        }
+
+        //gromacs functions take an index as an array. So we copy our vector to an array
+        //we also shift the atom number down by 1 here. 
+        int lsq_index[this_lsq_index.index_s.size()];
+        for(i=0; i<this_lsq_index.index_s.size(); i++)
+        {
+            lsq_index[i] = this_lsq_index.index_i[i] - 1;
+        }
+
+        //first the mass is set for atoms in lsq_index. atoms with mass zero are not fit
+        if(current_frame == 0)
+        {
+            for(i=0; i<num_atoms; i++) //loop over system atoms
+            {
+                for(j=0; j<this_lsq_index.index_s.size(); j++) //loop over index atoms
+                {
+                    if(lsq_index[j] + 1 == atom_nr[i]) //shifted down by 1. see notes above. 
+                    {
+                        mass_lsq[i] = mass[i];
+                    }
+                }
+            }
+        }
+
+        //shift the current frame so com is at the origin
+        reset_x_ndim(dimension, this_lsq_index.index_s.size(), lsq_index, num_atoms, nullptr,r, mass_lsq);
+
+        //shift the reference structure so com is at the origin
+        reset_x_ndim(dimension, this_lsq_index.index_s.size(), lsq_index, num_atoms, nullptr,r_ref_copy, mass_lsq);
+
+        //do the fitting
+        do_fit_ndim(dimension, num_atoms, mass_lsq, r_ref_copy, r);
+
+        //free up memory
+        free(r_ref_copy);
+    }
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                          //
 // This is a class for reading/writing trajectory data                                                      //
@@ -1868,6 +1929,7 @@ class Trajectory
         vector<int> get_num_frames_world();                                                             //returns number of frames each mpi process is responsible for (world_frames)
         void        read_traj_frame();                                                                  //reads a frame from the traj
         void        do_fit();                                                                           //do least squares fitting on current frame
+        void        do_this_fit(Index &this_lsq_index,int this_lsq_dim, int this_lsq_ref);              //do least squares fitting on current frame. leave center at the origin
         void        write_traj_frame();                                                                 //write the current frame to output traj
         double      finalize_trajectory();                                                              //splice together temporary traj files
         int         atoms();                                                                            //returns the num_atoms in the trajectory
@@ -2176,6 +2238,15 @@ void Trajectory::do_fit()
     lsq_fit(lsq_dim,b_lsq,num_atoms,lsq_index,mass_lsq,mass,(lsq_ref == 0) ? r_ref : r0,r,current_frame,atom_nr,lsq_shift,world_rank);
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                          //
+// This function does least squares fitting of the current frame. leaves center at the origin.              //
+//                                                                                                          //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void Trajectory::do_this_fit(Index &this_lsq_index,int this_lsq_dim, int this_lsq_ref)
+{
+    this_lsq_fit(this_lsq_dim,1,num_atoms,this_lsq_index,mass_lsq,mass,(this_lsq_ref == 0) ? r_ref : r0,r,current_frame,atom_nr,world_rank);
+}
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                          //
 // This function writes the current trajectory frame to the temporary output file                           //
@@ -2741,11 +2812,8 @@ double Trajectory::build()
     r0      = (rvec *)calloc(num_atoms , sizeof(*r0));
 
     //allocate memory to hold atomic masses
-    mass = (real *)calloc(num_atoms , sizeof(real));
-    if(b_lsq == 1)
-    {
-        mass_lsq = (real *)calloc(num_atoms , sizeof(real));
-    }
+    mass     = (real *)calloc(num_atoms , sizeof(real));
+    mass_lsq = (real *)calloc(num_atoms , sizeof(real));
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                          //
