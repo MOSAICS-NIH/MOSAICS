@@ -72,6 +72,7 @@ foreach(CMD
     protein_translator
     surface_residue_finder
     system_translator
+    traj_prep
     traj_time
     zcoord
     lipid_flip
