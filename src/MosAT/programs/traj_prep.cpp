@@ -466,14 +466,24 @@ void get_bonds(Trajectory &traj,system_variables &s,program_variables &p,Index &
 {
     int i = 0;  //standard variable used in loops
     int j = 0;  //standard variable used in loops
+    
+    /*                                                                                                                                                                  
+     *   Notes:                                                                                                                                                           
+     *   the strategy is to loop over the pairs of atoms found in the bond list (bond[]). For each pair, we loop over the bonding atoms (found in bonds[])               
+     *   for the first atom in the pair. In this second loop, we check if the second atom in the pair (bond[]) is on already on the list. If not, then we                 
+     *   add it. Before moving to the next pair, we loop over the bonding atoms (found in bonds[]) for the second atom in the pair. We then check if the first           
+     *   atom in the pair (bond[]) is on already on the list. If not, then we add it. With this approach, each atom in the pair is given a list of bonded atoms.         
+     *   We then check that each atom in the pair in on the other atoms list. This results in a 2d vector (bonds[]) where one dimension gives each atom in the system    
+     *   and the second dimension lists every atom bonded to a given atom.                                                                                               
+     */                                                                                                                                                                   
 
     for(i=0; i<bond.index_i.size(); i+=2) //loop over bonds
     {
        int duplicate = 0;
 
-       for(j=0; j<bonds[bond.index_i[i]-1].size(); j++) //loop over added bonds
+       for(j=0; j<bonds[bond.index_i[i]-1].size(); j++) //loop over added bonds for the first atom in the pair
        {
-           if(bonds[bond.index_i[i]-1][j] == bond.index_i[i+1]) //atom already added
+           if(bonds[bond.index_i[i]-1][j] == bond.index_i[i+1]) //second atom in pair is already on the list
            {
                duplicate = 1;
            }
@@ -542,7 +552,14 @@ iv1d find_bonded_atoms(int target,iv2d &bonds,iv1d &status)
 {
     int i = 0;  //standard variable used in loops
     int j = 0;  //standard variable used in loops
-    	
+   
+    /*                                                                                                                                                                  
+     *   Notes:
+     *   This function uses recursion and returns a list of atoms that are bonded to an atom. Since recursion is used, it is able to return a list 
+     *   of atoms bond to the initial atom but also the atoms bonded to those atoms and so one. This is used to find all atoms that are conneced to 
+     *   each other by one or more bonds thus defining a molecule. This function is initiated in get_molecules(). 
+     */
+ 
     iv1d atoms(0,0); //stores the atom number
 
     atoms.push_back(target);
@@ -573,6 +590,19 @@ void get_molecules(Trajectory &traj,system_variables &s,program_variables &p,iv2
 {
     int i = 0;  //standard variable used in loops
     int j = 0;  //standard variable used in loops
+
+    /*                                                                                                                                                                  
+     *   Notes:
+     *   Here, we hope to take the list of bonded atoms provided for each atom in the system (bonds[]) and sort the atoms into molecules. This is 
+     *   accomplished by looping over the atoms in the system. We then check if an atom has already been assigned to a molecule (status[]). If not, then
+     *   we pass the atom into the find_bonded_atoms() function. This function then adds the received atom to a list (atoms[]) and notes that the atom 
+     *   has now been added to a molecule (status[]). The atoms bonded to the received atom (bonds[]) are then looped over. If these atoms have not been
+     *   added to a molecule, then they are passed into find_bonded_atoms() as well. This routine therefore uses recursion. In this way, every new atom
+     *   encountered (status[]) is examined and the atoms bonded to it are identified and added to the list (atoms[]). Finally, the find_bonded_atoms() 
+     *   function, when no more new atoms are found will return the list of bonded atoms (atoms[]) which is added to the atoms from the previous itteration 
+     *   of find_bonded_atoms() via the push_back() function. Finally, the first itteration of find_bonded_atoms() will return the full list of atoms making
+     *   the molecule. This list (atoms[]) is then added to molecules[] using the push_back() function.    
+     */
 
     for(i=0; i<traj.atoms(); i++)
     {
@@ -620,6 +650,16 @@ void get_molecules_bonds(Trajectory &traj,system_variables &s,program_variables 
     int j = 0;  //standard variable used in loops
     int k = 0;  //standard variable used in loops
     int l = 0;  //standard variable used in loops
+
+    /*                                                                                                                                                                  
+     *   Notes:
+     *   This function is used to process a list of molecules data, where each molecule is defined by a list of atoms connected to each other by 
+     *   one or more bonds, and extract a list of bonds for each molecule. The function works by looping over the molecules found in molecules[].
+     *   Then, for each moleculei, the set of atoms composing it are looped over. For each atom in the molecule, the list of bonded atoms is looped
+     *   over (bonds[]). This process gives a series of atom pairs (one atom from the bonds[] list and another from molecules[]). Then the bonds for 
+     *   the molecule are looped over (molecule_bonds[]) and the atom pair is searched for. If the pair is not found it is added to molecule_bonds[].
+     *   This process is continued until all the bonds are identified for the current molecule and for all molecules. 
+     */
 
     //print info to select molecules in pymol
     for(i=0; i<molecules.size(); i++) //loop over molecules
@@ -1007,6 +1047,14 @@ void update_distances(Trajectory &traj,system_variables &s,program_variables &p,
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void shift_coords(Trajectory &traj,system_variables &s,program_variables &p,iv3d &molecules_bonds,dv2d &distances,int num_bonds,int i,double cutoff,int atom_nr_a,int atom_nr_b,int j)
 {
+    /*                                                                                                                                                                  
+     *   Notes:
+     *   This function takes in a pair of atoms and check their distances in each direction for breaks. If a break is found, then the atom with the 
+     *   larger coordinate is shifted. The shifted atom is then passed to update_distances() function, which updates the distance between this atom
+     *   and any atoms bonded to it (molecules_bonds[]). Since update_distances() calls shift_coords() is any bonded atoms are found the process will 
+     *   be continued until no atom pairs are found with a break.  
+     */  
+
     //shift in x-direction
     if(distances[j][0] < -cutoff) //shift atom_b
     {
@@ -1060,6 +1108,14 @@ void update_distances(Trajectory &traj,system_variables &s,program_variables &p,
     int j = 0;  //standard variable used in loops
     int k = 0;  //standard variable used in loops
 
+    /*                                                                                                                                                                  
+     *   Notes:
+     *   This function takes an atom id and updates the distance between this atom and any atom bonded to it (molecules_bonds[]). The function 
+     *   Then passes the pair of bonded atoms to shift_coords() which checks the new distance for a break and shifts the atom with the larger 
+     *   coordinate. Since shift_coords() calls update_distance() if a break is found, the process will continue to shift atoms until no breaks 
+     *   are found. 
+     */
+
     for(j=0; j<num_bonds; j++)
     {
         if(molecules_bonds[i][j][0] == shifted_atom)
@@ -1096,6 +1152,22 @@ void mend_mols_bonds(Trajectory &traj,system_variables &s,program_variables &p,i
 {
     int i = 0;  //standard variable used in loops
     int j = 0;  //standard variable used in loops
+
+    /*                                                                                                                                                                  
+     *   Notes:
+     *   This function uses a list of molecule bonds to check for broken molecules. This can be done since we know the bonds composing the molecule.
+     *   We can thus look for instances where the bond length is too large (say greater than 1nm) and shift the atoms when such lengths are encountered.
+     *   The algorithm starts by looping over the molecules in molecules_bonds[]. Then, for each molecule, the number of bonds is determined and these 
+     *   bonds are looped over. The initial distances in each direction (distances[]) are measured for the bonds. These must be updated anytime an atom 
+     *   is shifted. Then, the bonds are loop over again and each one sends a pair of atoms into the shift_coords() function. This function examines the  
+     *   dx, dy, and dz terms between the pair and shifts the atom with the larger coordinate if a jump is detected. If so, the update_distances() function 
+     *   is called. This function takes in the id of the shifted atom and updates the dx, dy, and dz terms for any atoms bonded to it (molecules_bonds[]). For 
+     *   each bonded atom encountered, the shift_coords() is again called. This again takes in a pair of atoms. This time we have the atom that was shifted and an 
+     *   atom bonded to it. Shift_coords() again checks the dx, dy, and dz terms for a break and if found the atom with the larger coordinate is shifted and passed
+     *   into update_distances() where the process continues. The algorithm thus uses recursion. Eventually, no breaks will be encountered the program returns 
+     *   to mend_mols_bonds() at which point the next molecule is examined. This outcome assumes that the broken molecules are a result of jumps across a 
+     *   periodic boundary and that the molecules can be made whole again by shifting atoms by the box dimensions. If this is not true, the program will hang.       
+     */
 
     double cutoff = 1.0;
 
