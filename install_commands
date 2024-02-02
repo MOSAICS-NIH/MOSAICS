@@ -99,6 +99,7 @@ $CPP_COMP  -I src -std=c++11 src/other_tools/mean_coords_row_selector.cpp       
 $CPP_COMP  -I src -std=c++11 src/other_tools/bilayer_free_energy.cpp                      -o build/bilayer_free_energ
 $CPP_COMP  -I src -std=c++11 src/other_tools/histogram.cpp                                -o build/histogram
 $CPP_COMP  -I src -std=c++11 src/other_tools/data_averager.cpp                            -o build/data_averager
+$CPP_COMP  -I src -std=c++11 src/other_tools/bonds_generator.cpp                          -o build/bonds_generator
 
 #########################################################################################
 #                                                                                       #

@@ -120,6 +120,7 @@ foreach(CMD
     bilayer_free_energy
     histogram
     data_averager
+    bonds_generator
     )
   add_executable(${CMD} src/other_tools/${CMD}.cpp)
 endforeach()

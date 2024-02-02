@@ -324,4 +324,38 @@ void backup(string in_file_name)
     }
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function parses a c++ string (a line) to give the individual strings in the line                     //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+sv1d parse_string(string this_string)
+{
+    int i      = 0;           //standard variable used in loops
+    int primed = 0;           //tells if a non space character has been encountered yet
+    sv1d parsed_items;        //holds the list of string in the current line
+    string current_string;    //holds characters for the current string
+
+    for(i=0; i<this_string.length(); i++) //loop over characters in string
+    {
+        if( (this_string[i] == ' ' || this_string[i] == '\t' || i==this_string.length()-1) && primed == 1) //store string
+        {
+            parsed_items.push_back(current_string);
+            string new_string;
+            current_string = new_string;
+            primed = 0;
+        }
+        else if( (this_string[i] == ' ' || this_string[i] == '\t' ) && primed == 0) //waiting to begin new string
+        {
+           //do nothing! 
+        }
+        else //character encountered 
+        {
+            current_string.push_back(this_string[i]);
+            primed = 1;
+        }
+    }
+
+    return parsed_items;
+}
 

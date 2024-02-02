@@ -216,6 +216,7 @@ void check_recipe(Trajectory &traj,system_variables &s,program_variables &p,Para
         {
             op_args.push_back("type");     //type (residues vs molecules from bonds)
             op_args.push_back("bonds");    //bonds list              
+            op_args.push_back("cutoff");   //cutoff distance for the mend_mol_bonds option              
 
             check_args(traj,s,p,param,op_args,i);
         }
@@ -401,6 +402,17 @@ void check_recipe(Trajectory &traj,system_variables &s,program_variables &p,Para
                         if(s.world_rank == 0)
                         {
                             printf("Acceptable options for (%s) provided in (%s) are 0 or 1. \n",param.param_sec_s[i][j][0].c_str(),param.param_main_s[i][1].c_str());
+                        }
+                        kill = 1;
+                    }
+                }
+                if(strcmp("cutoff", param.param_sec_s[i][j][0].c_str() ) == 0) //cutoff distance for mend_mols_bonds option 
+                {
+                    if(check_float(param.param_sec_s[i][j][1].c_str()) == 0)
+                    {
+                        if(s.world_rank == 0)
+                        {
+                            printf("Argument (%s) provided in (%s) requires a floating point number while (%s) was provided. \n",param.param_sec_s[i][j][0].c_str(),param.param_main_s[i][1].c_str(),param.param_sec_s[i][j][1].c_str());
                         }
                         kill = 1;
                     }
@@ -616,7 +628,7 @@ void get_molecules(Trajectory &traj,system_variables &s,program_variables &p,iv2
     //print molecule info
     if(p.b_test == 1)
     {
-        string this_file_name = chop_and_add_tag(p.param_file_name,"_mol.dat");
+        string this_file_name = chop_and_add_tag(p.param_file_name,"_mol.pml");
         FILE *this_file = fopen(this_file_name.c_str(), "w");
         if(this_file == NULL)
         {
@@ -630,9 +642,9 @@ void get_molecules(Trajectory &traj,system_variables &s,program_variables &p,iv2
                 fprintf(this_file,"select mol_%d, ",i);
                 for(j=0; j<molecules[i].size()-1; j++) //loop over current molecule
                 {
-                    fprintf(this_file,"(id %d and resi %d) or ",molecules[i][j]%100000,traj.res_nr[molecules[i][j]-1]%10000);
+                    fprintf(this_file,"(id %d and resi %d and resn %s) or ",molecules[i][j]%100000,traj.res_nr[molecules[i][j]-1]%10000,traj.res_name[molecules[i][j]-1].c_str());
                 }
-                fprintf(this_file,"(id %d and resi %d) \n",molecules[i][molecules[i].size()-1]%100000,traj.res_nr[molecules[i][molecules[i].size()-1]-1]%10000);
+                fprintf(this_file,"(id %d and resi %d and resn %s) \n",molecules[i][molecules[i].size()-1]%100000,traj.res_nr[molecules[i][molecules[i].size()-1]-1]%10000,traj.res_name[molecules[i][molecules[i].size()-1]-1].c_str());
             }
             fclose(this_file);
         }
@@ -700,7 +712,7 @@ void get_molecules_bonds(Trajectory &traj,system_variables &s,program_variables 
     //print PyMOL select commands for each bond in each molecule
     if(p.b_test == 1)
     {
-        string this_file_name = chop_and_add_tag(p.param_file_name,"_mol_bonds.dat");
+        string this_file_name = chop_and_add_tag(p.param_file_name,"_mol_bonds.pml");
         FILE *this_file = fopen(this_file_name.c_str(), "w");
         if(this_file == NULL)
         {
@@ -713,8 +725,8 @@ void get_molecules_bonds(Trajectory &traj,system_variables &s,program_variables 
                 fprintf(this_file,"mol %d \n",i);
                 for(j=0; j<molecules_bonds[i].size(); j++) //loop over current molecule bonds 
                 {
-                    fprintf(this_file,"select atom_a, (id %d and resi %d) \n",molecules_bonds[i][j][0]%100000,traj.res_nr[molecules_bonds[i][j][0]-1]%10000);
-                    fprintf(this_file,"select atom_b, (id %d and resi %d) \n",molecules_bonds[i][j][1]%100000,traj.res_nr[molecules_bonds[i][j][1]-1]%10000);
+                    fprintf(this_file,"select atom_a, (id %d and resi %d and resn %s) \n",molecules_bonds[i][j][0]%100000,traj.res_nr[molecules_bonds[i][j][0]-1]%10000,traj.res_name[molecules_bonds[i][j][0]-1].c_str());
+                    fprintf(this_file,"select atom_b, (id %d and resi %d and resn %s) \n",molecules_bonds[i][j][1]%100000,traj.res_nr[molecules_bonds[i][j][1]-1]%10000,traj.res_name[molecules_bonds[i][j][1]-1].c_str());
                     fprintf(this_file,"dist dist_%d, (atom_a), (atom_b) \n",j);
                 }
             }
@@ -1148,7 +1160,7 @@ void update_distances(Trajectory &traj,system_variables &s,program_variables &p,
 // This mends a broken molecule.                                                                             //
 //                                                                                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void mend_mols_bonds(Trajectory &traj,system_variables &s,program_variables &p,iv3d &molecules_bonds)
+void mend_mols_bonds(Trajectory &traj,system_variables &s,program_variables &p,iv3d &molecules_bonds,double cutoff)
 {
     int i = 0;  //standard variable used in loops
     int j = 0;  //standard variable used in loops
@@ -1168,8 +1180,6 @@ void mend_mols_bonds(Trajectory &traj,system_variables &s,program_variables &p,i
      *   to mend_mols_bonds() at which point the next molecule is examined. This outcome assumes that the broken molecules are a result of jumps across a 
      *   periodic boundary and that the molecules can be made whole again by shifting atoms by the box dimensions. If this is not true, the program will hang.       
      */
-
-    double cutoff = 1.0;
 
     for(i=0; i<molecules_bonds[i].size(); i++) //loop over molecules
     {
@@ -1452,13 +1462,18 @@ int main(int argc, const char * argv[])
             ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
             if(strcmp("mend", param.param_main_s[i][0].c_str() ) == 0) //fix broken molecules
             {
-                int type = 0;    //default value for type
+                int type      = 0;    //default value for type
+                double cutoff = 1.0;  //cutoff distance for mend_mols_bonds option
 
                 for(j=0; j<param.sec_size_y(i); j++)
                 {
                     if(strcmp("type", param.param_sec_s[i][j][0].c_str() ) == 0) //type
                     {
                         type = param.param_sec_i[i][j][1];
+                    }
+                    else if(strcmp("cutoff", param.param_sec_s[i][j][0].c_str() ) == 0) //cutoff distance
+                    {
+                        cutoff = param.param_sec_d[i][j][1];
                     }
                 }
 
@@ -1468,7 +1483,7 @@ int main(int argc, const char * argv[])
                 }
                 else if(type == 1) //mend molecules
                 {
-                    mend_mols_bonds(traj,s,p,molecules_bonds);
+                    mend_mols_bonds(traj,s,p,molecules_bonds,cutoff);
                 }
             }
 
