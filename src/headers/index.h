@@ -29,7 +29,7 @@ class Index
         vector<int>    get_column_i(int num_collumns,int collumn);             //extract a collumn from the index (int)
         vector<double> get_column_d(int num_collumns,int collumn);             //extract a collumn from the index (double)
         vector<string> get_row_s(int num_collumns,int row);                    //extract a row from the index (string)
-
+        int check_next_tag(int *pos,string &tag);
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -170,3 +170,37 @@ vector<string> Index::get_row_s(int num_columns,int row)
 
     return extract;
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function searches a data file for a tag and gives the position                                       //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int Index::check_next_tag(int *pos,string &tag)
+{
+    int i      = 0;        //standard variable used in loops
+    int j      = 0;        //standard variable used in loops
+    int result = 0;        //returns if a tag was found
+    int start  = *pos;     //first item in loop
+
+    *pos = index_s.size(); //set position to end of file if no tag is found
+
+    for(i=start; i<index_s.size(); i++) //loop items in index
+    {
+        if(index_s[i][0] == '[' && index_s[i][index_s[i].length()-1] == ']')
+        {
+            string this_tag;
+            for(j=1; j<index_s[i].length()-1; j++) //loop over characters in string
+            { 
+		this_tag = this_tag + index_s[i][j];
+            }
+            tag = this_tag;
+
+	    result = 1;
+            *pos   = i; 
+            i      = index_s.size();
+        }
+    }
+    return result;
+}
+
