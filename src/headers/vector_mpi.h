@@ -586,3 +586,73 @@ void collect_and_sum_int(int world_size,int world_rank,int *my_val)
     }
 }
 
+/*cannot compile some programs with this
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function collects a 2-d vector of doubles                                                            //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void broadcast_rvec(int world_size,int world_rank,rvec *my_rvec,int size)
+{
+    int i = 0;
+    int j = 0;
+
+    if(world_size > 0)
+    {
+        for(i=1; i<world_size; i++)
+        {
+            if(world_rank == 0)
+            {
+                double snd[size];
+
+                //send x
+                for(j=0; j<size; j++)
+                {
+                    snd[j] = my_rvec[j][0];
+                }
+                MPI_Send(snd, size, MPI_DOUBLE, i, 13, MPI_COMM_WORLD);
+
+                //send y
+                for(j=0; j<size; j++)
+                {
+                    snd[j] = my_rvec[j][1];
+                }
+                MPI_Send(snd, size, MPI_DOUBLE, i, 13, MPI_COMM_WORLD);
+
+                //send z
+                for(j=0; j<size; j++)
+                {
+                    snd[j] = my_rvec[j][2];
+                }
+                MPI_Send(snd, size, MPI_DOUBLE, i, 13, MPI_COMM_WORLD);
+
+            }
+            else if(world_rank == i)
+            {
+                double recv[size];            //array to hold received items
+
+                //receive x
+                MPI_Recv(recv, size, MPI_DOUBLE, 0, 13, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                for(j=0; j<size; j++)
+                {
+                    my_rvec[j][0] = recv[j];
+                }
+
+                //receive y
+                MPI_Recv(recv, size, MPI_DOUBLE, 0, 13, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                for(j=0; j<size; j++)
+                {
+                    my_rvec[j][1] = recv[j];
+                }
+
+                //receive z
+                MPI_Recv(recv, size, MPI_DOUBLE, 0, 13, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                for(j=0; j<size; j++)
+                {
+                    my_rvec[j][2] = recv[j];
+                }
+            }
+        }
+    }
+}
+*/

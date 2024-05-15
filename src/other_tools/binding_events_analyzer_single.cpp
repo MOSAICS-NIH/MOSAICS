@@ -42,9 +42,16 @@ int main(int argc, const char * argv[])
     int i            = 0;              //General variable used in loops
     int j            = 0;              //General variable used in loops
     int k            = 0;              //General variable used in loops
+    int x            = 0;              //Grid point in x-direction
+    int y            = 0;              //Grid point in y-direction
+    int b_x          = 0;              //Was a grid point in x-direction specified
+    int b_y          = 0;              //Was a grid point in y-direction specified
+    int result       = 0;              //result of reading in binding events file
     int b_write_hist = 0;              //Write frequencies?
     int world_size   = 0;              //Size of the mpi world
     int world_rank   = 0;              //Rank in the mpi world
+    int threshold    = 0;              //Cutoff for mending fragmented binding events
+    int report       = 0;              //Report a list of the binding events?
     double slope     = 0;              //slope of LnP vs time
     double yint      = 0;              //ying of LnP vs time
     double r2        = 0;              //Correlation coeficient in linear regression
@@ -86,11 +93,15 @@ int main(int argc, const char * argv[])
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     start_input_arguments_mpi(argc,argv,world_rank,program_description);
-    add_argument_mpi_s(argc,argv,"-d"        , binding_events_file_name,"Input binding events file (be)"                       , world_rank, cl_tags, nullptr,      1);
-    add_argument_mpi_s(argc,argv,"-histo"    , out_file_name,           "Output data file with dwell time histogram (dat)"     , world_rank, cl_tags, &b_write_hist,0);
-    add_argument_mpi_s(argc,argv,"-crd"      , lip_t_file_name,         "Selection card with lipid types (crd)"                , world_rank, cl_tags, nullptr,      1);
-    add_argument_mpi_d(argc,argv,"-cutoff"   , &cutoff,                 "Exclude data with a dwell time smaller than this (ps)", world_rank, cl_tags, nullptr,      0);
-    add_argument_mpi_d(argc,argv,"-bin",     &bin_width,                "Bin width (ps)"                                       , world_rank, cl_tags, nullptr,      0);
+    add_argument_mpi_s(argc,argv,"-d"        , binding_events_file_name,"Input binding events file (be)"                               , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-histo"    , out_file_name,           "Output data file with dwell time histogram (dat)"             , world_rank, cl_tags, &b_write_hist,0);
+    add_argument_mpi_s(argc,argv,"-crd"      , lip_t_file_name,         "Selection card with lipid types (crd)"                        , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-x"        , &x,                      "Grid point in x-direction"                                    , world_rank, cl_tags, &b_x,         0);
+    add_argument_mpi_i(argc,argv,"-y"        , &y,                      "Grid point in y-direction"                                    , world_rank, cl_tags, &b_y,         0);
+    add_argument_mpi_d(argc,argv,"-cutoff"   , &cutoff,                 "Exclude data with a dwell time smaller than this (ps)"        , world_rank, cl_tags, nullptr,      0);
+    add_argument_mpi_d(argc,argv,"-bin"      , &bin_width,              "Bin width (ps)"                                               , world_rank, cl_tags, nullptr,      0);
+    add_argument_mpi_i(argc,argv,"-repair"   , &threshold,              "Maximum allowed size (frames) for mending fragmented events"  , world_rank, cl_tags, nullptr,      0);
+    add_argument_mpi_i(argc,argv,"-report"   , &report,                 "Print a list of the dwell times (0:no, 1:yes)"                , world_rank, cl_tags, nullptr,      0);
     conclude_input_arguments_mpi(argc,argv,world_rank,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -116,11 +127,44 @@ int main(int argc, const char * argv[])
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
+    // Check if a lattice point was specified                                                                    //
+    //                                                                                                           //
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    if(world_rank == 0)
+    {
+        if(b_x == 1 && b_y == 0)
+        {
+            printf("A lattice point was specified for the x-direction but not y. Please include the y-direction if analyzing binding events for a lattice point. \n");
+            MPI_Finalize();
+            exit(EXIT_SUCCESS);
+        }
+        else if(b_x == 0 && b_y == 1)
+        {
+            printf("A lattice point was specified for the y-direction but not x. Please include the x-direction if analyzing binding events for a lattice point. \n");
+            MPI_Finalize();
+            exit(EXIT_SUCCESS);
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //                                                                                                           //
     // Read in binding events                                                                                    //
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     Binding_events events;
-    int result = events.get_binding_events_bin(binding_events_file_name);
+  
+    if(b_x==1 && b_y==1)
+    {
+        result = events.get_info(binding_events_file_name);
+        if(result == 1)
+        {
+            result = events.get_binding_events_xy(binding_events_file_name,x,y);
+        }
+    }
+    else
+    {
+        result = events.get_binding_events_bin(binding_events_file_name);
+    }
 
     if(result == 1) //bind events file exists
     { 
@@ -154,6 +198,15 @@ int main(int argc, const char * argv[])
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //                                                                                                           //
+        // Make a timeline and mend any fragmented events                                                            //
+        //                                                                                                           //
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        events.get_binding_timeline();              //make a timeline        
+        events.suppress_timeline_noise(threshold);  //mend fragmented events
+        events.binding_events_from_timeline();      //generate binding events from mended timeline
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //                                                                                                           //
         // Compute average dwell time                                                                                //
         //                                                                                                           //
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -168,6 +221,11 @@ int main(int argc, const char * argv[])
                 {
                     dwell_time    = dwell_time + (double)events.dwell_t[i];  
                     ef_num_events = ef_num_events + 1;
+
+                    if(report == 1)
+                    {
+                        printf("Dwell time %5d: %f (ps)\n",ef_num_events,(double)events.dwell_t[i]*events.ef_dt);
+                    }
                 }
             }
         }

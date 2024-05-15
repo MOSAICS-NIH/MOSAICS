@@ -71,6 +71,7 @@ foreach(CMD
     protein_residue_enrichment
     protein_translator
     surface_residue_finder
+    symmetry_enforcer
     system_translator
     traj_prep
     traj_time
@@ -137,6 +138,7 @@ foreach(CMD
     2d_kinetics_distance_projection_global
     2d_kinetics_distance_projection_window
     binding_events_merger
+    binding_extractor
     binding_contributors
     binding_occupancy
     binding_events_analyzer

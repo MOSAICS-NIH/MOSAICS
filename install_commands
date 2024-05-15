@@ -56,6 +56,7 @@ $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/protein_orientation.cpp      
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/protein_residue_enrichment.cpp src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/protein_residue_enrichment_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/protein_translator.cpp         src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/protein_translator_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/surface_residue_finder.cpp     src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/surface_residue_finder_mpi
+$MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/symmetry_enforcer.cpp          src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/symmetry_enforcer_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/system_translator.cpp          src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/system_translator_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/traj_prep.cpp                  src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/traj_prep_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/traj_time.cpp                  src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/traj_time_mpi
@@ -81,6 +82,7 @@ $MPI_CPP_COMP -I src -std=c++11 src/other_tools/2d_kinetics_percent_visited.cpp 
 $MPI_CPP_COMP -I src -std=c++11 src/other_tools/binding_lipids.cpp                          -o build/binding_lipids_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/other_tools/lipid_exchange_distances.cpp                -o build/lipid_exchange_distances_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/other_tools/single_frame_error.cpp                      -o build/single_frame_error_mpi
+$MPI_CPP_COMP -I src -std=c++11 src/other_tools/binding_extractor.cpp                       -o build/binding_extractor_mpi
 
 #non MosAT serial
 $CPP_COMP  -I src -std=c++11 src/other_tools/delta_plot.cpp                               -o build/delta_plot

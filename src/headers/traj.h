@@ -1594,7 +1594,7 @@ void get_first_last(int num_atoms,vector<int> &res_nr,vector <int> &res_start,ve
 //                                                                                                          //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void lsq_fit(int dimension,int b_lsq,int num_atoms,vector <int> lsq_index_vec,real mass_lsq[],
-             real mass[],rvec *r_ref,rvec *r,int current_frame,vector <int> &atom_nr,rvec *lsq_shift,int world_rank)
+             real mass[],rvec *r_ref,rvec *r,int current_frame,vector <int> &atom_nr,rvec *lsq_shift,int world_rank,int world_size)
 {
     if(b_lsq == 1)
     {
@@ -1670,7 +1670,11 @@ void lsq_fit(int dimension,int b_lsq,int num_atoms,vector <int> lsq_index_vec,re
             lsq_shift[0][1] = lsq_shift[0][1] - r[0][1];
             lsq_shift[0][2] = lsq_shift[0][2] - r[0][2];
         }
-        MPI_Bcast(lsq_shift, 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+	if(current_frame == 0) //note this will cause trouble if one of the cores has no frames to read! BAD PROGRAMMER BAD!
+        {
+            MPI_Bcast(lsq_shift, 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        }
 
         //calculate rmsd before fit
         pre_rmsd = rmsdev_ind(lsq_index_vec.size(), lsq_index,mass,r,r_ref_copy);
@@ -2235,7 +2239,7 @@ void Trajectory::read_traj_frame()
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void Trajectory::do_fit()
 {
-    lsq_fit(lsq_dim,b_lsq,num_atoms,lsq_index,mass_lsq,mass,(lsq_ref == 0) ? r_ref : r0,r,current_frame,atom_nr,lsq_shift,world_rank);
+    lsq_fit(lsq_dim,b_lsq,num_atoms,lsq_index,mass_lsq,mass,(lsq_ref == 0) ? r_ref : r0,r,current_frame,atom_nr,lsq_shift,world_rank,world_size);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2496,7 +2500,8 @@ void Trajectory::set_lsq(string my_lsq_index_file_name,int my_b_lsq,int my_lsq_d
     lsq_ref             = my_lsq_ref;                                  
 
     //allocate memory to hold first shift record
-    lsq_shift = (rvec *)calloc(num_atoms , sizeof(*lsq_shift));
+    //lsq_shift = (rvec *)calloc(num_atoms , sizeof(*lsq_shift));
+    lsq_shift = (rvec *)calloc(        1 , sizeof(*lsq_shift));
 
     //initialize the lsq index
     lsq_index.resize(0,0);
@@ -2587,7 +2592,7 @@ double Trajectory::build()
 
     //take the time when build started
     clock_t t_i = clock();
- 
+
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                          //
     // Shape vectors                                                                                            //
@@ -3057,6 +3062,7 @@ double Trajectory::build()
 
     //Collect my_frames and distribute to the mpi world
     MPI_Allgather(&my_frames, 1,MPI_INT,world_frames_ary, 1, MPI_INT, MPI_COMM_WORLD );
+
     for(i=0; i<world_size; i++)
     {
         world_frames[i] = world_frames_ary[i];
