@@ -45,8 +45,10 @@ foreach(CMD
     lipid_density_3d
     lipid_distances
     lipid_distances_3d
+    lipid_flip
     lipid_gyration
     lipid_h_bonds
+    lipid_immobilization
     lipid_mixing
     lipid_msd
     lipid_orientation
@@ -76,7 +78,6 @@ foreach(CMD
     traj_prep
     traj_time
     zcoord
-    lipid_flip
     )
 
   add_executable(${CMD}_mpi src/MosAT/programs/${CMD}.cpp)
@@ -105,49 +106,49 @@ endforeach()
 
 #Add targers for other programs serial
 foreach(CMD
-    delta_plot
-    grid_data_excluder
-    grid_addition
-    grid_region_integrator
-    leaflet_averager
-    protein_mask
-    grid_editor
-    midplane
-    mask_maker
-    protein_mask_grower
-    nan_selector
-    orientation_histogram
+    bilayer_free_energy     
+    bonds_generator        
+    data_averager           
+    delta_plot              
+    grid_addition           
+    grid_data_excluder     
+    grid_editor          
+    grid_region_integrator  
+    histogram              
+    leaflet_averager        
+    mask_maker              
     mean_coords_row_selector
-    bilayer_free_energy
-    histogram
-    data_averager
-    bonds_generator
+    midplane                
+    nan_selector            
+    orientation_histogram  
+    protein_mask            
+    protein_mask_grower     
     )
   add_executable(${CMD} src/other_tools/${CMD}.cpp)
 endforeach()
 
 #Add targers for other programs mpi
 foreach(CMD
-    grid_distance_projection
-    single_frame_distributions
     2d_enrichment_distance_projection
-    binding_list
-    binding_events_analyzer_single
-    lipid_exchange
-    binding_time_line
+    2d_kinetics_percent_visited
     2d_kinetics_distance_projection_global
     2d_kinetics_distance_projection_window
-    binding_events_merger
-    binding_extractor
     binding_contributors
-    binding_occupancy
     binding_events_analyzer
+    binding_events_analyzer_single
+    binding_events_merger
     binding_events_video
-    solvation_shells
-    2d_kinetics_percent_visited
+    binding_extractor
     binding_lipids
+    binding_list
+    binding_occupancy
+    binding_time_line
+    grid_distance_projection
+    lipid_exchange
     lipid_exchange_distances
+    single_frame_distributions
     single_frame_error
+    solvation_shells
     )
   add_executable(${CMD}_mpi src/other_tools/${CMD}.cpp)
 endforeach()

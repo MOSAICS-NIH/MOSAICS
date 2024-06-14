@@ -1936,16 +1936,31 @@ int main(int argc, const char * argv[])
     }
 
     //check if everything nessesary for timeline was provided
-    if(p.b_be == 1 || p.b_x == 1 || p.b_y == 1 || p.b_target_res == 1)
+    if(p.b_be == 1 || p.b_target_res == 1)
     {
-        if(p.b_be == 0 || p.b_x == 0 || p.b_y == 0 || p.b_target_res == 0)
+        if(p.b_be == 0 || p.b_target_res == 0)
         {
             if(s.world_rank == 0)
             {
-                printf("Arguments -be, -x, -y, and -type are used together to specify binding lipids dynamically. Please provide an argument for each of these or alternatively use the -resi argument alone. \n");
+                printf("Arguments -be, and -type are used together to specify binding lipids dynamically. Please provide an argument for each of these or alternatively use the -resi argument alone. \n");
             }
             MPI_Finalize();
             exit(EXIT_SUCCESS);
+        }
+        else
+        {
+            if(p.b_x == 1 && p.b_y == 0)
+            {
+                printf("A lattice point was specified for the x-direction but not y. Please include the y-direction if analyzing binding events for a lattice point. \n");
+                MPI_Finalize();
+                exit(EXIT_SUCCESS);
+            }
+            else if(p.b_x == 0 && p.b_y == 1)
+            {
+                printf("A lattice point was specified for the y-direction but not x. Please include the x-direction if analyzing binding events for a lattice point. \n");
+                MPI_Finalize();
+                exit(EXIT_SUCCESS);
+            }
         }
     }
 
@@ -1993,19 +2008,36 @@ int main(int argc, const char * argv[])
     Binding_events target_events;
     if(p.b_be == 1)
     {
-        int result = target_events.get_info(p.be_file_name);
-        if(result == 1)
+        int result = 0;
+        if(p.b_x==1 && p.b_y==1)
         {
-            result = target_events.get_binding_events_xy(p.be_file_name,p.target_x,p.target_y);
+            result = target_events.get_info(p.be_file_name);
+            if(result == 1)
+            {
+                result = target_events.get_binding_events_xy(p.be_file_name,p.target_x,p.target_y);
+            }
+            else
+            {
+                if(s.world_rank == 0)
+                {
+                    printf("Could not open binding events file %s \n",p.be_file_name.c_str());
+                }
+                MPI_Finalize();
+                exit(EXIT_SUCCESS);
+            }
         }
         else
         {
-            if(s.world_rank == 0)
+            result = target_events.get_binding_events_bin(p.be_file_name);
+            if(result == 0)
             {
-                printf("Could not open binding events file %s \n",p.be_file_name.c_str());
+                if(s.world_rank == 0)
+                {
+                    printf("Could not open binding events file %s \n",p.be_file_name.c_str());
+                }
+                MPI_Finalize();
+                exit(EXIT_SUCCESS);
             }
-            MPI_Finalize();
-            exit(EXIT_SUCCESS);
         }
     }
 

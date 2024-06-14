@@ -37,6 +37,7 @@ int main(int argc, const char * argv[])
     string binding_events_file_name;  //Name of the binding events input file   
     string out_file_name;             //Name of the binding timeline output file
     string card_file_name;            //Name of the selection card with resid's to be excluded
+    string ex_file_name;              //Name of the selection card with resid's and frames to be excluded
     int i          = 0;               //General variable used in loops
     int j          = 0;               //General variable used in loops
     int k          = 0;               //General variable used in loops
@@ -49,6 +50,7 @@ int main(int argc, const char * argv[])
     int result     = 0;               //Tells if the binding events file was read sucressfully
     int threshold  = 0;               //Cutoff for mending fragmented binding events
     int b_card     = 0;               //Was a selection card provided or not?
+    int b_ex       = 0;               //Was a selection card provided or not with resids and frames?
     double cutoff  = 0;               //Exclude data with cutoff less than this
     sv1d cl_tags;                     //Holds a list of command line tags for the program
 
@@ -91,6 +93,8 @@ int main(int argc, const char * argv[])
     add_argument_mpi_d(argc,argv,"-cutoff"   , &cutoff,                   "Exclude data with a dwell time smaller than this (ps)"        , world_rank, cl_tags, nullptr,      0);
     add_argument_mpi_i(argc,argv,"-repair"   , &threshold,                "Maximum allowed size (frames) for mending fragmented events"  , world_rank, cl_tags, nullptr,      0);
     add_argument_mpi_s(argc,argv,"-crd"      , card_file_name,            "Selection card (crd) with resid's to be excluded"             , world_rank, cl_tags, &b_card,      0);
+    add_argument_mpi_s(argc,argv,"-ex"       , ex_file_name,              "Selection card (crd) with resid's and frames to be excluded"  , world_rank, cl_tags, &b_ex,        0);
+
     conclude_input_arguments_mpi(argc,argv,world_rank,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -104,6 +108,10 @@ int main(int argc, const char * argv[])
     {
         check_extension_mpi(world_rank,"-crd",card_file_name,".crd");
     } 
+    if(b_ex == 1)
+    {
+        check_extension_mpi(world_rank,"-ex",ex_file_name,".crd");
+    }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -111,9 +119,14 @@ int main(int argc, const char * argv[])
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     Index param;
+    Index param_ex;
     if(b_card == 1)
     {
         param.get_index(card_file_name);
+    }
+    if(b_ex == 1)
+    {
+        param_ex.get_index(ex_file_name);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -207,6 +220,28 @@ int main(int argc, const char * argv[])
                         for(k=0; k<events.ef_frames; k++) //loop over frames
                         {
                             events.bound_time_line[k][i] = 0;
+                        }
+                    }
+                }
+            }
+        }
+
+        //exclude lipids from list for select frames
+        if(b_ex == 1)
+        {
+            for(i=0; i<events.num_lipids; i++) //loop over lipids
+            {
+                for(j=0; j<param_ex.index_s.size(); j+=3) //loop over list of residue ids
+                {
+                    if(events.time_line_res_nr[i] == param_ex.index_i[j]) //resid is correct
+                    {
+                        for(k=0; k<events.ef_frames; k++) //loop over frames
+                        {
+                            if(k >= param_ex.index_i[j+1] && k <= param_ex.index_i[j+2])
+                            {
+                                printf("frame %d lower %d upper %d \n",k,param_ex.index_i[j+1],param_ex.index_i[j+2]);
+                                events.bound_time_line[k][i] = 0;
+                            }
                         }
                     }
                 }

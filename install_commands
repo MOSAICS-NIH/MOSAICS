@@ -7,12 +7,12 @@
 
 #MosAT based programs
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/2d_enrichment.cpp              src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/2d_enrichment_mpi
-$MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/2d_enrichment.cpp              src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/2d_enrichment_mpi
+$MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/3d_enrichment.cpp              src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/3d_enrichment_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/2d_kinetics.cpp                src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/2d_kinetics_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/apl.cpp                        src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/apl_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/apl_3d.cpp                     src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/apl_3d_mpi
-$MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/atom_select.cpp                src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/atom_select_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/atoms_in_2_planes.cpp          src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/atoms_in_2_planes_mpi
+$MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/atom_select.cpp                src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/atom_select_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/b_stamp.cpp                    src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/b_stamp_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/b_stamp_grid.cpp               src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/b_stamp_grid_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/bilayer_z.cpp                  src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/bilayer_z_mpi
@@ -32,6 +32,7 @@ $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/lipid_distances_3d.cpp       
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/lipid_flip.cpp                 src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/lipid_flip_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/lipid_gyration.cpp             src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/lipid_gyration_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/lipid_h_bonds.cpp              src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/lipid_h_bonds_mpi
+$MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/lipid_immobilization.cpp       src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/lipid_immobilization_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/lipid_mixing.cpp               src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/lipid_mixing_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/lipid_msd.cpp                  src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/lipid_msd_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/lipid_orientation.cpp          src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/lipid_orientation_mpi
@@ -63,45 +64,45 @@ $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/traj_time.cpp                
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/zcoord.cpp                     src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/zcoord_mpi
 
 #non MosAT mpi
-$MPI_CPP_COMP -I src -std=c++11 src/other_tools/grid_distance_projection.cpp                -o build/grid_distance_projection_mpi
-$MPI_CPP_COMP -I src -std=c++11 src/other_tools/single_frame_distributions.cpp              -o build/single_frame_distributions_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/other_tools/2d_enrichment_distance_projection.cpp       -o build/2d_enrichment_distance_projection_mpi
-$MPI_CPP_COMP -I src -std=c++11 src/other_tools/binding_list.cpp                            -o build/binding_list_mpi
-$MPI_CPP_COMP -I src -std=c++11 src/other_tools/binding_events_analyzer_single.cpp          -o build/binding_events_analyzer_single_mpi
-$MPI_CPP_COMP -I src -std=c++11 src/other_tools/lipid_exchange.cpp                          -o build/lipid_exchange_mpi
-$MPI_CPP_COMP -I src -std=c++11 src/other_tools/binding_time_line.cpp                       -o build/binding_time_line_mpi
+$MPI_CPP_COMP -I src -std=c++11 src/other_tools/2d_kinetics_percent_visited.cpp             -o build/2d_kinetics_percent_visited_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/other_tools/2d_kinetics_distance_projection_global.cpp  -o build/2d_kinetics_distance_projection_global_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/other_tools/2d_kinetics_distance_projection_window.cpp  -o build/2d_kinetics_distance_projection_window_mpi
-$MPI_CPP_COMP -I src -std=c++11 src/other_tools/binding_events_merger.cpp                   -o build/binding_events_merger_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/other_tools/binding_contributors.cpp                    -o build/binding_contributors_mpi
-$MPI_CPP_COMP -I src -std=c++11 src/other_tools/binding_occupancy.cpp                       -o build/binding_occupancy_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/other_tools/binding_events_analyzer.cpp                 -o build/binding_events_analyzer_mpi
+$MPI_CPP_COMP -I src -std=c++11 src/other_tools/binding_events_analyzer_single.cpp          -o build/binding_events_analyzer_single_mpi
+$MPI_CPP_COMP -I src -std=c++11 src/other_tools/binding_events_merger.cpp                   -o build/binding_events_merger_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/other_tools/binding_events_video.cpp                    -o build/binding_events_video_mpi
-$MPI_CPP_COMP -I src -std=c++11 src/other_tools/solvation_shells.cpp                        -o build/solvation_shells_mpi
-$MPI_CPP_COMP -I src -std=c++11 src/other_tools/2d_kinetics_percent_visited.cpp             -o build/2d_kinetics_percent_visited_mpi
-$MPI_CPP_COMP -I src -std=c++11 src/other_tools/binding_lipids.cpp                          -o build/binding_lipids_mpi
-$MPI_CPP_COMP -I src -std=c++11 src/other_tools/lipid_exchange_distances.cpp                -o build/lipid_exchange_distances_mpi
-$MPI_CPP_COMP -I src -std=c++11 src/other_tools/single_frame_error.cpp                      -o build/single_frame_error_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/other_tools/binding_extractor.cpp                       -o build/binding_extractor_mpi
+$MPI_CPP_COMP -I src -std=c++11 src/other_tools/binding_lipids.cpp                          -o build/binding_lipids_mpi
+$MPI_CPP_COMP -I src -std=c++11 src/other_tools/binding_list.cpp                            -o build/binding_list_mpi
+$MPI_CPP_COMP -I src -std=c++11 src/other_tools/binding_occupancy.cpp                       -o build/binding_occupancy_mpi
+$MPI_CPP_COMP -I src -std=c++11 src/other_tools/binding_time_line.cpp                       -o build/binding_time_line_mpi
+$MPI_CPP_COMP -I src -std=c++11 src/other_tools/grid_distance_projection.cpp                -o build/grid_distance_projection_mpi
+$MPI_CPP_COMP -I src -std=c++11 src/other_tools/lipid_exchange.cpp                          -o build/lipid_exchange_mpi
+$MPI_CPP_COMP -I src -std=c++11 src/other_tools/lipid_exchange_distances.cpp                -o build/lipid_exchange_distances_mpi
+$MPI_CPP_COMP -I src -std=c++11 src/other_tools/single_frame_distributions.cpp              -o build/single_frame_distributions_mpi
+$MPI_CPP_COMP -I src -std=c++11 src/other_tools/single_frame_error.cpp                      -o build/single_frame_error_mpi
+$MPI_CPP_COMP -I src -std=c++11 src/other_tools/solvation_shells.cpp                        -o build/solvation_shells_mpi
 
 #non MosAT serial
+$CPP_COMP  -I src -std=c++11 src/other_tools/bilayer_free_energy.cpp                      -o build/bilayer_free_energ
+$CPP_COMP  -I src -std=c++11 src/other_tools/bonds_generator.cpp                          -o build/bonds_generator
+$CPP_COMP  -I src -std=c++11 src/other_tools/data_averager.cpp                            -o build/data_averager
 $CPP_COMP  -I src -std=c++11 src/other_tools/delta_plot.cpp                               -o build/delta_plot
-$CPP_COMP  -I src -std=c++11 src/other_tools/grid_data_excluder.cpp                       -o build/grid_data_excluder
 $CPP_COMP  -I src -std=c++11 src/other_tools/grid_addition.cpp                            -o build/grid_addition
-$CPP_COMP  -I src -std=c++11 src/other_tools/grid_region_integrator.cpp                   -o build/grid_region_integrator
-$CPP_COMP  -I src -std=c++11 src/other_tools/leaflet_averager.cpp                         -o build/leaflet_averager
-$CPP_COMP  -I src -std=c++11 src/other_tools/protein_mask.cpp                             -o build/protein_mask
+$CPP_COMP  -I src -std=c++11 src/other_tools/grid_data_excluder.cpp                       -o build/grid_data_excluder
 $CPP_COMP  -I src -std=c++11 src/other_tools/grid_editor.cpp                              -o build/grid_editor
-$CPP_COMP  -I src -std=c++11 src/other_tools/midplane.cpp                                 -o build/midplane
+$CPP_COMP  -I src -std=c++11 src/other_tools/grid_region_integrator.cpp                   -o build/grid_region_integrator
+$CPP_COMP  -I src -std=c++11 src/other_tools/histogram.cpp                                -o build/histogram
+$CPP_COMP  -I src -std=c++11 src/other_tools/leaflet_averager.cpp                         -o build/leaflet_averager
 $CPP_COMP  -I src -std=c++11 src/other_tools/mask_maker.cpp                               -o build/mask_maker
-$CPP_COMP  -I src -std=c++11 src/other_tools/protein_mask_grower.cpp                      -o build/protein_mask_grower
+$CPP_COMP  -I src -std=c++11 src/other_tools/mean_coords_row_selector.cpp                 -o build/mean_coords_row_selector
+$CPP_COMP  -I src -std=c++11 src/other_tools/midplane.cpp                                 -o build/midplane
 $CPP_COMP  -I src -std=c++11 src/other_tools/nan_selector.cpp                             -o build/nan_selector
 $CPP_COMP  -I src -std=c++11 src/other_tools/orientation_histogram.cpp                    -o build/orientation_histogram
-$CPP_COMP  -I src -std=c++11 src/other_tools/mean_coords_row_selector.cpp                 -o build/mean_coords_row_selector
-$CPP_COMP  -I src -std=c++11 src/other_tools/bilayer_free_energy.cpp                      -o build/bilayer_free_energ
-$CPP_COMP  -I src -std=c++11 src/other_tools/histogram.cpp                                -o build/histogram
-$CPP_COMP  -I src -std=c++11 src/other_tools/data_averager.cpp                            -o build/data_averager
-$CPP_COMP  -I src -std=c++11 src/other_tools/bonds_generator.cpp                          -o build/bonds_generator
+$CPP_COMP  -I src -std=c++11 src/other_tools/protein_mask.cpp                             -o build/protein_mask
+$CPP_COMP  -I src -std=c++11 src/other_tools/protein_mask_grower.cpp                      -o build/protein_mask_grower
 
 #########################################################################################
 #                                                                                       #
