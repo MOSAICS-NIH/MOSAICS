@@ -93,7 +93,22 @@ extern int do_trnheader(XDRFILE *xd,mybool bRead,t_trnheader *sh)
 {
 	int magic=GROMACS_MAGIC;
 	int nflsz,slen,result;
-	char *version = "GMX_trn_file";
+	char *version;                                   /*nb*/
+        version = (char *)malloc((13) * sizeof(char));   /*nb*/
+	version[0] = 'G';                                /*nb*/
+	version[1] = 'M';                                /*nb*/
+        version[2] = 'X';                                /*nb*/
+        version[3] = '_';                                /*nb*/
+        version[4] = 't';                                /*nb*/
+        version[5] = 'r';                                /*nb*/
+        version[6] = 'n';                                /*nb*/
+        version[7] = '_';                                /*nb*/
+        version[8] = 'f';                                /*nb*/
+        version[9] = 'i';                                /*nb*/
+        version[10] = 'l';                               /*nb*/
+        version[11] = 'e';                               /*nb*/
+        version[12] = '\0';                               /*nb*/
+	//char *version = "GMX_trn_file";
 	char buf[BUFSIZE];
   
 	if (xdrfile_read_int(&magic,1,xd) != 1) {

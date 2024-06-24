@@ -60,7 +60,8 @@
 #define F77_FUNC(name,NAME) name ## _
 #endif
 
-char *exdr_message[exdrNR] = {
+const char *exdr_message[exdrNR] = {  /*nb*/
+//char *exdr_message[exdrNR] = {
 	"OK", 
 	"Header",
 	"String", 

@@ -98,7 +98,8 @@ extern "C"
 		   exdrINT, exdrFLOAT, exdrUINT, exdr3DX, exdrCLOSE, exdrMAGIC,
 		   exdrNOMEM, exdrENDOFFILE, exdrFILENOTFOUND, exdrNR };
 
-	extern char *exdr_message[exdrNR];
+	extern const char *exdr_message[exdrNR]; /*nb*/
+	//extern char *exdr_message[exdrNR];
 
 #define DIM 3
 	typedef float matrix[DIM][DIM];
