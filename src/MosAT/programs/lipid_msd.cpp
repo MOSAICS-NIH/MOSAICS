@@ -254,6 +254,8 @@ int main(int argc, const char * argv[])
     add_argument_mpi_s(argc,argv,"-crd",    p.param_file_name,            "Selection card (crd)",                                        s.world_rank, s.cl_tags, nullptr,      1);
     add_argument_mpi_s(argc,argv,"-msd",    p.msd_file_name,              "Output data file with MSD data (dat)",                        s.world_rank, s.cl_tags, nullptr,      1);
     add_argument_mpi_d(argc,argv,"-dt",     &p.ef_dt,                     "Time between analyzed frames (accounting for stride, ps)",    s.world_rank, s.cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-lf_pdb", p.lf_pdb_file_name,           "PDB file with sorted leaflets (pdb)",                         s.world_rank, s.cl_tags, &p.b_lf_pdb,  0);
+    add_argument_mpi_s(argc,argv,"-lf_prm", p.leaflet_finder_param_name,  "File with additional leaflet finder parameters (prm) ",       s.world_rank, s.cl_tags, &p.b_lf_param,0);
     conclude_input_arguments_mpi(argc,argv,s.world_rank,s.program_name,s.cl_tags);
 
     //create a trajectory
@@ -274,6 +276,14 @@ int main(int argc, const char * argv[])
     //check file extensions                                                                                     
     check_extension_mpi(s.world_rank,"-crd",p.param_file_name,".crd");
     check_extension_mpi(s.world_rank,"-msd",p.msd_file_name,".dat");
+    if(p.b_lf_pdb == 1)
+    {
+        check_extension_mpi(s.world_rank,"-lf_pdb",p.lf_pdb_file_name,".pdb");
+    }
+    if(p.b_lf_param == 1)
+    {
+        check_extension_mpi(s.world_rank,"-lf_prm",p.leaflet_finder_param_name,".prm");
+    }
 
     //create parameter files
     Param param;
