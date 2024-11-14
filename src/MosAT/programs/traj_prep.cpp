@@ -507,7 +507,7 @@ void get_bonds(Trajectory &traj,system_variables &s,program_variables &p,Index &
        }
        else 
        {  
-           printf("duplicate entry found in bonds list \n");
+           printf("duplicate entry found in bonds list. Line %d %d %d \n",(int)((double)i/2.0),bond.index_i[i],bond.index_i[i+1]);
        }
 
        duplicate = 0;
@@ -526,7 +526,7 @@ void get_bonds(Trajectory &traj,system_variables &s,program_variables &p,Index &
        }
        else 
        {
-           printf("duplicate entry found in bonds list \n");
+           printf("duplicate entry found in bonds list. Line %d %d %d \n",(int)((double)i/2.0),bond.index_i[i],bond.index_i[i+1]);
        }
     }
 
@@ -998,7 +998,7 @@ void mend_res(Trajectory &traj,system_variables &s,program_variables &p)
                 sum_dist = sum_dist + (dx*dx + dy*dy + dz*dz);
             }
 
-            if(sum_dist > largest_sum_dist)
+	    if(sum_dist >= largest_sum_dist)
             {   
                 target_index = j;
             }
@@ -1181,7 +1181,7 @@ void mend_mols_bonds(Trajectory &traj,system_variables &s,program_variables &p,i
      *   periodic boundary and that the molecules can be made whole again by shifting atoms by the box dimensions. If this is not true, the program will hang.       
      */
 
-    for(i=0; i<molecules_bonds[i].size(); i++) //loop over molecules
+    for(i=0; i<molecules_bonds.size(); i++) //loop over molecules
     {
         int num_bonds = molecules_bonds[i].size();
 

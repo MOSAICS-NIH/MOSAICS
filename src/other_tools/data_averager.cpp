@@ -103,8 +103,10 @@ int main(int argc, const char * argv[])
         for(j=0; j<data_1.size_x(); j++) //loop over columns
         {
             data_avg.data_d[i][j] = 0.5*(data_1.data_d[i][j] + data_2.data_d[i][j]);
-        }
+	}
     }
+
+    data_avg.double_to_string();
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
