@@ -253,8 +253,8 @@ void update_neighbors(Trajectory &traj,system_variables &s,program_variables &p,
                                        res_name_lip[lip_count_2] = traj.res_name[min_2];
                                     }
 
-                                    //extract atoms involved in geometric center and compute the center
-                                    sv1d target_atoms_2 = param_2.get_column_sec_s(j,0);
+				    //extract atoms involved in geometric center and compute the center
+                                    sv1d target_atoms_2 = param_2.get_column_sec_s(n,0);
 
                                     //compute the center for the lipid
                                     dv1d r_center_2 = traj.center(target_atoms_2,min_2,max_2);
