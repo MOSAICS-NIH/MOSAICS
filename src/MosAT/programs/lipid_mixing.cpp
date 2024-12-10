@@ -205,7 +205,7 @@ void update_neighbors(Trajectory &traj,system_variables &s,program_variables &p,
 
         //jump to the next lipid
         i = traj.next_target_lipid(i);
-  
+ 
         for(j=0; j<param_1.main_size_y(); j++) //loop over lipid types 1
         {
             if(strcmp(traj.res_name[min].c_str(), param_1.param_main_s[j][0].c_str()) == 0) //lipid type is correct
@@ -265,7 +265,7 @@ void update_neighbors(Trajectory &traj,system_variables &s,program_variables &p,
 
                                     double dist = sqrt(dx*dx + dy*dy);
 
-                                    double cutoff_dist = param_1.param_main_d[n][2];
+                                    double cutoff_dist = param_1.param_main_d[j][2];
 
                                     //update neighbors data and compute dwell time
                                     if(dist < cutoff_dist) //lipid is in the first shell
