@@ -41,6 +41,7 @@ struct program_variables
     int b_pf_param;                               //Tells if the user included a protein types parameter file
     int b_pf_pdb;                                 //Print the protein finder pdb?
     int b_test;                                   //Print info for testing molecule definitions
+    int stop;                                     //Stop printing -test info after this many molecules
 };
 
 
@@ -62,6 +63,7 @@ void initialize_program_variables(program_variables *p)
     //initialize program variables here
     p->b_pf_pdb    = 0;
     p->b_test      = 0;
+    p->stop        = 0;
 
     //here we set the program description
     p->program_description = "Traj Prep is a tool used to prepare trajectories for analysis. This tool helps the user perform basic operation such as fitting, centering, translating, and wrapping. To use the tool, the user provides a recipe telling which operations to perform in what order.";
