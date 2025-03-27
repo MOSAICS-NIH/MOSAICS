@@ -42,7 +42,7 @@ using namespace std;
 // This function deposits density to the grid around target atoms                                            //
 //                                                                                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void deposit_density(Trajectory &traj,system_variables &s,program_variables &p,Param &param,Grid_3d_i &rho)
+void deposit_density(Trajectory &traj,system_variables &s,program_variables &p,Param &param,Grid_3d_d &rho)
 {
     int    i        = 0;                                //standard variable used in loops
     int    j        = 0;                                //standard variable used in loops
@@ -84,14 +84,14 @@ void deposit_density(Trajectory &traj,system_variables &s,program_variables &p,P
 
                                     if(distance <= p.dist_cutoff)
                                     {
-                                        rho.stamp(hx,hy,hz,p.radius,1);
+                                        rho.stamp(hx,hy,hz,p.radius,1.0);
                                         break;
                                     }
                                 }
                             }
                             else 
                             {
-                                rho.stamp(hx,hy,hz,p.radius,1);
+                                rho.stamp(hx,hy,hz,p.radius,1.0);
                             }
                         }
                     }
@@ -106,7 +106,7 @@ void deposit_density(Trajectory &traj,system_variables &s,program_variables &p,P
 // Collect distances and compute average.                                                                    //
 //                                                                                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-double finalize_analysis(Trajectory &traj,system_variables &s,program_variables &p,Grid_3d_i &rho,Grid_3d_i &nan)
+double finalize_analysis(Trajectory &traj,system_variables &s,program_variables &p,Grid_3d_d &rho,Grid_3d_i &nan)
 {
     MPI_Barrier(MPI_COMM_WORLD);
 
@@ -124,6 +124,7 @@ double finalize_analysis(Trajectory &traj,system_variables &s,program_variables 
     //normalize rho and write the density to file
     if(s.world_rank == 0)
     {
+        rho.normalize_constant((double)traj.get_ef_frames()); 
         rho.write_grid(nan,p.ex_val);
     }
 
@@ -188,7 +189,7 @@ int main(int argc, const char * argv[])
     add_argument_mpi_d(argc,argv,"-bz",     &p.box_z,                     "Grid z dimension (nm)",                                       s.world_rank, s.cl_tags, nullptr,      0);
     add_argument_mpi_i(argc,argv,"-leaf",   &p.leaflet,                   "Which leaflet? (0:both 1:upper 2:lower)",                     s.world_rank, s.cl_tags, nullptr,      1);
     add_argument_mpi_d(argc,argv,"-dist",   &p.dist_cutoff,               "How far from protein should lipids be counted? (nm)",         s.world_rank, s.cl_tags, &p.b_dist,    0);
-    add_argument_mpi_i(argc,argv,"-ex_val", &p.ex_val,                    "Set excluded lattice points to this value",                   s.world_rank, s.cl_tags, nullptr,      0);
+    add_argument_mpi_d(argc,argv,"-ex_val", &p.ex_val,                    "Set excluded lattice points to this value",                   s.world_rank, s.cl_tags, nullptr,      0);
     conclude_input_arguments_mpi(argc,argv,s.world_rank,s.program_name,s.cl_tags);
 
     //create a trajectory
@@ -258,7 +259,7 @@ int main(int argc, const char * argv[])
     traj.get_prot_stats();
 
     //create a grid to hold nearest neighbor distances
-    Grid_3d_i rho;
+    Grid_3d_d rho;
     Grid_3d_i nan;
 
     //get the grid dimensions

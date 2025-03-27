@@ -1855,12 +1855,14 @@ class Grid_3d_d
         void   get_dim(double my_box_x,double my_box_y,double my_box_z,matrix ibox,double my_APS);         //gets and set the grid dimensions
         void   set_dim(double my_APS,double my_num_g_x,double my_num_g_y,double my_num_g_z);               //sets the grid dimensions
         void   set_output(string my_grid_file_name);                                                       //set the name and format of the output file
+        void   print_dim();                                                                                //print dimensions of the grid
         void   clean_grid();                                                                               //clean the grid
         void   stamp(double hx,double hy,double hz,double radius,double data);                             //add a value to the grid
         void   controlled_stamp(double hx,double hy,double hz,double radius,double data,Grid_3d_i &check); //add a value to the grid if check equals zero. 
         void   collect_grid();                                                                             //collect grid/rho from mpi processes
         void   paint(double hx,double hy,double hz,double radius,double data);                             //set the value for the grid points
         void   normalize(Grid_3d_d rho);                                                                   //normalize the grid
+        void   normalize_constant(double c);                                                               //normalize the grid using a constant normaizing factor
         void   write_grid(Grid_3d_i nan,double ex_val);                                                    //write the gid to file
         void   bcast_grid();                                                                               //broadcast the grid to all mpi processes
         void   copy_grid(Grid_3d_d model_grid);                                                            //copy from another grid
@@ -1927,6 +1929,16 @@ void Grid_3d_d::set_dim(double my_APS,double my_num_g_x,double my_num_g_y,double
 void Grid_3d_d::set_output(string my_grid_file_name)
 {
     grid_file_name = my_grid_file_name;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                          //
+// This function prints the grid dimensions                                                                 //
+//                                                                                                          //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void Grid_3d_d::print_dim()
+{
+    print_grid_stats_3d(box_x,box_y,box_z,b_box_i,num_g_x,num_g_y,num_g_z,cell_size,world_rank);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2001,9 +2013,31 @@ void Grid_3d_d::normalize(Grid_3d_d rho)
         {
             for(k=0; k<num_g_x; k++) //loop over x
             {
-                if(rho.grid[i][j][k] > 0)
+                if(rho.grid[i][j][k] > 0.0)
                 {
                     grid[i][j][k] = grid[i][j][k]/rho.grid[i][j][k];
+                }
+            }
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                          //
+// This function normalizes the grid                                                                        //
+//                                                                                                          //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void Grid_3d_d::normalize_constant(double c)
+{
+    for(i=0; i<num_g_z; i++) //loop over z
+    {
+        for(j=0; j<num_g_y; j++) //loop over y
+        {
+            for(k=0; k<num_g_x; k++) //loop over x
+            {
+                if(c != 0.0) //avoid division by zeor
+                {
+                    grid[i][j][k] = grid[i][j][k]/c;
                 }
             }
         }

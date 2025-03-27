@@ -35,7 +35,7 @@ struct program_variables
     int b_pf_pdb;                                 //Print pdb with indicated protein by beta factor?
     int b_stdev;                                  //Compute the z-coord standard deviation?
     int b_dist;                                   //Add density only local to the protein? 
-    int ex_val;                                   //Set excluded lattice points to this value
+    double ex_val;                                //Set excluded lattice points to this value
     double dist_cutoff;                           //How close to the protien must the lipids be to add density?
     double APS;                                   //This is the area of a grid square
     double radius;                                //Radius of the atom
@@ -74,7 +74,7 @@ void initialize_program_variables(program_variables *p)
     p->b_pf_param      = 0;
     p->b_dist          = 0;
     p->dist_cutoff     = 0;
-    p->ex_val          = 0;
+    p->ex_val          = 0.0;
 
     //here we set the program description
     p->program_description = "Lipid Density 3D is a program that deposits density to a 3-dimensional lattice around select lipid atoms.";

@@ -31,19 +31,28 @@ int check_elastic(int b_elastic_network,string spring_constant)
 
     if(b_elastic_network == 0) //exclude rubber bands
     {
-        if(spring_constant[0] == 'R')
+        int size = spring_constant.length();
+        if(spring_constant[size-1] == '\r') //remove extra \r character produced in some windows environments
         {
-            if(spring_constant[1] == 'U')
+            spring_constant.pop_back();
+        }
+
+        if(spring_constant.length() >= 6) //avoid seg faults
+        {
+            if(spring_constant[0] == 'R')
             {
-                if(spring_constant[2] == 'B')
+                if(spring_constant[1] == 'U')
                 {
-                    if(spring_constant[3] == 'B')
-                    {	
-                        if(spring_constant[4] == 'E')
-                        {
-                            if(spring_constant[5] == 'R')
+                    if(spring_constant[2] == 'B')
+                    {
+                        if(spring_constant[3] == 'B')
+                        {	
+                            if(spring_constant[4] == 'E')
                             {
-                                is_elastic = 1;
+                                if(spring_constant[5] == 'R')
+                                {
+                                    is_elastic = 1;
+                                }
                             }
                         }
                     }
@@ -135,6 +144,12 @@ int check_next_tag(sv2d &data_s,string main_tag,sv1d &alt_tag,int *pos_line,int 
 
                 for(j=0; j<alt_tag.size(); j++) //loop over items in tag
                 {
+                    int size = data_s[i][j].length();
+                    if(data_s[i][j][size-1] == '\r') //remove extra \r character produced in some windows environments
+                    {
+			data_s[i][j].pop_back();
+                    }
+
                     if(strcmp(data_s[i][j].c_str(), alt_tag[j].c_str()) != 0)
                     {
                         miss = 1;
@@ -372,7 +387,7 @@ int main(int argc, const char * argv[])
                             {
                                 int pos_line  = 0;     //line index for the current itp file
                                 int pos_items = 0;     //position in current line in current itp file
-            		
+
                                 //scan the itp files for a [moleculetype] section
                                 while(check_next_tag(itp_files[j],moltype_main_tag,moltype_alt_tag,&pos_line,&pos_items))
                                 {
@@ -424,7 +439,7 @@ int main(int argc, const char * argv[])
                                                     {
                                                         if(itp_files[j][atoms_line_pos][0][0] != '[') //still in current [atoms] section
                                                         {
-                                                            if(itp_files[j][atoms_line_pos][0][0] != ';' && itp_files[j][atoms_line_pos][0][0] != '#')
+                                                            if(itp_files[j][atoms_line_pos][0][0] != ';' && itp_files[j][atoms_line_pos][0][0] != '#' && itp_files[j][atoms_line_pos][0][0] != '\r')
                                                             {
                                                                 //count atoms
                                                                 num_atoms++;
@@ -476,7 +491,7 @@ int main(int argc, const char * argv[])
                                                     {
                                                         if(itp_files[j][bonds_line_pos][0][0] != '[') //still in current [bonds] section
                                                         {
-                                                            if(itp_files[j][bonds_line_pos][0][0] != ';' && itp_files[j][bonds_line_pos][0][0] != '#')
+                                                            if(itp_files[j][bonds_line_pos][0][0] != ';' && itp_files[j][bonds_line_pos][0][0] != '#' && itp_files[j][bonds_line_pos][0][0] != '\r')
                                                             {
                                                                 //store the bonds
                                                                 iv1d this_bond(2,0);
@@ -542,7 +557,7 @@ int main(int argc, const char * argv[])
                                                         {
                                                             if(itp_files[j][constraints_line_pos][0][0] != '[') //still in current [constraints] section
                                                             {
-                                                                if(itp_files[j][constraints_line_pos][0][0] != ';' && itp_files[j][constraints_line_pos][0][0] != '#')
+                                                                if(itp_files[j][constraints_line_pos][0][0] != ';' && itp_files[j][constraints_line_pos][0][0] != '#' && itp_files[j][constraints_line_pos][0][0] != '\r')
                                                                 {
                                                                     //store the constraints
                                                                     iv1d this_bond(2,0);

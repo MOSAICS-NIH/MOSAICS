@@ -142,6 +142,7 @@ void lip_coords(Trajectory &traj,system_variables &s,program_variables &p,vector
     int    i   = 0;                           //standard variable used in loops
     int    j   = 0;                           //standard variable used in loops
     int    k   = 0;                           //standard variable used in loops
+    int    l   = 0;                           //standard variable used in loops
 
     //clear the current frame grids
     for(i=0; i<top.get_num_atoms(); i++) //loop over lipid atoms
@@ -173,17 +174,23 @@ void lip_coords(Trajectory &traj,system_variables &s,program_variables &p,vector
                 //add the current lipids to the grid    
                 if(strcmp(traj.res_name[traj.target_leaflet[i]-1].c_str(), p.target_lip.c_str()) == 0) //lipid type is correct
                 {
-                    for(k=0; k<top.get_num_atoms(); k++) //loop over lipid atoms
+                    for(k=min; k<=max; k++) //loop over current lipid atoms
                     {
-                        //get the coords to be added to the grid
-                        double x = traj.r[min+k][0];
-                        double y = traj.r[min+k][1];
-                        double z = traj.r[min+k][2];
+                        for(l=0; l<top.get_num_atoms(); l++) //loop over reference file atoms
+                        {
+                            if(strcmp(traj.atom_name[k].c_str(), top.atom_name[l].c_str()) == 0) //atom was include in ref
+                            {
+                                //get the coords to be added to the grid
+                                double x = traj.r[k][0];
+                                double y = traj.r[k][1];
+                                double z = traj.r[k][2];
 
-                        //add coords to long term sum
-                        coords_x[k].stamp(hx,hy,p.radius,x);
-                        coords_y[k].stamp(hx,hy,p.radius,y);
-                        coords_z[k].stamp(hx,hy,p.radius,z);
+                                //add coords to long term sum
+                                coords_x[l].stamp(hx,hy,p.radius,x);
+                                coords_y[l].stamp(hx,hy,p.radius,y);
+                                coords_z[l].stamp(hx,hy,p.radius,z);
+                            }
+                        }
                     }
                 }
             }
