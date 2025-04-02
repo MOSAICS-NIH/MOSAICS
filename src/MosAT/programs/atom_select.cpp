@@ -78,7 +78,7 @@ int main(int argc, const char * argv[])
     add_argument_mpi_s(argc,argv,"-lsq",    p.lsq_index_file_name,        "Index for lsq fitting (ndx)",                                 s.world_rank, s.cl_tags, &p.b_lsq,     0);
     add_argument_mpi_i(argc,argv,"-lsq_d",  &p.lsq_dim,                   "Dimension for lsq fitting (3:x,y,z 2:x,y)",                   s.world_rank, s.cl_tags, nullptr,      0);
     add_argument_mpi_i(argc,argv,"-lsq_r",  &p.lsq_ref,                   "Reference structure for lsq fitting (0:ref 1:first_frame)",   s.world_rank, s.cl_tags, nullptr,      0);
-    add_argument_mpi_s(argc,argv,"-sel",    p.selection_text_file_name,   "Selection card with the selection text (crd)",                s.world_rank, s.cl_tags, nullptr,      1);
+    add_argument_mpi_s(argc,argv,"-sel",    p.selection_text_file_name,   "Selection card with the selection text (sel)",                s.world_rank, s.cl_tags, nullptr,      1);
     add_argument_mpi_s(argc,argv,"-lf_pdb", p.lf_pdb_file_name,           "PDB file with sorted leaflets (pdb)",                         s.world_rank, s.cl_tags, &p.b_lf_pdb,  0);
     add_argument_mpi_s(argc,argv,"-lf_prm", p.leaflet_finder_param_name,  "File with additional leaflet finder parameters (prm)",        s.world_rank, s.cl_tags, &p.b_lf_param,0);
     add_argument_mpi_s(argc,argv,"-pf_pdb", p.pf_pdb_file_name,           "PDB file with selected protein (pdb)",                        s.world_rank, s.cl_tags, &p.b_pf_pdb,  0);
@@ -103,6 +103,33 @@ int main(int argc, const char * argv[])
     perf.log_time(traj.build(),"Analyze Trajectory");
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //check file extensions                                                                                     
+    check_extension_mpi(s.world_rank,"-sel",p.selection_text_file_name,".sel");
+    if(p.b_lf_pdb == 1)
+    {
+        check_extension_mpi(s.world_rank,"-lf_pdb",p.lf_pdb_file_name,".pdb");
+    }
+    if(p.b_lf_param == 1)
+    {
+        check_extension_mpi(s.world_rank,"-lf_prm",p.leaflet_finder_param_name,".prm");
+    }
+    if(p.b_pf_pdb == 1)
+    {
+        check_extension_mpi(s.world_rank,"-pf_pdb",p.pf_pdb_file_name,".pdb");
+    }
+    if(p.b_pf_param == 1)
+    {
+        check_extension_mpi(s.world_rank,"-pf_prm",p.protein_finder_param_name,".prm");
+    }
+    if(p.b_sf_pdb == 1)
+    {
+        check_extension_mpi(s.world_rank,"-sf_pdb",p.sf_pdb_file_name,".pdb");
+    }
+    if(p.b_sf_param == 1)
+    {
+        check_extension_mpi(s.world_rank,"-sf_prm",p.solvent_finder_param_name,".prm");
+    }
+
     //run leaflet/proten/solvent finder
     traj.get_leaflets(p.leaflet,p.leaflet_finder_param_name,p.b_lf_param);
     traj.get_protein(p.protein_finder_param_name,p.b_pf_param);

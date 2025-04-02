@@ -27,6 +27,7 @@ foreach(CMD
     2d_kinetics
     apl
     apl_3d
+    atomic_rmsf
     atoms_in_2_planes
     atom_select
     b_stamp
@@ -35,6 +36,8 @@ foreach(CMD
     check_broken_mols
     contact_kinetics
     contact_rmsf
+    dihedrals.cpp
+    distances
     h_bond_kinetics
     interdigitation
     inter_leaflet_contacts
@@ -68,6 +71,7 @@ foreach(CMD
     pbc_gen
     pbc_xy
     pbc_z
+    pdb_editor
     protein_lipid_contacts
     protein_orientation
     protein_residue_enrichment
@@ -137,6 +141,7 @@ foreach(CMD
     binding_events_analyzer
     binding_events_analyzer_single
     binding_events_merger
+    binding_events_number_lipids_visited
     binding_events_video
     binding_extractor
     binding_lipids

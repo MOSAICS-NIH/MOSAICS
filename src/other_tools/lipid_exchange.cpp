@@ -99,8 +99,8 @@ int main(int argc, const char * argv[])
     add_argument_mpi_d(argc,argv,"-cutoff"   , &cutoff,                  "Exclude binding events with a dwell time smaller than this (ps)"                          , world_rank, cl_tags, nullptr,      0);
     add_argument_mpi_s(argc,argv,"-histo"    , histo_file_name,          "Output data file with the exchange duration histogram (dat)"                              , world_rank, cl_tags, &b_histo,     0);
     add_argument_mpi_i(argc,argv,"-bin"      ,&bin_width,                "Bin width for the exchange duration histogram (frames)"                                   , world_rank, cl_tags, nullptr,      0);
-    add_argument_mpi_i(argc,argv,"-min"      , &min,                     "Minimum value of histogram (num lipids)"                                                  , world_rank, cl_tags, &b_min,       0);
-    add_argument_mpi_i(argc,argv,"-max"      , &max,                     "Maximum value of histogram (num lipids)"                                                  , world_rank, cl_tags, &b_max,       0);
+    add_argument_mpi_i(argc,argv,"-min"      , &min,                     "Minimum value of histogram (frames)"                                                      , world_rank, cl_tags, &b_min,       0);
+    add_argument_mpi_i(argc,argv,"-max"      , &max,                     "Maximum value of histogram (frames)"                                                      , world_rank, cl_tags, &b_max,       0);
     add_argument_mpi_i(argc,argv,"-self"     , &b_self,                  "Count exchanges when the outgoing and replacing lipids are the same lipid? (0:no, 1:yes)" , world_rank, cl_tags, nullptr,      1);
     conclude_input_arguments_mpi(argc,argv,world_rank,program_name,cl_tags);
 
