@@ -141,7 +141,6 @@ foreach(CMD
     binding_events_analyzer
     binding_events_analyzer_single
     binding_events_merger
-    binding_events_number_lipids_visited
     binding_events_video
     binding_extractor
     binding_lipids

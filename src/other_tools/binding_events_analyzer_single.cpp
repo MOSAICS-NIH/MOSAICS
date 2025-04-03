@@ -52,13 +52,13 @@ int main(int argc, const char * argv[])
     int world_rank   = 0;              //Rank in the mpi world
     int threshold    = 0;              //Cutoff for mending fragmented binding events
     int report       = 0;              //Report a list of the binding events?
-    double slope     = 0;              //slope of LnP vs time
-    double yint      = 0;              //ying of LnP vs time
-    double r2        = 0;              //Correlation coeficient in linear regression
-    double koff      = 0;              //The koff value
-    double cutoff    = 0;              //Exclude data with cutoff less than this
-    double bin_width = 1;              //bin width (default is 1ps)
-    double percent   = 0;              //Percent reported for the bin
+    double slope     = 0.0;            //slope of LnP vs time
+    double yint      = 0.0;            //ying of LnP vs time
+    double r2        = 0.0;            //Correlation coeficient in linear regression
+    double koff      = 0.0;            //The koff value
+    double cutoff    = 0.0;            //Exclude data with cutoff less than this
+    double bin_width = 1.0;            //bin width (default is 1ps)
+    double percent   = 0.0;            //Percent reported for the bin
     sv1d cl_tags;                      //Holds a list of command line tags for the program
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -76,7 +76,6 @@ $MPI_CPP_COMP -I src -std=c++11 src/other_tools/binding_contributors.cpp        
 $MPI_CPP_COMP -I src -std=c++11 src/other_tools/binding_events_analyzer.cpp                 -o build/binding_events_analyzer_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/other_tools/binding_events_analyzer_single.cpp          -o build/binding_events_analyzer_single_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/other_tools/binding_events_merger.cpp                   -o build/binding_events_merger_mpi
-$MPI_CPP_COMP -I src -std=c++11 src/other_tools/binding_events_number_lipids_visited.cpp    -o build/binding_events_number_lipids_visited_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/other_tools/binding_events_video.cpp                    -o build/binding_events_video_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/other_tools/binding_extractor.cpp                       -o build/binding_extractor_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/other_tools/binding_lipids.cpp                          -o build/binding_lipids_mpi

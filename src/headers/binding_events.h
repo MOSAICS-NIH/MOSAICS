@@ -1386,8 +1386,35 @@ int Binding_events::get_info(string binding_events_file_name)
             {
                 for(j=0; j<num_g_y; j++) //loop over y 
                 {
+                    info_pos[i][j] = current_pos;
                     current_pos = get_binding_events_tmp(be_file,current_pos);
-                    info_pos[i][j] = current_pos; 
+                }
+            }
+
+            //write new info file
+            int world_size = 0; 
+            int world_rank = -1;
+            MPI_Comm_size(MPI_COMM_WORLD, &world_size);      //get the world size
+            MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);      //get the process rank
+
+            if(world_rank == 0)
+            {
+                FILE *this_file = fopen(info_file_name.c_str(), "w");
+                if(this_file == NULL)
+                {
+                    printf("Could not open file %s. \n",info_file_name.c_str());
+                }
+                else
+                {
+                    for(i=0; i<num_g_x; i++) //loop over x
+                    {
+                        for(j=0; j<num_g_y; j++) //loop over y 
+                        {
+                            fprintf(this_file," %ld ",info_pos[i][j]);
+                        }
+                        fprintf(this_file,"\n");
+                    }
+                    fclose(this_file);
                 }
             }
         }
