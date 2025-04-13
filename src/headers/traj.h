@@ -1828,8 +1828,7 @@ class Trajectory
         int in_f                 = 0;                 //What is the format of the input file? (gro:0 pdb:1 xtc:2 trr:3)
         int out_f                = 0;                 //What is the format of the output file? (gro:0 pdb:1 xtc:2 trr:3)
         int ref_f                = 0;                 //What is the format of the reference file? (gro:0 pdb:1)
-        int box_dimension        = 9;                 //How many entries for the box? (3 or 9)
-        int global_frame         = 0;                 //The frame number from the whole trajectory
+        //int box_dimension        = 9;                 //How many entries for the box? (3 or 9)
         int my_frames            = 0;                 //Number of frames the mpi process is responsible for (after -b, -e and -stride)
         int effective_frames     = 0;                 //Number of frames to be analyzed in total (summing over each mpi process and accounting for -b, -e and stride)
         int stride               = 1;                 //How many frames do we skip each time?
@@ -1842,9 +1841,6 @@ class Trajectory
         int num_residues         = 0;                 //How many residues in the system
         int64_t offset_r         = 0;                 //Possition in trajectory file where the mpi process should move to for reading
         int64_t filesize         = 0;                 //This is the size of the trajectory file in bits
-        gmx_bool bBox            = 0;                 //Does the trajectory file contain a box?
-        gmx_bool bF              = 0;                 //Does the trajectory file contain forces?
-        gmx_bool bV              = 0;                 //Does the trajectory file contain velocities?
         rvec *lsq_shift;                              //How much is the system translated by when doing least squares fitting?
 
         //xtc stuff
@@ -1894,6 +1890,11 @@ class Trajectory
         vector <char>   chain_id{};                   //Chain id for pdb file
         vector <int>    res_start{};                  //First atom of the residue
         vector <int>    res_end{};                    //Last atom of the residue
+        gmx_bool bBox            = 0;                 //Does the trajectory file contain a box?
+        gmx_bool bF              = 0;                 //Does the trajectory file contain forces?
+        gmx_bool bV              = 0;                 //Does the trajectory file contain velocities?
+        int global_frame         = 0;                 //The frame number from the whole trajectory
+        int box_dimension        = 9;                 //How many entries for the box? (3 or 9)
 
         //leaflet finder
         int             leaflet;                      //Which leaflet is the target leaflet?

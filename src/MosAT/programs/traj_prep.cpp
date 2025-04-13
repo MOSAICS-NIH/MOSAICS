@@ -41,6 +41,187 @@ using namespace std;
 #include "headers/voronoi.h"                                 //This has routines used for computing voronoi diagrams
 #include "headers/atom_select.h"                             //This has routines used for making atom selections using a selection text
 
+/* 
+Notes: Here, we have introduced the ability to remove some atoms from the trajectory. This feature works by 
+       selecting the atoms one wishes to keep with atom_select. We thus read in an index file here with the 
+       atoms to keep. The program then creates a second Trajectory object that works with the slimmed down 
+       molecular system. The process is automated by extracting atomic coordinates from the reference file 
+       for the target atoms. The new slimmed ref file is then provided to the second trajectory object as 
+       both the -ref and -traj. By itself, this causes problems because there will be only a single frame. 
+       The second traj will then assign no frames to all mpi cores other than rank 0. To fix this problem, 
+       we create an ifo file for the new reference file. This info file is given the number of atoms for the 
+       slimmed system, but the number of frames from the original trajectory. The position of each frame is 
+       then set to zero. This way, we could loop over the number of frames specified, however, it would just 
+       read the same ref file multiple times. Tricking the trajectory object into thinking there are multiple 
+       frames creates another problem though. When there are multiple frames, the code will look for the time and 
+       step in the title line of gro files. If this info is not found the program will hang. We thus add this 
+       info to the title of the temporary ref file. The problem is further complicated by cross io. Here, we 
+       have to copy many variables from the full sized trajectory like the coords, velocities, forces, box, 
+       box dimensions, and stuff like chain id, etc.  
+*/
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function generates an info file so the slimmed traj thinks there are multiple frames                 //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void gen_info_file(Trajectory &traj,system_variables &s,program_variables &p,int num_atoms,int num_frames,string info_file_name)
+{
+    if(s.world_rank == 0)
+    {
+        int i = 0;     //standard variable used in loop
+        int64_t this_filesize = 0;
+        int this_num_frames = 0;
+
+        //read first 2 lines from existing info file
+        FILE *info_file = fopen64(info_file_name.c_str(), "r");
+        if(info_file == NULL)
+        {
+            printf("failure opening %s. Make sure the file exists. \n",info_file_name.c_str());
+        }
+        char my_string[20];   //used to read in each item in the info file
+        int line_count = 0;   //count the lines as they are read
+        while(fscanf(info_file, "%s,", my_string) == 1)
+        {
+            if(line_count == 0) //file size
+            {
+                this_filesize = atol(my_string);
+            }
+            else if(line_count == 2) //frames
+            {
+                this_num_frames = atoi(my_string);
+            }
+            line_count++;
+        }
+
+        FILE *info_file_copy = fopen64("temp_ref.gro.info", "w");
+        fprintf(info_file_copy," %ld \n", this_filesize);
+        fprintf(info_file_copy," %d \n",num_atoms);
+        fprintf(info_file_copy," %d \n",this_num_frames);
+        for(i=0; i<this_num_frames; i++)
+        {
+            fprintf(info_file_copy," %ld \n",0);
+        }
+        fclose(info_file_copy);
+    }
+
+    MPI_Barrier(MPI_COMM_WORLD);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function creates a reference file with only the atoms specified in the index file                    //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void get_ref_slim(Trajectory &traj,system_variables &s,program_variables &p,Index &slim_index)
+{
+    if(s.world_rank == 0)
+    {
+        int i = 0;                                       //standard variable used in loops
+        int num_atoms_slim = slim_index.index_i.size();  //how many atoms are there after removing other
+        iv1d atom_nr_slim(num_atoms_slim,-1);            //hold the atom id's
+        iv1d res_nr_slim(num_atoms_slim,-1);             //hold the res id's
+        sv1d atom_name_slim(num_atoms_slim);             //hold the atom names
+        sv1d res_name_slim(num_atoms_slim);              //hold the res names
+        rvec *r_slim;                                    //store the coordinates
+        rvec *v_slim;                                    //store the velocities (not used)
+
+        //allocate memory for coordinates
+        r_slim = (rvec *)calloc(num_atoms_slim , sizeof(*r_slim));
+         
+        for(i=0; i<slim_index.index_i.size(); i++) //loop index atoms
+        {
+            atom_nr_slim[i]   = traj.atom_nr[slim_index.index_i[i]-1];   
+            res_nr_slim[i]    = traj.res_nr[slim_index.index_i[i]-1];   
+            atom_name_slim[i] = traj.atom_name[slim_index.index_i[i]-1];   
+            res_name_slim[i]  = traj.res_name[slim_index.index_i[i]-1];
+            r_slim[i][0]      = traj.r_ref[slim_index.index_i[i]-1][0];
+            r_slim[i][1]      = traj.r_ref[slim_index.index_i[i]-1][1];
+            r_slim[i][2]      = traj.r_ref[slim_index.index_i[i]-1][2];
+        }
+
+        //make sure the title has time and step or the program will hang
+        char this_title[200];
+	string title_s = "step 0 time 0 \n";
+        strcpy(this_title, title_s.c_str());
+
+        //write out the new reference file
+        string slim_ref_file_name = "temp_ref.gro";
+        FILE *this_file = fopen64(slim_ref_file_name.c_str(), "w");
+        write_frame_gro(traj.ibox,num_atoms_slim,atom_nr_slim,res_nr_slim,res_name_slim,atom_name_slim,r_slim,this_title,s.world_rank, &this_file,3,0,v_slim);
+        fclose(this_file);
+
+        //free memory
+        free(r_slim);
+    }
+
+    MPI_Barrier(MPI_COMM_WORLD);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function creates a reference file with only the atoms specified in the index file                    //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void extract_atoms(Trajectory &traj,system_variables &s,program_variables &p,Index &slim_index,Trajectory &traj_slim)
+{
+    int i = 0;                                       //standard variable used in loops
+    int j = 0;                                       //standard variable used in loops
+    int counter = 0;                                 //track atoms as they are added
+
+    //get the box
+    for(i=0; i<3; i++)
+    {
+        for(j=0; j<3; j++)
+        { 
+            traj_slim.box[i][j] = traj.box[i][j];
+        }
+    }
+
+    //get the title
+    for(i=0; i<200; i++) 
+    {
+        traj_slim.title[i] = traj.title[i]; 
+    }
+
+    //get other variables
+    traj_slim.step          = traj.step;
+    traj_slim.time          = traj.time;
+    traj_slim.bF            = traj.bF;
+    traj_slim.bV            = traj.bV;
+    traj_slim.bBox          = traj.bBox;
+    traj_slim.global_frame  = traj.global_frame;             
+    traj_slim.box_dimension = traj.box_dimension;  
+ 
+    for(i=0; i<slim_index.index_i.size(); i++) //loop index atoms
+    {
+        //coords
+        traj_slim.r[counter][0] = traj.r[slim_index.index_i[i]-1][0]; 
+        traj_slim.r[counter][1] = traj.r[slim_index.index_i[i]-1][1];
+        traj_slim.r[counter][2] = traj.r[slim_index.index_i[i]-1][2];
+
+        //velocities
+        if(traj.bV == 1)
+        {
+            traj_slim.v[counter][0] = traj.v[slim_index.index_i[i]-1][0];
+            traj_slim.v[counter][1] = traj.v[slim_index.index_i[i]-1][1];
+            traj_slim.v[counter][2] = traj.v[slim_index.index_i[i]-1][2];
+        }
+        //forces
+        if(traj.bF == 1)
+        {
+            traj_slim.f[counter][0] = traj.f[slim_index.index_i[i]-1][0];
+            traj_slim.f[counter][1] = traj.f[slim_index.index_i[i]-1][1];
+            traj_slim.f[counter][2] = traj.f[slim_index.index_i[i]-1][2];
+        }
+        traj_slim.beta[counter]     = traj.beta[slim_index.index_i[i]-1];
+        traj_slim.weight[counter]   = traj.weight[slim_index.index_i[i]-1];
+        traj_slim.element[counter]  = traj.element[slim_index.index_i[i]-1];
+        traj_slim.chain_id[counter] = traj.chain_id[slim_index.index_i[i]-1];
+        counter++;
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                           //
 // This function checks the secondary selection cards for the correct extension                              //
@@ -127,11 +308,13 @@ void check_recipe(Trajectory &traj,system_variables &s,program_variables &p,Para
     sv1d operations(0);  //holds supported operations
 
     operations.push_back("fit");     //least squares fitting
-    operations.push_back("trans");   //translate system
+    operations.push_back("trans");   //translate system to a target point
     operations.push_back("center");  //center atom selection
     operations.push_back("wrap");    //put atoms/molecules in box
     operations.push_back("mend");    //fix broken molecules
     operations.push_back("time");    //set trajectory time
+    operations.push_back("rot");     //rotate the system
+    operations.push_back("shift");   //shift the system by a target amount
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -226,6 +409,20 @@ void check_recipe(Trajectory &traj,system_variables &s,program_variables &p,Para
             op_args.push_back("t0");       //the initial time
            
             check_args(traj,s,p,param,op_args,i); 
+        }
+        else if(strcmp("rot", param.param_main_s[i][0].c_str() ) == 0) //rotate system with matrix
+        {
+            op_args.push_back("matrix");   //filename with rotation matrix
+
+            check_args(traj,s,p,param,op_args,i);
+        }
+        else if(strcmp("shift", param.param_main_s[i][0].c_str() ) == 0) //shift the system by a target amount
+        {
+            op_args.push_back("dx");   //distance to move in x-direction (nm)
+            op_args.push_back("dy");   //distance to move in y-direction (nm)
+            op_args.push_back("dz");   //distance to move in z-direction (nm)
+
+            check_args(traj,s,p,param,op_args,i);
         }
     }
 
@@ -448,6 +645,65 @@ void check_recipe(Trajectory &traj,system_variables &s,program_variables &p,Para
                     }
                 }
                 if(strcmp("t0", param.param_sec_s[i][j][0].c_str() ) == 0) //initial time
+                {
+                    if(check_float(param.param_sec_s[i][j][1].c_str()) == 0)
+                    {
+                        if(s.world_rank == 0)
+                        {
+                            printf("Argument (%s) provided in (%s) requires a floating point number while (%s) was provided. \n",param.param_sec_s[i][j][0].c_str(),param.param_main_s[i][1].c_str(),param.param_sec_s[i][j][1].c_str());
+                        }
+                        kill = 1;
+                    }
+                }
+
+                if(kill == 1) //terminate program
+                {
+                    MPI_Finalize();
+                    exit(EXIT_SUCCESS);
+                }
+            }
+        }
+        if(strcmp("rot", param.param_main_s[i][0].c_str() ) == 0) //translation
+        {
+            for(j=0; j<param.sec_size_y(i); j++) //loop over current operations parameters
+            {
+                int kill = 0;
+
+                if(strcmp("matrix", param.param_sec_s[i][j][0].c_str() ) == 0) //rotation matrix
+                {
+                    check_extension_recipe(param.param_main_s[i][1],param.param_sec_s[i][j][1],".crd");
+                }
+            }
+        }
+        if(strcmp("shift", param.param_main_s[i][0].c_str() ) == 0) //shift by a target amount
+        {
+            for(j=0; j<param.sec_size_y(i); j++) //loop over current operations parameters
+            {
+                int kill = 0;
+
+                if(strcmp("dx", param.param_sec_s[i][j][0].c_str() ) == 0) //delta x
+                {
+                    if(check_float(param.param_sec_s[i][j][1].c_str()) == 0)
+                    {
+                        if(s.world_rank == 0)
+                        {
+                            printf("Argument (%s) provided in (%s) requires a floating point number while (%s) was provided. \n",param.param_sec_s[i][j][0].c_str(),param.param_main_s[i][1].c_str(),param.param_sec_s[i][j][1].c_str());
+                        }
+                        kill = 1;
+                    }
+                }
+                if(strcmp("dy", param.param_sec_s[i][j][0].c_str() ) == 0) //delta y
+                {
+                    if(check_float(param.param_sec_s[i][j][1].c_str()) == 0)
+                    {
+                        if(s.world_rank == 0)
+                        {
+                            printf("Argument (%s) provided in (%s) requires a floating point number while (%s) was provided. \n",param.param_sec_s[i][j][0].c_str(),param.param_main_s[i][1].c_str(),param.param_sec_s[i][j][1].c_str());
+                        }
+                        kill = 1;
+                    }
+                }
+                if(strcmp("dz", param.param_sec_s[i][j][0].c_str() ) == 0) //delta z
                 {
                     if(check_float(param.param_sec_s[i][j][1].c_str()) == 0)
                     {
@@ -1058,6 +1314,58 @@ void mend_res(Trajectory &traj,system_variables &s,program_variables &p)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                           //
+// This rotates the molecular system                                                                         //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void rotate_system(Trajectory &traj,system_variables &s,program_variables &p,Index &rotation_matrix)
+{
+    int i = 0;    //standard variable used in loops
+  
+    int xx = rotation_matrix.index_d[0];
+
+    float x_vec[3];            //holds the top row of rotation matrix
+    float y_vec[3];            //holds the middle row of rotation matrix
+    float z_vec[3];            //holds the bottom row of rotation matrix
+
+    x_vec[0] = (float)rotation_matrix.index_d[0];
+    x_vec[1] = (float)rotation_matrix.index_d[1];
+    x_vec[2] = (float)rotation_matrix.index_d[2];
+
+    y_vec[0] = (float)rotation_matrix.index_d[3];
+    y_vec[1] = (float)rotation_matrix.index_d[4];
+    y_vec[2] = (float)rotation_matrix.index_d[5];
+
+    z_vec[0] = (float)rotation_matrix.index_d[6];
+    z_vec[1] = (float)rotation_matrix.index_d[7];
+    z_vec[2] = (float)rotation_matrix.index_d[8];
+
+    for(i=0; i<traj.atoms(); i++) //loop over system atoms
+    {
+        traj.r[i][0] = iprod(x_vec, traj.r[i]);
+        traj.r[i][1] = iprod(y_vec, traj.r[i]);
+        traj.r[i][2] = iprod(z_vec, traj.r[i]);
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This shifts the molecular system by a target amount                                                       //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void shift_system(Trajectory &traj,system_variables &s,program_variables,double dx,double dy,double dz)
+{
+    int i = 0;    //standard variable used in loops
+
+    for(i=0; i<traj.atoms(); i++) //loop over system atoms
+    {
+        traj.r[i][0] = traj.r[i][0] + dx;
+        traj.r[i][1] = traj.r[i][1] + dy;
+        traj.r[i][2] = traj.r[i][2] + dz;
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
 // Forward declaration of update_distances() since this function calls shift_coords() and shift_coords()     //
 // also calls update_distances()                                                                             //
 //                                                                                                           //
@@ -1266,6 +1574,7 @@ int main(int argc, const char * argv[])
     add_argument_mpi_s(argc,argv,"-crd",    p.param_file_name,            "Selection card with list of operations (crd)",              s.world_rank, s.cl_tags, nullptr,      1);
     add_argument_mpi_i(argc,argv,"-test",   &p.b_test,                    "Print info for testing molecule definitions (0:no, 1:yes)", s.world_rank, s.cl_tags, nullptr,      0);
     add_argument_mpi_i(argc,argv,"-stop",   &p.stop,                      "Stop reporting -test info after this many molecules",       s.world_rank, s.cl_tags, nullptr,      0);
+    add_argument_mpi_s(argc,argv,"-slim",   p.slim_index_file_name,       "Index for atoms to keep (ndx)",                             s.world_rank, s.cl_tags, &p.b_slim,    0);
     conclude_input_arguments_mpi(argc,argv,s.world_rank,s.program_name,s.cl_tags);
 
     //create a trajectory
@@ -1281,6 +1590,9 @@ int main(int argc, const char * argv[])
 
     //analyze the trajectory (log time spent) 
     perf.log_time(traj.build(),"Analyze Trajectory");
+
+    //create a trajectory
+    Trajectory traj_slim;
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //check file extensions                                                                                     
@@ -1331,6 +1643,32 @@ int main(int argc, const char * argv[])
                 bond.get_index(param.param_sec_s[i][j][1].c_str());
                 get_bonds(traj,s,p,bond,bonds);
             }
+            else if(strcmp("matrix", param.param_sec_s[i][j][0].c_str() ) == 0) //rotation matrix
+            {
+                 param_index[i].get_index(param.param_sec_s[i][j][1].c_str()); //read the index file
+
+                 if(param_index[i].index_s.size() != 9)
+                 {
+                     if(s.world_rank == 0) 
+                     {
+                         printf("rotation matrix (%s) should contain 9 items \n",param.param_sec_s[i][j][1].c_str());
+                     }
+                     MPI_Finalize();
+                     exit(EXIT_SUCCESS);
+                 }
+		 for(k=0; k<param_index[i].index_s.size(); k++) //check that matrix has floating point numbers only
+                 {
+                     if(check_float(param_index[i].index_s[k].c_str()) == 0)
+                     {
+                         if(s.world_rank == 0)
+                         {
+                             printf("rotation matrix (%s) should contain floating point numbers only \n",param.param_sec_s[i][j][1].c_str());
+                         }
+                         MPI_Finalize();
+                         exit(EXIT_SUCCESS); 
+                     }
+                 } 
+            }
         }
     }
 
@@ -1350,6 +1688,33 @@ int main(int argc, const char * argv[])
     iv3d molecules_bonds(molecules.size(),iv2d(0,iv1d(2,0)));       //stores a list of bonds for each molecule in the system
     get_molecules_bonds(traj,s,p,bonds,molecules,molecules_bonds);
 
+    //create index for removing atoms from trajectory
+    Index slim_index;
+
+    if(p.b_slim == 1)
+    {
+        //read index file
+        slim_index.get_index(p.slim_index_file_name);
+
+        //get reference file with atoms selected in slim_index
+        get_ref_slim(traj,s,p,slim_index);
+
+        //make an info file so it will think the ref_slim has multiple frames. otherwise, only rank 0 opens a file for writing when building. 
+        string this_info_file_name = p.in_file_name + ".info";
+        gen_info_file(traj,s,p,slim_index.index_i.size(),traj.get_ef_frames(),this_info_file_name);
+
+        //set up new trajectory object
+        traj_slim.set_block_parallel(on);
+        traj_slim.set_traj("temp_ref.gro");
+        traj_slim.set_traj_w(p.out_file_name,p.b_print);
+	traj_slim.set_ref("temp_ref.gro");
+        traj_slim.set_lsq(p.lsq_index_file_name,p.b_lsq,p.lsq_dim,p.lsq_ref);
+        traj_slim.set_res(p.stride,p.start_frame,p.end_frame);
+
+        //analyze the trajectory (log time spent) 
+        perf.log_time(traj_slim.build(),"Analyze Traj Slim");
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     //print info about the worlk load distribution
@@ -1523,11 +1888,62 @@ int main(int argc, const char * argv[])
                 }
                 traj.time = t0 + traj.get_frame_global()*time_step;
             }
+            ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            //                                                                                                           //
+            // Rotate System                                                                                             //
+            //                                                                                                           //
+            ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            if(strcmp("rot", param.param_main_s[i][0].c_str() ) == 0) //rotate the molecular system
+            {
+                for(j=0; j<param.sec_size_y(i); j++)
+                {
+                    if(strcmp("matrix", param.param_sec_s[i][j][0].c_str() ) == 0) //the rotation matrix
+                    {
+                        rotate_system(traj,s,p,param_index[i]);
+                    }
+                }
+            }
+            ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            //                                                                                                           //
+            // Shift System by a target amount                                                                           //
+            //                                                                                                           //
+            ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            if(strcmp("shift", param.param_main_s[i][0].c_str() ) == 0) //shift the molecular system by a target amount
+            {
+                double dx = 0.0;        //shift this much in x direction
+                double dy = 0.0;        //shift this much in y direction
+                double dz = 0.0;        //shift this much in z direction
+
+                for(j=0; j<param.sec_size_y(i); j++)
+                {
+                    if(strcmp("dx", param.param_sec_s[i][j][0].c_str() ) == 0) //dx
+                    {   
+                        dx = param.param_sec_d[i][j][1]; 
+                    }
+                    if(strcmp("dy", param.param_sec_s[i][j][0].c_str() ) == 0) //dy
+                    {
+                        dy = param.param_sec_d[i][j][1];
+                    }
+                    if(strcmp("dz", param.param_sec_s[i][j][0].c_str() ) == 0) //dz
+                    {
+                        dz = param.param_sec_d[i][j][1];
+                    }
+                }
+                shift_system(traj,s,p,dx,dy,dz);
+            }
         }
 
         traj.do_fit();
 
-        traj.write_traj_frame();
+        if(p.b_slim == 0)
+        {
+            traj.write_traj_frame();
+        }
+        else if(p.b_slim == 1)
+        {
+            extract_atoms(traj,s,p,slim_index,traj_slim);
+            traj_slim.write_traj_frame();
+        }
 
         time_stats(s.t,&s.counter,traj.current_frame,traj.get_num_frames(),s.world_rank);
         fflush(stdin);
@@ -1537,7 +1953,16 @@ int main(int argc, const char * argv[])
     perf.log_time((clock() - s.t)/CLOCKS_PER_SEC,"Main Loop");
 
     //splice temporary traj file together (log time spent)
-    perf.log_time(traj.finalize_trajectory(),"Finalize Trajectory");
+    if(p.b_slim == 0)
+    {
+        perf.log_time(traj.finalize_trajectory(),"Finalize Trajectory");
+    }
+    else if(p.b_slim == 1) 
+    {
+        perf.log_time(traj_slim.finalize_trajectory(),"Finalize Trajectory");
+        remove("temp_ref.gro");
+        remove("temp_ref.gro.info");
+    }
 
     //print the performance stats
     perf.print_stats();
