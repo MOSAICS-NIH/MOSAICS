@@ -1828,7 +1828,6 @@ class Trajectory
         int in_f                 = 0;                 //What is the format of the input file? (gro:0 pdb:1 xtc:2 trr:3)
         int out_f                = 0;                 //What is the format of the output file? (gro:0 pdb:1 xtc:2 trr:3)
         int ref_f                = 0;                 //What is the format of the reference file? (gro:0 pdb:1)
-        //int box_dimension        = 9;                 //How many entries for the box? (3 or 9)
         int my_frames            = 0;                 //Number of frames the mpi process is responsible for (after -b, -e and -stride)
         int effective_frames     = 0;                 //Number of frames to be analyzed in total (summing over each mpi process and accounting for -b, -e and stride)
         int stride               = 1;                 //How many frames do we skip each time?

@@ -1341,9 +1341,13 @@ void rotate_system(Trajectory &traj,system_variables &s,program_variables &p,Ind
 
     for(i=0; i<traj.atoms(); i++) //loop over system atoms
     {
-        traj.r[i][0] = iprod(x_vec, traj.r[i]);
-        traj.r[i][1] = iprod(y_vec, traj.r[i]);
-        traj.r[i][2] = iprod(z_vec, traj.r[i]);
+        float a = iprod(x_vec, traj.r[i]);
+        float b = iprod(y_vec, traj.r[i]);
+        float c = iprod(z_vec, traj.r[i]);
+
+        traj.r[i][0] = a;
+        traj.r[i][1] = b;
+        traj.r[i][2] = c;
     }
 }
 
