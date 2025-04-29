@@ -302,12 +302,10 @@ int main(int argc, const char * argv[])
 
                         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
                         //                                                                                                           //
-                        // Make a timeline and mend any fragmented events                                                            //
+                        // Mend any fragmented events                                                            //
                         //                                                                                                           //
                         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                        events.get_binding_timeline();              //make a timeline        
-                        events.suppress_timeline_noise(threshold);  //mend fragmented events
-                        events.binding_events_from_timeline();      //generate binding events from mended timeline
+                        events.suppress_timeline_noise_be(threshold);  //mend fragmented events
 
                         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
                         //                                                                                                           //

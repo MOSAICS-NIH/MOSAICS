@@ -181,7 +181,8 @@ class Binding_events
         void    binding_events_from_timeline();                                                                                             //use binding timeline to create binding events
         void    write_time_line(string timeline_file_name);                                                                                 //write the binding timeline to file
         void    suppress_timeline_noise(int threshold);                                                                                     //mend fragmented binding events
-        void    sweep_timeline_noise(int lipid_count);                                                                                      //constrain numbero of lipids bound in timeline for a given t
+        void    suppress_timeline_noise_be(int threshold);                                                                                  //mend fragmented binding events
+	void    sweep_timeline_noise(int lipid_count);                                                                                      //constrain numbero of lipids bound in timeline for a given t
         void    get_complete_set(string in_file_name,iv1d &lipid_nr,iv1d &res_nr,sv1d &res_name);                                           //reads binding events file until a complete set of lipid_nr etc. is found
         dv1d    find_voro_center(int this_lipid);                                                                                           //returns the center of a lipid tessellation
         int     get_binding_events_grid(string in_file_name,i64v2d &this_be_pos,int this_x,int this_y);                                     //reads in a binding events file for a lattice point
@@ -675,6 +676,82 @@ void Binding_events::suppress_timeline_noise(int threshold)
         }
     }
 }    
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function bypasses a time line while filling in fragmentation gaps                                    //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void Binding_events::suppress_timeline_noise_be(int threshold)
+{
+    int i = 0;
+    int j = 0;
+
+    if(threshold > 0)
+    {
+        iv1d removed(lipid_nr.size(), 0);
+
+        for(i=0; i<lipid_nr.size(); i++) //loop over leaving lipids
+        {
+            if(removed[i] == 0)
+            {
+                for(j=0; j<lipid_nr.size(); j++) //loop over incoming lipids
+                {
+                    if(lipid_nr[i] == lipid_nr[j]) //same lipid
+                    {
+                        if(bind_i[j] >= bind_i[i] && bind_f[j] <= bind_f[i] && i != j) //event falls inside another event
+                        {
+                            removed[j] = 1;
+                        }
+
+                        if(removed[j] == 0)
+                        {
+                            if(bind_i[j] > bind_f[i] && bind_i[j] <= (bind_f[i] + threshold)) 
+                            {
+                                bind_f[i]  = bind_f[j];
+                                dwell_t[i] = bind_f[j] + 1 - bind_i[i];
+                                removed[j] = 1;
+                                i = i - 1;
+                                goto next_iter;
+                            }
+                        }
+                    }
+                }
+                next_iter:;
+            }
+        }
+
+        //make structures to store new binding events info	
+        iv1d this_lipid_nr{};                                                                                                                  
+        iv1d this_bind_i{};                                                                                                                   
+        iv1d this_bind_f{};                                                                                                                   
+        iv1d this_dwell_t{};                                                                                                                  
+        iv1d this_res_nr{};                                                                                                                   
+        sv1d this_res_name{}; 
+
+        //copy the remaining binding events
+        for(i=0; i<lipid_nr.size(); i++) //loop over binding events
+        {
+            if(removed[i] == 0)
+            {
+                this_lipid_nr.push_back(lipid_nr[i]);
+                this_bind_i.push_back(bind_i[i]);
+                this_bind_f.push_back(bind_f[i]);
+                this_dwell_t.push_back(dwell_t[i]);
+                this_res_nr.push_back(res_nr[i]);
+                this_res_name.push_back(res_name[i]);
+            }
+        }
+
+        //replace old binding events with new ones
+        lipid_nr = this_lipid_nr; 
+        bind_i   = this_bind_i;
+        bind_f   = this_bind_f;
+        dwell_t  = this_dwell_t; 
+        res_nr   = this_res_nr; 
+        res_name = this_res_name; 
+    }
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                           //
