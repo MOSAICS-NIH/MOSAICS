@@ -170,40 +170,17 @@ int main(int argc, const char * argv[])
     { 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //                                                                                                           //
-        // sort events by dwell time (largest first)                                                                 //
+        // Mend any fragmented events                                                                                //
         //                                                                                                           //
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        events.organize_events(1);
+        events.suppress_timeline_noise_be_alt(threshold);  //mend fragmented events
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //                                                                                                           //
-        // remove events with dwell time shorter than cutoff                                                         //
+        // remove events with dwell time shorter than cutoff_dt                                                      //
         //                                                                                                           //
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        if(cutoff > 0)
-        {
-            for(i=events.lipid_nr.size()-1; i>=0; i--) //loop over binding events
-            {   
-                if((double)events.dwell_t[i]*events.ef_dt < cutoff)
-                {   
-                    events.dwell_t.pop_back(); 
-                    events.lipid_nr.pop_back();
-                    events.bind_i.pop_back();  
-                    events.bind_f.pop_back();  
-                    events.res_nr.pop_back();  
-                    events.res_name.pop_back(); 
-                }
-            }
-        }
-
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //                                                                                                           //
-        // Make a timeline and mend any fragmented events                                                            //
-        //                                                                                                           //
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        events.get_binding_timeline();              //make a timeline        
-        events.suppress_timeline_noise(threshold);  //mend fragmented events
-        events.binding_events_from_timeline();      //generate binding events from mended timeline
+        events.screen_events(cutoff);
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //                                                                                                           //

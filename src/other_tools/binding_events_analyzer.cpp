@@ -233,11 +233,21 @@ int main(int argc, const char * argv[])
     dv1d koff_local      (my_num_g,0.0);
     dv1d largest_local   (my_num_g,0.0);
 
+    //create some items to track time in each region
+    clock_t t_read_be  = 0.0;   //time spent reading binding events
+    clock_t t_suppress = 0.0;   //time spent mending fragmented events
+    clock_t t_sweep    = 0.0;   //time spent removing events with too small a dwell time
+    clock_t t_dwell_t  = 0.0;   //time spent computing dwell times
+    clock_t t_variance = 0.0;   //time spent computing variance
+    clock_t t_largest  = 0.0;   //time spent getting largest dwell time
+    clock_t t_koff     = 0.0;   //time spent getting koff
+    clock_t t_waiting  = 0.0;   //time spent waiting on other cores to finish
+
     //log time spent leading up to main analysis
     perf.log_time((clock() - t)/CLOCKS_PER_SEC,"Other");
 
-    //reset the clock
-    t = clock();
+    //get time for reporting progress
+    t1 = clock();
 
     Binding_events events;
     result       = events.get_info(in_file_name);
@@ -268,44 +278,29 @@ int main(int argc, const char * argv[])
                     // Read in binding events                                                                                    //
                     //                                                                                                           //
                     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                    result = events.get_binding_events_xy(in_file_name,i,j);
+                    t         = clock();
+                    result    = events.get_binding_events_xy(in_file_name,i,j);
+                    t_read_be = t_read_be + clock() - t;
 
                     if(events.lipid_nr.size() > 0)
                     {
                         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
                         //                                                                                                           //
-                        // sort events by dwell time (largest first)                                                                 //
+                        // Mend any fragmented events                                                                                //
                         //                                                                                                           //
                         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                        events.organize_events(1);
+                        t = clock();
+                        events.suppress_timeline_noise_be_alt(threshold);  //mend fragmented events
+                        t_suppress = t_suppress + clock() - t;
 
                         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
                         //                                                                                                           //
                         // remove events with dwell time shorter than cutoff_dt                                                      //
                         //                                                                                                           //
                         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                        if(cutoff_dt > 0.0)
-                        {
-                            for(k=events.lipid_nr.size()-1; k>=0; k--) //loop over binding events
-                            {
-                                if((double)events.dwell_t[k]*events.ef_dt < cutoff_dt)
-                                {
-                                    events.dwell_t.pop_back();
-                                    events.lipid_nr.pop_back();
-                                    events.bind_i.pop_back();
-                                    events.bind_f.pop_back();
-                                    events.res_nr.pop_back();
-                                    events.res_name.pop_back();
-                                }
-                            }
-                        }
-
-                        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                        //                                                                                                           //
-                        // Mend any fragmented events                                                            //
-                        //                                                                                                           //
-                        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                        events.suppress_timeline_noise_be(threshold);  //mend fragmented events
+                        t = clock();
+                        events.screen_events(cutoff_dt);
+                        t_sweep = t_sweep + clock() - t;
 
                         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
                         //                                                                                                           //
@@ -315,6 +310,7 @@ int main(int argc, const char * argv[])
                         double dwell_time = 0.0;
                         int ef_num_events = 0;
 
+                        t = clock();
                         for(k=0; k<events.dwell_t.size(); k++) //loop over binding events
                         {
                             for(l=0; l<lip_t.index_s.size(); l++) //loop over lipid types
@@ -329,6 +325,7 @@ int main(int argc, const char * argv[])
                         dwell_time                 = dwell_time/(double)ef_num_events;
             	        dwell_time_local[ef_count] = dwell_time*events.ef_dt;
                         num_events_local[ef_count] = (double)ef_num_events;
+                        t_dwell_t = t_dwell_t + clock() - t;
 
                         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
                         //                                                                                                           //
@@ -337,7 +334,8 @@ int main(int argc, const char * argv[])
                         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
                         double stdev         = 0.0;
                         double sum_o_squares = 0.0;
-
+ 
+                        t = clock();
                         for(k=0; k<events.dwell_t.size(); k++) //loop over binding events
                         {
                             for(l=0; l<lip_t.index_s.size(); l++) //loop over lipid types
@@ -350,6 +348,7 @@ int main(int argc, const char * argv[])
                         }
                         stdev = sqrt(sum_o_squares/(double)(ef_num_events-1));
                         stdev_local[ef_count] = stdev*events.ef_dt;
+                        t_variance = t_variance + clock() - t;
 
                         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
                         //                                                                                                           //
@@ -357,6 +356,8 @@ int main(int argc, const char * argv[])
                         //                                                                                                           //
                         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
                         int largest_dwell_t = 0;
+      
+                        t = clock();
                         for(k=0; k<events.dwell_t.size(); k++) //loop over binding events
                         {
                             for(l=0; l<lip_t.index_s.size(); l++) //loop over lipid types
@@ -371,6 +372,7 @@ int main(int argc, const char * argv[])
                             }
                         }
                         largest_local[ef_count] = (double)largest_dwell_t*events.ef_dt;
+                        t_largest = t_largest + clock() - t;
 
                         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
                         //                                                                                                           //
@@ -380,6 +382,7 @@ int main(int argc, const char * argv[])
                         double dwell_time_freq[largest_dwell_t-1];       //holds how many binding events had dwell time i
                         init_darray(dwell_time_freq,largest_dwell_t-1);
 
+                        t = clock();
                         for(k=0; k<largest_dwell_t; k++) //loop over dwell times
                         {
                             for(l=0; l<events.bind_i.size(); l++) //loop over binding events
@@ -454,6 +457,7 @@ int main(int argc, const char * argv[])
                         koff                = -slope;
                         r2_local[ef_count]   = r2;
                         koff_local[ef_count] = koff;
+                        t_koff = t_koff + clock() - t;
                     }
                     else //no binding events present 
                     {
@@ -462,7 +466,7 @@ int main(int argc, const char * argv[])
                     //report progress and estimated time to completion
                     int current_step = ef_count + 1; 
                     int my_steps     = my_gf - my_gi + 1;
-                    ot_time_stats(t,&counter,current_step,my_steps,world_rank,"lattice point");
+                    ot_time_stats(t1,&counter,current_step,my_steps,world_rank,"lattice point");
                 }
                 grid_counter++;
             }
@@ -475,10 +479,19 @@ int main(int argc, const char * argv[])
         exit(EXIT_SUCCESS);
     }
 
+    t = clock();
     MPI_Barrier(MPI_COMM_WORLD);
+    t_waiting = t_waiting + clock() - t;
 
     //log time spent performing main analysis
-    perf.log_time((clock() - t)/CLOCKS_PER_SEC,"Main Loop");
+    perf.log_time(t_read_be/CLOCKS_PER_SEC,"read be");
+    perf.log_time(t_suppress/CLOCKS_PER_SEC,"mend be");
+    perf.log_time(t_sweep/CLOCKS_PER_SEC,"exclude be");
+    perf.log_time(t_dwell_t/CLOCKS_PER_SEC,"dwell time");
+    perf.log_time(t_variance/CLOCKS_PER_SEC,"dwell time var.");
+    perf.log_time(t_largest/CLOCKS_PER_SEC,"largest time");
+    perf.log_time(t_koff/CLOCKS_PER_SEC,"koff");
+    perf.log_time(t_waiting/CLOCKS_PER_SEC,"waiting");
 
     //reset the clock
     t = clock();

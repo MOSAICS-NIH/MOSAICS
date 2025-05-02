@@ -36,7 +36,7 @@ foreach(CMD
     check_broken_mols
     contact_kinetics
     contact_rmsf
-    dihedrals.cpp
+    dihedrals
     distances
     h_bond_kinetics
     interdigitation
