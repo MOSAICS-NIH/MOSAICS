@@ -36,18 +36,20 @@ int main(int argc, const char * argv[])
 {
     //Here we define some variables used throughout
     string binding_events_file_name; //name of the binding events file
-    int i           = 0;                 //Standard variable used in loops
-    int mode        = 0;                 //Controls the mode for sorting output data
-    int dt_mode     = 0;                 //controls whether time is in frames or ns
-    int world_size  = 0;                 //Size of the mpi world
-    int world_rank  = 0;                 //Rank in the mpi world
-    int b_x         = 0;                 //Was a grid point in x-direction specified
-    int b_y         = 0;                 //Was a grid point in y-direction specified
-    int x           = 0;                 //Grid point in x-direction
-    int y           = 0;                 //Grid point in y-direction
-    int result      = 0;                 //Tells if the binding events file was read sucressfully
-    double dt       = 0.0;               //dt used for final output
-    sv1d cl_tags;                        //Holds a list of command line tags for the program
+    int i            = 0;                 //Standard variable used in loops
+    int mode         = 0;                 //Controls the mode for sorting output data
+    int dt_mode      = 0;                 //controls whether time is in frames or ns
+    int world_size   = 0;                 //Size of the mpi world
+    int world_rank   = 0;                 //Rank in the mpi world
+    int b_x          = 0;                 //Was a grid point in x-direction specified
+    int b_y          = 0;                 //Was a grid point in y-direction specified
+    int x            = 0;                 //Grid point in x-direction
+    int y            = 0;                 //Grid point in y-direction
+    int result       = 0;                 //Tells if the binding events file was read sucressfully
+    int threshold    = 0;                 //Cutoff for mending fragmented binding events
+    double cutoff_dt = 0.0;               //Exclude data with cutoff less than this
+    double dt        = 0.0;               //dt used for final output
+    sv1d cl_tags;                         //Holds a list of command line tags for the program
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -81,11 +83,13 @@ int main(int argc, const char * argv[])
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     start_input_arguments_mpi(argc,argv,world_rank,program_description);
-    add_argument_mpi_s(argc,argv,"-d"     , binding_events_file_name,   "Input binding events file (be)"                          , world_rank, cl_tags, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-mode"  , &mode,                      "Order events by (0:bind_i,1:dwell_t,2:repeats,4:bind_f)" , world_rank, cl_tags, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-t"     , &dt_mode,                   "Report time in (0:ns,1:frames)"                          , world_rank, cl_tags, nullptr,      1);
-    add_argument_mpi_i(argc,argv,"-x"     , &x,                         "Grid point in x-direction"                               , world_rank, cl_tags, &b_x,         0);
-    add_argument_mpi_i(argc,argv,"-y"     , &y,                         "Grid point in y-direction"                               , world_rank, cl_tags, &b_y,         0);
+    add_argument_mpi_s(argc,argv,"-d"     , binding_events_file_name,   "Input binding events file (be)"                              , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-mode"  , &mode,                      "Order events by (0:bind_i,1:dwell_t,2:repeats,4:bind_f)"     , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-t"     , &dt_mode,                   "Report time in (0:ns,1:frames)"                              , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-x"     , &x,                         "Grid point in x-direction"                                   , world_rank, cl_tags, &b_x,         0);
+    add_argument_mpi_i(argc,argv,"-y"     , &y,                         "Grid point in y-direction"                                   , world_rank, cl_tags, &b_y,         0);
+    add_argument_mpi_i(argc,argv,"-repair", &threshold,                 "Maximum allowed size (frames) for mending fragmented events" , world_rank, cl_tags, nullptr,      0);
+    add_argument_mpi_d(argc,argv,"-ex"    , &cutoff_dt,                 "Exclude data with dwell time less than this (ps)"            , world_rank, cl_tags, nullptr,      0);
     conclude_input_arguments_mpi(argc,argv,world_rank,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -141,6 +145,20 @@ int main(int argc, const char * argv[])
         if(events.lipid_nr.size() > 0)
         {
             printf("x_i %d y_i %d ef_dt(ps) %f ef_frames %d num_lipids %d num_g_x %d num_g_y %d APS(nm^2) %f \n",events.x_i,events.y_i,events.ef_dt,events.ef_frames,events.num_lipids,events.num_g_x,events.num_g_y,events.APS);
+
+            ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            //                                                                                                           //
+            // Mend any fragmented events                                                                                //
+            //                                                                                                           //
+            ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            events.suppress_timeline_noise_be_alt(threshold);  //mend fragmented events
+
+            ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            //                                                                                                           //
+            // remove events with dwell time shorter than cutoff_dt                                                      //
+            //                                                                                                           //
+            ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            events.screen_events(cutoff_dt);
 
             ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
             //                                                                                                           //
