@@ -40,10 +40,54 @@ using namespace std;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                           //
+// This function identifies the target atoms                                                                 //
+//                                                                                                           //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+iv1d get_targets(Trajectory &traj,system_variables &s,program_variables &p,Param &param)
+{
+    int i = 0;          //standard variable used in loops
+    int j = 0;          //standard variable used in loops
+    int k = 0;          //standard variable used in loops
+    int l = 0;          //standard variable used in loops
+
+    iv1d targets(traj.atoms(),0);
+
+    for(i=0; i<traj.target_leaflet.size(); i++) //loop over the target leaflet atoms
+    {
+        //get the first and last atom of the current lipid
+        int min = traj.t_lip_start(i);
+        int max = traj.t_lip_end(i);
+
+        //jump to the next lipid
+        i = traj.next_target_lipid(i);
+
+        for(j=min; j<=max; j++)  //loop over current lipid atoms
+        {
+            for(k=0; k<param.main_size_y(); k++) //loop over lipid types 
+            {
+                if(strcmp(traj.res_name[min].c_str(), param.param_main_s[k][0].c_str() ) == 0) //lipid type is correct
+                {
+                    for(l=0; l<param.sec_size_y(k); l++) //loop over target atoms
+                    {
+                        if(strcmp(traj.atom_name[j].c_str(), param.param_sec_s[k][l][0].c_str() ) == 0) //atom is a target atom
+                        {
+                            targets[j] = 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return targets;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
 // This function computes the number of lipid contacts and adds it to the grid                               //
 //                                                                                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void lip_cont(Trajectory &traj,system_variables &s,program_variables &p,Param &param,Grid_3d &lcont,Grid_3d &lmol,iv1d &custom_sel)
+void lip_cont(Trajectory &traj,system_variables &s,program_variables &p,Param &param,Grid_3d &lcont,Grid_3d &lmol,iv1d &custom_sel,iv1d &target_atoms)
 {
     int    i        = 0;                      //standard variable used in loops
     int    j        = 0;                      //standard variable used in loops
@@ -139,17 +183,20 @@ void lip_cont(Trajectory &traj,system_variables &s,program_variables &p,Param &p
 
                             for(l=min_l; l<=max_l; l++) //loop over current lipid atoms
                             {
-                                for(m=min_p; m<=max_p; m++) //loop over current protein residue atoms
+                                if(target_atoms[l] == 1) //atom is a target atom
                                 {
-                                    double dx = traj.r[l][0] - traj.r[m][0];
-                                    double dy = traj.r[l][1] - traj.r[m][1];
-                                    double dz = traj.r[l][2] - traj.r[m][2];
-
-                                    double dist = sqrt(dx*dx + dy*dy + dz*dz);
-
-                                    if(dist < p.contact_cutoff)
+                                    for(m=min_p; m<=max_p; m++) //loop over current protein residue atoms
                                     {
-                                        these_contacts++;
+                                        double dx = traj.r[l][0] - traj.r[m][0];
+                                        double dy = traj.r[l][1] - traj.r[m][1];
+                                        double dz = traj.r[l][2] - traj.r[m][2];
+
+                                        double dist = sqrt(dx*dx + dy*dy + dz*dz);
+
+                                        if(dist < p.contact_cutoff)
+                                        {
+                                            these_contacts++;
+                                        }
                                     }
                                 }
                             }
@@ -193,17 +240,20 @@ void lip_cont(Trajectory &traj,system_variables &s,program_variables &p,Param &p
 
                                 for(l=min_l; l<=max_l; l++) //loop over current lipid atoms
                                 {
-                                    for(m=min_fm; m<=max_fm; m++) //loop over current lipid atoms
+                                    if(target_atoms[l] == 1) //atom is a target atom
                                     {
-                                        double dx = traj.r[l][0] - traj.r[m][0];
-                                        double dy = traj.r[l][1] - traj.r[m][1];
-                                        double dz = traj.r[l][2] - traj.r[m][2];
-
-                                        double dist = sqrt(dx*dx + dy*dy + dz*dz);
-
-                                        if(dist < p.contact_cutoff)
+                                        for(m=min_fm; m<=max_fm; m++) //loop over current lipid atoms
                                         {
-                                            these_contacts++;
+                                            double dx = traj.r[l][0] - traj.r[m][0];
+                                            double dy = traj.r[l][1] - traj.r[m][1];
+                                            double dz = traj.r[l][2] - traj.r[m][2];
+
+                                            double dist = sqrt(dx*dx + dy*dy + dz*dz);
+
+                                            if(dist < p.contact_cutoff)
+                                            {
+                                                these_contacts++;
+                                            }
                                         }
                                     }
                                 }
@@ -247,17 +297,20 @@ void lip_cont(Trajectory &traj,system_variables &s,program_variables &p,Param &p
 
                             for(l=min_l; l<=max_l; l++) //loop over current lipid atoms
                             {
-                                for(m=min_sol; m<=max_sol; m++) //loop over current lipid atoms
+                                if(target_atoms[l] == 1) //atom is a target atom
                                 {
-                                    double dx = traj.r[l][0] - traj.r[m][0];
-                                    double dy = traj.r[l][1] - traj.r[m][1];
-                                    double dz = traj.r[l][2] - traj.r[m][2];
-
-                                    double dist = sqrt(dx*dx + dy*dy + dz*dz);
-
-                                    if(dist < p.contact_cutoff)
+                                    for(m=min_sol; m<=max_sol; m++) //loop over current lipid atoms
                                     {
-                                        these_contacts++;
+                                        double dx = traj.r[l][0] - traj.r[m][0];
+                                        double dy = traj.r[l][1] - traj.r[m][1];
+                                        double dz = traj.r[l][2] - traj.r[m][2];
+
+                                        double dist = sqrt(dx*dx + dy*dy + dz*dz);
+
+                                        if(dist < p.contact_cutoff)
+                                        {
+                                            these_contacts++;
+                                        }
                                     }
                                 }
                             }
@@ -310,19 +363,22 @@ void lip_cont(Trajectory &traj,system_variables &s,program_variables &p,Param &p
 
                                 for(l=min_l; l<=max_l; l++) //loop over current lipid atoms
                                 {
-                                    for(m=min_sys; m<=max_sys; m++) //loop over current residue atoms
+                                    if(target_atoms[l] == 1) //atom is a target atom
                                     {
-                                        if(custom_sel[m] == 1)
+                                        for(m=min_sys; m<=max_sys; m++) //loop over current residue atoms
                                         {
-                                            double dx = traj.r[l][0] - traj.r[m][0];
-                                            double dy = traj.r[l][1] - traj.r[m][1];
-                                            double dz = traj.r[l][2] - traj.r[m][2];
-
-                                            double dist = sqrt(dx*dx + dy*dy + dz*dz);
-
-                                            if(dist < p.contact_cutoff)
+                                            if(custom_sel[m] == 1)
                                             {
-                                                these_contacts++;
+                                                double dx = traj.r[l][0] - traj.r[m][0];
+                                                double dy = traj.r[l][1] - traj.r[m][1];
+                                                double dz = traj.r[l][2] - traj.r[m][2];
+
+                                                double dist = sqrt(dx*dx + dy*dy + dz*dz);
+
+                                                if(dist < p.contact_cutoff)
+                                                {
+                                                    these_contacts++;
+                                                }
                                             }
                                         }
                                     }
@@ -629,6 +685,8 @@ int main(int argc, const char * argv[])
         custom_sel = this_sel.tag_atoms(traj);
     }
 
+    iv1d target_atoms = get_targets(traj,s,p,param);
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     //print info about the worlk load distribution
@@ -645,7 +703,7 @@ int main(int argc, const char * argv[])
 
         traj.do_fit();
 
-        lip_cont(traj,s,p,param,lcont,lmol,custom_sel);
+        lip_cont(traj,s,p,param,lcont,lmol,custom_sel,target_atoms);
 
         traj.set_beta_lf();
 

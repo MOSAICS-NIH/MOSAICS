@@ -46,8 +46,9 @@ void b_stamp(Trajectory &traj,system_variables &s,program_variables &p,Trajector
 
     for(i=0; i<traj.atoms(); i++) //loop over the system atoms
     {
-        traj.beta[i] = traj_b.beta[i];
-     
+printf("traj.beta[%d] %f traj_b.beta[%d] %f \n",i,traj.beta[i],i,traj_b.beta[i]);
+        traj.beta[i] = traj_b.beta[i];    
+ 
          if(strcmp(traj.atom_name[i].c_str(), traj_b.atom_name[i].c_str()) != 0) //mismatch between trajectory files
          {
              if(s.world_rank == 0)

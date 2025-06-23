@@ -268,7 +268,6 @@ int main(int argc, const char * argv[])
     //Here we define some variables used throughout
     string in_file_name;           //Name of input file data file
     string out_file_name;          //Name of output file
-    string working_dir;            //The directory with the topology file
     int i                 = 0;     //General variable used in loops
     int j                 = 0;     //General variable used in loops
     int k                 = 0;     //General variable used in loops
@@ -295,7 +294,6 @@ int main(int argc, const char * argv[])
     start_input_arguments(argc,argv,program_description);
     add_argument_s(argc,argv,"-d",     in_file_name,               "Input topology file (top)"                                                  , cl_tags, nullptr,      1);
     add_argument_s(argc,argv,"-o",     out_file_name,              "Input file with bonds list (crd)"                                           , cl_tags, nullptr,      1);
-    add_argument_s(argc,argv,"-wd",    working_dir,                "Directory containing the topology file"                                     , cl_tags, nullptr,      1);
     add_argument_i(argc,argv,"-con",   &b_constraints,             "Include bonds from [constraints] sections? (0:no, 1:yes)"                   , cl_tags, nullptr,      0);
     add_argument_i(argc,argv,"-elnet", &b_elastic_network,         "Include bonds from an elastic network (looks for RUBBER*FC)? (0:no, 1:yes)" , cl_tags, nullptr,      0);
     conclude_input_arguments(argc,argv,program_name,cl_tags);
@@ -326,7 +324,8 @@ int main(int argc, const char * argv[])
         //                                                                                                           //
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //get filename of topology file
-        string top_file_name = working_dir + in_file_name;
+        string top_file_name = in_file_name;
+        string working_dir   = chop_filename(in_file_name);
 
         //create object to store main topology data
         Data_file_vari data;
@@ -656,7 +655,8 @@ int main(int argc, const char * argv[])
         iv2d bonds(0,iv1d(2,0));    //stores the bonds
 
         //get filename of topology file
-        string top_file_name = working_dir + in_file_name;
+	string working_dir   = chop_filename(in_file_name);
+        string top_file_name = in_file_name;
 
         //create object to store main topology data
         Data_file_vari data;

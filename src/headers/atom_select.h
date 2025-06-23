@@ -461,37 +461,41 @@ iv1d select_hydrogen(Trajectory traj)
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                          //
-// This function combines two selections                                                                    //
+// This function compares two selections and keeps atoms common to both                                     //
 //                                                                                                          //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-iv1d prune(iv1d &sel_1,iv1d &sel_2)
+iv1d prune(Trajectory traj,iv1d &sel_1,iv1d &sel_2)
 {
-    int i = 0;
-    int j = 0;
-    int k = 0;
+    /* Note: here we want to merge two lists of atoms keeping only the atoms common to both lists. sel_1 is provided as the 
+             long term list. sel_2 is the newest selection. When extracting common items, we also make sure there are not duplicate atoms 
+             showing on any list more than once. To do so in an efficient way, we give each atom making the system a tag, either 
+             zero or one. If the atom is on the list then one. We thus tag each atom and the pruned list is as simple as checking 
+             if both tags are set to one.*/
 
-    iv1d selection(0,0);
+    int i       = 0;      //common variable used in loops
 
-    for(i=0; i<sel_1.size(); i++) //loop over first selection
+    iv1d selection(0,0);  //holds the pruned selection
+
+    //tag which atoms are on each list. This process will safely remove duplicates if any exist and is efficient 
+    iv1d sel_1_tag(traj.atoms(),0);       //tag items in long term selection     
+    iv1d sel_2_tag(traj.atoms(),0);       //tag items in the selection to be added
+
+    //tag atoms on each list
+    for(i=0; i<sel_1.size(); i++) //loop over long term selection
     {
-        for(j=0; j<sel_2.size(); j++) //loop over second selection
+        sel_1_tag[sel_1[i]-1] = 1;
+    }
+    for(i=0; i<sel_2.size(); i++) //loop over current selection
+    {
+        sel_2_tag[sel_2[i]-1] = 1;
+    }
+
+    //create list with atoms tagged on either list
+    for(i=0; i<sel_1_tag.size(); i++)
+    {
+        if(sel_1_tag[i] == 1 && sel_2_tag[i] == 1)
         {
-            if(sel_1[i] == sel_2[j])
-            {
-                int found = 0;
-                for(k=0; k<selection.size(); k++) //loop over main selection atoms
-                {
-                    if(sel_1[i] == selection[k])
-                    {
-                        found = 1;
-                    }
-                }
-  
-                if(found == 0)
-                {
-                    selection.push_back(sel_1[i]);
-                }
-            }         
+            selection.push_back(i+1);
         }
     }
 
@@ -503,46 +507,38 @@ iv1d prune(iv1d &sel_1,iv1d &sel_2)
 // This function combines two selections                                                                    //
 //                                                                                                          //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-iv1d combine(iv1d &sel_1,iv1d &sel_2)
+iv1d combine(Trajectory traj,iv1d &sel_1,iv1d &sel_2)
 {
-    int i = 0;
-    int j = 0;
+    /* Note: here we want to merge two lists of atoms. sel_1 is provided as the long term list. sel_2 is the newest selection 
+             which will be added to the list. When combining the two lists, we also make sure there are not duplicate atoms 
+             showing on any list more than once. To do so in an efficient way, we give each atom making the system a tag, either 
+             zero or one. If the atom is on the list then one. We thus tag each atom and the combined list is as simple as checking 
+	     if either tag is set to one.*/ 
+  
+    int i       = 0;      //standard variable used in loops
 
-    iv1d selection(0,0);
+    iv1d selection(0,0);  //holds the combined selection
 
-    //check the first selection
-    for(i=0; i<sel_1.size(); i++) //loop over first selection
+    //tag which atoms are on each list. This process will safely remove duplicates if any exist and is efficient 
+    iv1d sel_1_tag(traj.atoms(),0);       //tag items in long term selection     
+    iv1d sel_2_tag(traj.atoms(),0);       //tag items in the selection to be added
+
+    //tag atoms on each list
+    for(i=0; i<sel_1.size(); i++) //loop over long term selection
     {
-        int found = 0; 
-        for(j=0; j<selection.size(); j++) //loop over combined selection
-        {
-            if(sel_1[i] == selection[j])
-            {
-                found = 1;
-            }
-        }
- 
-        if(found == 0)
-        {
-            selection.push_back(sel_1[i]);
-        }
+        sel_1_tag[sel_1[i]-1] = 1; 
+    }
+    for(i=0; i<sel_2.size(); i++) //loop over current selection
+    {
+        sel_2_tag[sel_2[i]-1] = 1;
     }
 
-    //check the second selection
-    for(i=0; i<sel_2.size(); i++) //loop over second selection
+    //create list with atoms tagged on either list
+    for(i=0; i<sel_1_tag.size(); i++)
     {
-        int found = 0; 
-        for(j=0; j<selection.size(); j++) //loop over combined selection
+        if(sel_1_tag[i] == 1 || sel_2_tag[i] == 1)
         {
-            if(sel_2[i] == selection[j])
-            {
-                found = 1;
-            }
-        }
- 
-        if(found == 0)
-        {
-            selection.push_back(sel_2[i]);
+            selection.push_back(i+1);
         }
     }
 
@@ -559,21 +555,18 @@ iv1d invert(Trajectory traj,iv1d current_sel)
     int i = 0;
     int j = 0;
 
-    iv1d selection(0,0);
+    iv1d selection(0,0);  //holds the inverted selection
+
+    iv1d sel_tag(traj.atoms(),0);       //tag items in the selection     
+ 
+    for(i=0; i<current_sel.size(); i++) //loop over current selection
+    {
+        sel_tag[current_sel[i]-1] = 1;
+    }
 
     for(i=0; i<traj.atoms(); i++) //loop over system atoms
     {
-        int found = 0;
-
-        for(j=0; j<current_sel.size(); j++) //loop over current selection
-        {
-            if(traj.atom_nr[i] == current_sel[j])
-            {
-                found = 1;
-            }
-        }
-
-        if(found == 0)
+        if(sel_tag[i] == 0)
         {
             selection.push_back(traj.atom_nr[i]);
         }
@@ -596,11 +589,11 @@ void update_selection(Trajectory traj,int *b_invert,int op,iv1d &current_sel,iv1
 
     if(op == 1)
     {
-        this_selection = combine(this_selection,current_sel);
+        this_selection = combine(traj,this_selection,current_sel);
     }
     else if(op == -1)
     {
-        this_selection = prune(this_selection,current_sel);
+        this_selection = prune(traj,this_selection,current_sel);
     }
     *b_invert = 0;
 }
@@ -804,15 +797,9 @@ void Selection::highlight_sel(Trajectory traj,string pdb_filename)
  
     dv1d    this_beta(traj.atoms(),0.0);                   //beta factor used in pdb file
   
-    for(i=0; i<traj.atoms(); i++) //loop over system atoms
+    for(i=0; i<sel.size(); i++) //loop over selection
     {
-        for(j=0; j<sel.size(); j++) //loop over selection
-        {
-            if(traj.atom_nr[i] == sel[j])
-            {
-                this_beta[i] = 1.0; 
-            }
-        }
+        this_beta[sel[i]-1] = 1.0;
     }
 
     //open pdb file for writing

@@ -132,6 +132,40 @@ string chop_and_add_tag(string in_file_name,string tag)
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                          //
+// This function takes a string and removes the filename leaving only the directory                         //
+//                                                                                                          //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+string chop_filename(string in_file_name)
+{
+    string out_file_name = "";
+    int i                = 0;
+    int last_slash       = -1;
+
+    for(i=0; i<in_file_name.size(); i++) //loop over string
+    {
+        if(in_file_name[i] == '/')
+        {
+            last_slash = i;
+        }
+    }
+
+    if(last_slash > -1) //a slash was found
+    {
+        for(i=0; i <= last_slash; i++)
+        {
+            out_file_name.push_back(in_file_name[i]);
+        }
+    }
+    else //no dot was found
+    {
+        out_file_name = in_file_name;
+    }
+
+    return out_file_name;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                          //
 // This function takes a filename and check that it contains the correct extension                          //
 //                                                                                                          //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -208,20 +208,15 @@ int main(int argc, const char * argv[])
 
         //highlight selected atoms in traj for using -o option
         int i = 0;
-        int j = 0;
-        for(i=0; i<traj.atoms(); i++) //loop over system atoms
+        for(i=0; i<traj.atoms(); i++) //not always zero initially for example when reading gro file. 
         {
             traj.beta[i] = 0.0;
-
-            for(j=0; j<sel.sel.size(); j++) //loop over selection
-            {
-                if(traj.atom_nr[i] == sel.sel[j])
-                {
-                    traj.beta[i] = 1.0;
-                }
-            }
         }
-
+	for(i=0; i<sel.sel.size(); i++) //loop over selection
+	{
+            traj.beta[sel.sel[i]-1] = 1.0;
+        }
+	
         traj.write_traj_frame();
 
         time_stats(s.t,&s.counter,traj.current_frame,traj.get_num_frames(),s.world_rank);
