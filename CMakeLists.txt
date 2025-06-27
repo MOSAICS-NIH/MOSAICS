@@ -27,6 +27,7 @@ foreach(CMD
     2d_kinetics
     apl
     apl_3d
+    atomic_density_3d
     atomic_rmsf
     atoms_in_2_planes
     atom_select
@@ -34,6 +35,7 @@ foreach(CMD
     b_stamp_grid
     bilayer_z
     check_broken_mols
+    contact_analysis
     contact_kinetics
     contact_rmsf
     dihedrals
@@ -72,6 +74,7 @@ foreach(CMD
     pbc_xy
     pbc_z
     pdb_editor
+    protein_contacts
     protein_lipid_contacts
     protein_orientation
     protein_residue_enrichment
