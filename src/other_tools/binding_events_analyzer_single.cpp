@@ -52,6 +52,11 @@ int main(int argc, const char * argv[])
     int world_rank   = 0;              //Rank in the mpi world
     int threshold    = 0;              //Cutoff for mending fragmented binding events
     int report       = 0;              //Report a list of the binding events?
+    int b            = 0;              //first frame of the block
+    int e            = 0;              //last frame of the block 
+    int b_b          = 0;              //was -b provided?
+    int b_e          = 0;              //was -e provided? 
+    int b_block      = 0;              //were both -b and -e were provided?
     double slope     = 0.0;            //slope of LnP vs time
     double yint      = 0.0;            //ying of LnP vs time
     double r2        = 0.0;            //Correlation coeficient in linear regression
@@ -102,6 +107,8 @@ int main(int argc, const char * argv[])
     add_argument_mpi_d(argc,argv,"-bin"      , &bin_width,              "Bin width (ps)"                                               , world_rank, cl_tags, nullptr,      0);
     add_argument_mpi_i(argc,argv,"-repair"   , &threshold,              "Maximum allowed size (frames) for mending fragmented events"  , world_rank, cl_tags, nullptr,      0);
     add_argument_mpi_i(argc,argv,"-report"   , &report,                 "Print a list of the dwell times (0:no, 1:yes)"                , world_rank, cl_tags, nullptr,      0);
+    add_argument_mpi_i(argc,argv,"-b"        , &b,                      "first frame of the block"                                     , world_rank, cl_tags, &b_b,         0);
+    add_argument_mpi_i(argc,argv,"-e"        , &e,                      "last frame of the block"                                      , world_rank, cl_tags, &b_e,         0);
     conclude_input_arguments_mpi(argc,argv,world_rank,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -145,6 +152,31 @@ int main(int argc, const char * argv[])
             exit(EXIT_SUCCESS);
         }
     }
+ 
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //                                                                                                           //
+    // Check if a -b -e  were specified                                                                          //
+    //                                                                                                           //
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    if(world_rank == 0)
+    {
+        if(b_b == 1 && b_e == 0)
+        {
+            printf("-b was specified but not -e. Please include the -e if attempting to analyze a subset of the trajectory. \n");
+            MPI_Finalize();
+            exit(EXIT_SUCCESS);
+        }
+        else if(b_b == 0 && b_e == 1)
+        {
+            printf("-e was specified but not -b. Please include the -b if attempting to analyze a subset of the trajectory. \n");
+            MPI_Finalize();
+            exit(EXIT_SUCCESS);
+        }
+        else if(b_b == 1 && b_e == 1)
+        {
+            b_block = 1;
+        }
+    }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
@@ -168,6 +200,16 @@ int main(int argc, const char * argv[])
 
     if(result == 1) //bind events file exists
     { 
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //                                                                                                           //
+        // Remove binding events outside the block                                                                   //
+        //                                                                                                           //
+        //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        if(b_block == 1)
+        {
+            events.block(b,e);
+        }
+
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //                                                                                                           //
         // Mend any fragmented events                                                                                //

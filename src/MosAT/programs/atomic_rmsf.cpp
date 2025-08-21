@@ -160,7 +160,7 @@ int main(int argc, const char * argv[])
     add_argument_mpi_i(argc,argv,"-stride", &p.stride,                    "Read every 'stride' frame",                                                s.world_rank, s.cl_tags, nullptr,      0);
     add_argument_mpi_i(argc,argv,"-b",      &p.start_frame,               "Skip frames before this number",                                           s.world_rank, s.cl_tags, nullptr,      0);
     add_argument_mpi_i(argc,argv,"-e",      &p.end_frame,                 "Skip frames after this number",                                            s.world_rank, s.cl_tags, nullptr,      0);
-    add_argument_mpi_s(argc,argv,"-lsq",    p.lsq_index_file_name,        "Index for lsq fitting",                                                    s.world_rank, s.cl_tags, &p.b_lsq,     0);
+    add_argument_mpi_s(argc,argv,"-lsq",    p.lsq_index_file_name,        "Index for lsq fitting",                                                    s.world_rank, s.cl_tags, nullptr,      1);
     add_argument_mpi_i(argc,argv,"-lsq_d",  &p.lsq_dim,                   "Dimension for lsq fitting (3:x,y,z 2:x,y)",                                s.world_rank, s.cl_tags, nullptr,      0);
     add_argument_mpi_i(argc,argv,"-lsq_r",  &p.lsq_ref,                   "Reference structure for lsq fitting (0:ref 1:first_frame)",                s.world_rank, s.cl_tags, nullptr,      0);
     add_argument_mpi_s(argc,argv,"-pf_pdb", p.pf_pdb_file_name,           "PDB file with selected protein ",                                          s.world_rank, s.cl_tags, &p.b_pf_pdb,  0);

@@ -52,6 +52,11 @@ int main(int argc, const char * argv[])
     int world_size        = 0;         //Size of the mpi world
     int world_rank        = 0;         //Rank in the mpi world
     int b_self            = 1;         //Count events when leaving and replacing lipids are one         
+    int b                 = 0;         //first frame of the block
+    int e                 = 0;         //last frame of the block 
+    int b_b               = 0;         //was -b provided?
+    int b_e               = 0;         //was -e provided? 
+    int b_block           = 0;         //were both -b and -e were provided?
     double lipid_fraction = 0;         //What percentage of the lipids are the target type
     double slope          = 0;         //slope of LnP vs time
     double yint           = 0;         //ying of LnP vs time
@@ -102,6 +107,8 @@ int main(int argc, const char * argv[])
     add_argument_mpi_i(argc,argv,"-min"      , &min,                     "Minimum value of histogram (frames)"                                                      , world_rank, cl_tags, &b_min,       0);
     add_argument_mpi_i(argc,argv,"-max"      , &max,                     "Maximum value of histogram (frames)"                                                      , world_rank, cl_tags, &b_max,       0);
     add_argument_mpi_i(argc,argv,"-self"     , &b_self,                  "Count exchanges when the outgoing and replacing lipids are the same lipid? (0:no, 1:yes)" , world_rank, cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-b"        , &b,                       "first frame of the block "                                                                , world_rank, cl_tags, &b_b,         0);
+    add_argument_mpi_i(argc,argv,"-e"        , &e,                       "last frame of the block"                                                                  , world_rank, cl_tags, &b_e,         0);
     conclude_input_arguments_mpi(argc,argv,world_rank,program_name,cl_tags);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -135,6 +142,31 @@ int main(int argc, const char * argv[])
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                           //
+    // Check if a -b -e  were specified                                                                          //
+    //                                                                                                           //
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    if(world_rank == 0)
+    {
+        if(b_b == 1 && b_e == 0)
+        {
+            printf("-b was specified but not -e. Please include the -e if attempting to analyze a subset of the trajectory. \n");
+            MPI_Finalize();
+            exit(EXIT_SUCCESS);
+        }
+        else if(b_b == 0 && b_e == 1)
+        {
+            printf("-e was specified but not -b. Please include the -b if attempting to analyze a subset of the trajectory. \n");
+            MPI_Finalize();
+            exit(EXIT_SUCCESS);
+        }
+        else if(b_b == 1 && b_e == 1)
+        {
+            b_block = 1;
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //                                                                                                           //
     // Read in lipid types                                                                                       //
     //                                                                                                           //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -153,6 +185,16 @@ int main(int argc, const char * argv[])
 
     if(result == 1) //bind events file exists
     { 
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //                                                                                                           //
+        // Remove binding events outside the block                                                                   //
+        //                                                                                                           //
+        //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        if(b_block == 1)
+        {
+            events.block(b,e);
+        }
+
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //                                                                                                           //
         // sort events by dwell time (largest first)                                                                 //

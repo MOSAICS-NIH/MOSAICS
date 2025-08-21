@@ -111,6 +111,152 @@ void reduce_binding_list(iv1d &lipid_nr,iv1d &res_nr,sv1d &res_name,iv1d &bind_i
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                           //
+// This function reads a binding events file                                                                 //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int read_binding_events(string in_file_name,iv1d &lipid_nr,iv1d &res_nr,sv1d &res_name,iv1d &bind_i,iv1d &bind_f,
+                        iv1d &dwell_t,int *x_i,int *y_i,double *ef_dt,int *ef_frames,int *num_lipids,int *num_g_x,
+                        int *num_g_y,double *APS,int resize,int lipid_nr_offset)
+{
+    int number_of_lines = 0;      //Number of lines in input files
+    int items_per_line  = 0;      //How many item is a single line
+    int k               = 0;      //Standard variable used in loops
+    int l               = 0;      //Standard variable used in loops
+    int m               = 0;      //Standard variable used in loops
+    int outcome         = 0;      //Return whether the file was read succesfully or not
+    char my_string[200];          //String to hold read in data entries
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //                                                                                                           //
+    // Resize binding events vectors                                                                             //
+    //                                                                                                           //
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    if(resize == 1)
+    {
+        lipid_nr.resize(0,0);
+        res_nr.resize(0,0);
+        res_name.resize(0);
+        bind_i.resize(0,0);
+        bind_f.resize(0,0);
+        dwell_t.resize(0,0);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //                                                                                                           //
+    // Here we open files for reading/writing                                                                    //
+    //                                                                                                           //
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    FILE *in_file = fopen(in_file_name.c_str(), "r");
+    if(in_file == NULL)
+    {
+        printf("failure opening %s. Make sure the file exists. \n",in_file_name.c_str());
+    }
+    else
+    {
+        outcome = 1;
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //                                                                                                           //
+        // Get information about the data files                                                                      //
+        //                                                                                                           //
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        characterize_file(in_file_name,&number_of_lines,&items_per_line,4);
+
+        //printf("in_file_name %20s number_of_lines %10d items_per_line %10d \n",in_file_name.c_str(),number_of_lines,items_per_line);
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //                                                                                                           //
+        // Read in binding events                                                                                    //
+        //                                                                                                           //
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        for(k=0; k<number_of_lines+4; k++) //loop over rows
+        {
+            if(k==0) //first line containts x_i,y_i,ef_dt,ef_frames,num_lipids,num_g_x and num_g_y
+            {
+                for(l=0; l<16; l++) //loop over header items
+                {
+                    fscanf(in_file, "%s,", my_string);
+
+                    if(l == 1) //x_i
+                    {
+                        *x_i = atoi(my_string);
+                    }
+                    if(l == 3) //y_i
+                    {
+                        *y_i = atoi(my_string);
+                    }
+                    if(l == 5) //ef_dt
+                    {
+                        *ef_dt = atof(my_string);
+                    }
+                    if(l == 7) //ef_frames
+                    {
+                        *ef_frames = atoi(my_string);
+                    }
+                    if(l == 9) //num_lipids
+                    {
+                        *num_lipids = atoi(my_string);
+                    }
+                    if(l == 11) //num_g_x
+                    {
+                        *num_g_x = atoi(my_string);
+                    }
+                    if(l == 13) //num_g_y
+                    {
+                        *num_g_y = atoi(my_string);
+                    }
+                    if(l == 15) //APS
+                    {
+                        *APS = atof(my_string);
+                        next_line(in_file);
+                    }
+                }
+            }
+            else if(k>3) //first 4 lines are header information
+            {
+                for(l=0; l<items_per_line; l++) //loop over collumns
+                {
+                    fscanf(in_file, "%s,", my_string);
+
+                    if(l == 0) //lipid number
+                    {
+                        lipid_nr.push_back(atoi(my_string) + lipid_nr_offset);
+                    }
+                    if(l == 1) //res number
+                    {
+                        res_nr.push_back(atoi(my_string));
+                    }
+                    if(l == 2) //res name
+                    {
+                        res_name.push_back(strdup(my_string));
+                    }
+                    if(l == 3) //bind_i
+                    {
+                        bind_i.push_back(atoi(my_string));
+                    }
+                    if(l == 4) //bind_f
+                    {
+                        bind_f.push_back(atoi(my_string));
+                    }
+                    if(l == 5) //dwell_t
+                    {
+                        dwell_t.push_back(atoi(my_string));
+                    }
+                }
+            }
+            else //read the line
+            {
+                next_line(in_file);
+            }
+        }
+        fclose(in_file);
+    }
+    return outcome;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
 // This is a class for working with a binding events file                                                    //
 //                                                                                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -200,6 +346,8 @@ class Binding_events
         void    write_voro_frame(string out_file_name);                                                                                     //writes the current frame tessellation data to file
         int     add_binding_events(string binding_events_file_name,int compound_lipid_count,int lipid_nr_offset);                           //reads the binding events file and adds to current list
         void    write_binding_events_legacy(string binding_events_file_name);                                                               //writes a binding events file in human readable form
+        int     get_binding_events_legacy(string in_file_name);                                                                             //reads a binding events file in human readable form
+        void    block(int b, int e);                                                                                                        //removes binding events outside the block
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2037,3 +2185,83 @@ void Binding_events::write_binding_events_legacy(string binding_events_file_name
         fclose(binding_events_file);
     }
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function reads a binding events file                                                                 //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int Binding_events::get_binding_events_legacy(string in_file_name)
+{
+    int resize = 1;
+
+    x_i         = 0;
+    y_i         = 0;
+    ef_frames   = 0;
+    num_lipids  = 0;
+    num_g_x     = 0;
+    num_g_y     = 0;
+    ef_dt       = 0.0;
+    APS         = 0;
+
+    int result = read_binding_events(in_file_name,lipid_nr,res_nr,res_name,bind_i,bind_f,dwell_t,&x_i,&y_i,&ef_dt,&ef_frames,&num_lipids,&num_g_x,&num_g_y,&APS,resize,0);
+
+    //lipid mixing stuff
+    lip_nr_1  = x_i;
+    res_nr_1  = y_i;
+    num_lip_1 = num_g_x;
+    num_lip_2 = num_lipids;
+
+    return result;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function removes binding events outside the block                                                    //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void Binding_events::block(int b, int e)
+{
+    int i = 0;
+
+    //make structures to store new binding events info      
+    iv1d this_lipid_nr{};
+    iv1d this_bind_i{};
+    iv1d this_bind_f{};
+    iv1d this_dwell_t{};
+    iv1d this_res_nr{};
+    sv1d this_res_name{};
+
+    for(i=0; i<lipid_nr.size(); i++) //loop over binding events
+    {
+        if(bind_i[i] < b && bind_f[i] >= b)
+        {
+            bind_i[i] = b;
+        }
+        if(bind_f[i] > e && bind_i[i] <= e)
+        {
+            bind_f[i] = e; 
+        }         
+   
+        if(bind_i[i] <= e && bind_f[i] >= b)
+        {
+            this_lipid_nr.push_back(lipid_nr[i]);
+            this_bind_i.push_back(bind_i[i]);
+            this_bind_f.push_back(bind_f[i]);
+            this_dwell_t.push_back(dwell_t[i]);
+            this_res_nr.push_back(res_nr[i]);
+            this_res_name.push_back(res_name[i]);
+        }
+    }
+
+    //replace old binding events with new ones
+    lipid_nr = this_lipid_nr;
+    bind_i   = this_bind_i;
+    bind_f   = this_bind_f;
+    dwell_t  = this_dwell_t;
+    res_nr   = this_res_nr;
+    res_name = this_res_name;
+}
+
+

@@ -156,9 +156,9 @@ string chop_filename(string in_file_name)
             out_file_name.push_back(in_file_name[i]);
         }
     }
-    else //no dot was found
+    else //no slash was found
     {
-        out_file_name = in_file_name;
+        out_file_name = "";
     }
 
     return out_file_name;
