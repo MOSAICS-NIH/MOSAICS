@@ -257,7 +257,7 @@ int main(int argc, const char * argv[])
     {
         check_extension_mpi(s.world_rank,"-pf_prm",p.protein_finder_param_name,".prm");
     }
-    if(p.b_shapes = 1)
+    if(p.b_shapes == 1)
     {
         check_extension_mpi(s.world_rank,"-shape",p.shape_file_name,".crd");
     }
@@ -268,7 +268,10 @@ int main(int argc, const char * argv[])
 
     //read the index files
     target_atoms.get_index(p.target_atoms_file_name);
-    shapes.get_index(p.shape_file_name);
+    if(p.b_shapes == 1)
+    { 
+        shapes.get_index(p.shape_file_name);
+    }
 
     //run protein finder
     traj.get_protein(p.protein_finder_param_name,p.b_pf_param);
