@@ -44,6 +44,7 @@ foreach(CMD
     interdigitation
     inter_leaflet_contacts
     inter_leaflet_contacts_3d
+    ion_permeation
     lipid_contacts
     lipid_contacts_3d
     lipid_density
