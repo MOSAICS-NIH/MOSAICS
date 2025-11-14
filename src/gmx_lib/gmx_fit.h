@@ -464,8 +464,6 @@ void do_fit_ndim(int ndim, int natoms, real *w_rls, const rvec *xp, rvec *x)
             for (c = 0; c < DIM; c++)
             {
                 x[j][r] += R[r][c]*x_old[c];
-
-                //printf("R[%d][%d] %f \n",r,c,R[r][c]);
 	    }
         }
     }
