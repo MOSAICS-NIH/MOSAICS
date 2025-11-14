@@ -31,6 +31,8 @@ struct program_variables
     string solvent_finder_param_name;             //Name of the solvent finder param file
     string chain_id_string;                       //Desired value for chain id
     string element;                               //Desired value for element
+    string this_res_name;                         //Desired value for res_name
+    string this_atom_name;                        //Desired value for atom_name
     char   chain_id;                              //Desired value for chain id
     int b_sf_param;                               //Tells if the user included a solvent types parameter file
     int b_pf_param;                               //Tells if the user included a protein types parameter file
@@ -43,6 +45,8 @@ struct program_variables
     int b_occupancy;                              //Is the occupancy modified
     int b_chain_id;                               //Is the chain id modified
     int b_element;                                //Is the element modified
+    int b_res_name;                               //Is the res_name modified
+    int b_atom_name;                              //Is the atom_name modified
     double b_factor;                              //Desired value for B factor
     double occupancy;                             //Desired value for the occupancy
 };
@@ -78,6 +82,8 @@ void initialize_program_variables(program_variables *p)
     p->b_occupancy = 0;
     p->b_chain_id  = 0;
     p->b_element   = 0;
+    p->b_res_name  = 0;
+    p->b_atom_name = 0;
 
     //here we set the program description
     p->program_description = p->program_description + "PDB Editor is an analysis tool used for setting items in a PDB file (B factor, occupancy, chain id, element) for a group of atoms using a selection text.";

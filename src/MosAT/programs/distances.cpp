@@ -44,20 +44,51 @@ void distances(Trajectory &traj,system_variables &s,program_variables &p,Index &
 {
     int i = 0;                                //standard variable used in loops
     int j = 0;                                //standard variable used in loops
-    int k = 0;                                //standard variable used in loops
-    int l = 0;                                //standard variable used in loops
-    int m = 0;                                //standard variable used in loops
 
-    dv1d center_1 = traj.center_i(group_1.index_i);
-    dv1d center_2 = traj.center_i(group_2.index_i);
+    if(p.b_min_dist == 0) //compute distance between two centers
+    {
+        dv1d center_1 = traj.center_i(group_1.index_i);
+        dv1d center_2 = traj.center_i(group_2.index_i);
 
-    double dx = center_1[0] - center_2[0];
-    double dy = center_1[1] - center_2[1];
-    double dz = center_1[2] - center_2[2];
+        double dx = center_1[0] - center_2[0];
+        double dy = center_1[1] - center_2[1];
+        double dz = center_1[2] - center_2[2];
 
-    double distance = sqrt(dx*dx + dy*dy + dz*dz);
+        double distance = sqrt(dx*dx + dy*dy + dz*dz);
 
-    dist[traj.current_frame] = distance;
+        dist[traj.current_frame] = distance;
+    }
+    else if(p.b_min_dist == 1)  //compute min dist between two groups
+    {
+        double min_dist = 999999.9;
+
+        for(i=0; i<group_1.index_i.size(); i++) //loop over group 1 atoms
+        {
+            for(j=0; j<group_2.index_i.size(); j++) //loop over group 2 atoms
+            {
+                double dx = traj.r[group_1.index_i[i]-1][0] - traj.r[group_2.index_i[j]-1][0];
+                double dy = traj.r[group_1.index_i[i]-1][1] - traj.r[group_2.index_i[j]-1][1];
+                double dz = traj.r[group_1.index_i[i]-1][2] - traj.r[group_2.index_i[j]-1][2];
+
+                double dist = sqrt(dx*dx + dy*dy + dz*dz);
+
+                if(dist <= min_dist)
+                {
+                    min_dist = dist;
+                }
+            }
+        }
+        dist[traj.current_frame] = min_dist; 
+    }
+    else //bad value selected. kill program
+    {
+        if(s.world_rank == 0)
+        {
+            printf("-min must be either 0 or 1. \n");
+        }
+	MPI_Finalize();
+        exit(EXIT_SUCCESS);
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -143,6 +174,7 @@ int main(int argc, const char * argv[])
     add_argument_mpi_s(argc,argv,"-n1",     p.group_1_file_name,          "Index file with group 1 atoms (ndx)",                         s.world_rank, s.cl_tags, nullptr,      1);
     add_argument_mpi_s(argc,argv,"-n2",     p.group_2_file_name,          "Index file with group 2 atoms (ndx)",                         s.world_rank, s.cl_tags, nullptr,      1);
     add_argument_mpi_s(argc,argv,"-dist",   p.dist_file_name,             "Output file name (dat) with distances",                       s.world_rank, s.cl_tags, nullptr,      1);
+    add_argument_mpi_i(argc,argv,"-min",    &p.b_min_dist,                "Compute minimum distance between groups? (0:no, 1:yes)",      s.world_rank, s.cl_tags, nullptr,      0);
     conclude_input_arguments_mpi(argc,argv,s.world_rank,s.program_name,s.cl_tags);
 
     //create a trajectory

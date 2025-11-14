@@ -53,6 +53,14 @@ void set_factor(Trajectory &traj,system_variables &s,program_variables &p,iv1d &
     {
         if(custom_sel[i] == 1)
         {   
+            if(p.b_atom_name == 1)
+            {
+                traj.atom_name[i] = p.this_atom_name; 
+            }
+            if(p.b_res_name == 1)
+            {
+                traj.res_name[i] = p.this_res_name; 
+            }
             if(p.b_b_factor == 1)
             {
                 traj.beta[i] = p.b_factor;  
@@ -115,6 +123,8 @@ int main(int argc, const char * argv[])
     add_argument_mpi_s(argc,argv,"-lsq",    p.lsq_index_file_name,        "Index for lsq fitting",                                       s.world_rank, s.cl_tags, &p.b_lsq,       0);
     add_argument_mpi_i(argc,argv,"-lsq_d",  &p.lsq_dim,                   "Dimension for lsq fitting (3:x,y,z 2:x,y)",                   s.world_rank, s.cl_tags, nullptr,        0);
     add_argument_mpi_i(argc,argv,"-lsq_r",  &p.lsq_ref,                   "Reference structure for lsq fitting (0:ref 1:first_frame)",   s.world_rank, s.cl_tags, nullptr,        0);
+    add_argument_mpi_s(argc,argv,"-r_name", p.this_res_name,              "Desired value for residue name",                              s.world_rank, s.cl_tags, &p.b_res_name,  0);
+    add_argument_mpi_s(argc,argv,"-a_name", p.this_atom_name,             "Desired value for atom name",                                 s.world_rank, s.cl_tags, &p.b_atom_name, 0);
     add_argument_mpi_d(argc,argv,"-B",      &p.b_factor,                  "Desired value for B factor",                                  s.world_rank, s.cl_tags, &p.b_b_factor,  0);
     add_argument_mpi_d(argc,argv,"-oc",     &p.occupancy,                 "Desired value for occupancy",                                 s.world_rank, s.cl_tags, &p.b_occupancy, 0);
     add_argument_mpi_s(argc,argv,"-chain",  p.chain_id_string,            "Desired value for chain id",                                  s.world_rank, s.cl_tags, &p.b_chain_id,  0);

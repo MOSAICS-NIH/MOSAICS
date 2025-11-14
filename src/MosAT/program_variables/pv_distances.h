@@ -25,6 +25,7 @@ struct program_variables
     string group_1_file_name;                     //Name of the group 1 atoms index file
     string group_2_file_name;                     //Name of the group 2 atoms index file
     string dist_file_name;                        //Name of the output file with distances
+    int b_min_dist;                               //Compute minimum distance between groups?
 };
 
 
@@ -44,6 +45,7 @@ void initialize_program_variables(program_variables *p)
     p->b_lsq       = 0;
     p->lsq_dim     = 3;
     p->lsq_ref     = 0;
+    p->b_min_dist  = 0;
 
     //here we set the program description
     p->program_description = p->program_description + "Distances is an analysis tool used for measuring the distance between two groups of atoms.";

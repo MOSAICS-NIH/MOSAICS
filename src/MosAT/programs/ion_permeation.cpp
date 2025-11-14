@@ -320,7 +320,7 @@ double finalize_analysis(Trajectory &traj,system_variables &s,program_variables 
 
     if(s.world_rank == 0)
     {
-        printf("\nfinalizing analysis. This requires communication of the pressure data and could take some time. \n");
+        printf("\nfinalizing analysis. This requires communication of the coordinates data and could take some time. \n");
     }
 
     //collect state and z-coord data
@@ -528,7 +528,7 @@ double finalize_analysis(Trajectory &traj,system_variables &s,program_variables 
         printf("%10s-%10s-%10s-%10s-%12s-%12s-%13s-%10s---------- \n","----------","----------","----------","----------","------------","------------","-------------","----------");
         for(i=0; i<events_down; i++) //loop over permeation events
         {
-            int duration = perm_events[i][3] - perm_events[i][0];
+            int duration = perm_events[i][4] - perm_events[i][1];
             printf("%10d %10d %10d %10d %12d %12d %13d select ion_%d, resi %d and resn %s \n",i,perm_events[i][0],duration,perm_events[i][1],perm_events[i][2],perm_events[i][3],perm_events[i][4],i,ion_res_nr[perm_events[i][0]]%10000,p.target.c_str());
         }
         printf("\nupward events:\n");
@@ -536,7 +536,7 @@ double finalize_analysis(Trajectory &traj,system_variables &s,program_variables 
         printf("%10s-%10s-%10s-%10s-%12s-%12s-%13s-%10s---------- \n","----------","----------","----------","----------","------------","------------","-------------","----------");
 	for(i=events_down; i<perm_events.size(); i++) //loop over permeation events
         {
-            int duration = perm_events[i][3] - perm_events[i][0];
+            int duration = perm_events[i][4] - perm_events[i][1];
             printf("%10d %10d %10d %10d %12d %12d %13d select ion_%d, resi %d and resn %s \n",i,perm_events[i][0],duration,perm_events[i][1],perm_events[i][2],perm_events[i][3],perm_events[i][4],i,ion_res_nr[perm_events[i][0]]%10000,p.target.c_str());
         }
 
