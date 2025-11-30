@@ -51,6 +51,73 @@ int check_int_sel(string name)
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                          //
+// This function compiles a list of names for the selection                                                 //
+//                                                                                                          //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+sv1d get_sel_list(string sel_text)
+{
+    int    i     = 0;    //standard variable used in loops
+
+    sv1d   list(0);      //make a list of names
+    string this_string;  //the current item to add to the list
+
+    if(sel_text[0] == '+' || sel_text[sel_text.size()-1] == '+')
+    {
+        printf("Selection lists should not begin or end with + (%s) \n",sel_text.c_str());
+        terminate_program();
+    }
+    else
+    {
+        for(i=0; i<sel_text.size(); i++) //loop over the text
+        {
+            if(sel_text[i] == '+')
+            {
+                list.push_back(this_string);
+                this_string = "";
+            }
+            else if(i == sel_text.size()-1)
+            {
+                this_string.push_back(sel_text[i]);
+                list.push_back(this_string);
+            }
+            else
+            {
+                this_string.push_back(sel_text[i]);
+            }
+        }
+    }
+
+    return list;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                          //
+// This function parses a selection into a list and checks if each is an int or range of ints               //
+//                                                                                                          //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int check_sel(string this_string)
+{
+    int i      = 0;    //standard variable used in loops 
+    int result = 1;
+
+    sv1d list   = get_sel_list(this_string);
+
+    for(i=0; i<list.size(); i++)
+    {
+        if(check_int_sel(list[i]) == 1 || check_int_sel(list[i]) == 2) //an atom/residue id was provided
+        {
+        }
+        else 
+        {
+            result = 0;
+        }
+    }
+
+    return result; 
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                          //
 // This function analyzes the current string and determines the instruction type                            //
 //                                                                                                          //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -115,7 +182,7 @@ int check_instruction_type(string this_string)
         {
             type = 15;
         }
-        else if(check_int_sel(this_string) == 1 || check_int_sel(this_string) == 2) //an atom/residue id was provided
+        else if(check_sel(this_string) == 1) //an atom/residue id was provided
         {
             type = 4;
         }
@@ -216,61 +283,35 @@ void get_sel_bounds(int *min,int *max,string sel_text)
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                          //
-// This function compiles a list of names for the selection                                                 //
-//                                                                                                          //
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////
-sv1d get_sel_list(string sel_text)
-{
-    int    i     = 0;    //standard variable used in loops
-
-    sv1d   list(0);      //make a list of names
-    string this_string;  //the current item to add to the list
-
-    if(sel_text[0] == '+' || sel_text[sel_text.size()-1] == '+')
-    {
-        printf("Selection lists should not begin or end with + (%s) \n",sel_text.c_str());
-        terminate_program();
-    }
-    else
-    {
-        for(i=0; i<sel_text.size(); i++) //loop over the text
-        {
-            if(sel_text[i] == '+')
-            {
-                list.push_back(this_string);
-                this_string = "";
-            }
-            else if(i == sel_text.size()-1)
-            {
-                this_string.push_back(sel_text[i]);
-                list.push_back(this_string);
-            }
-            else
-            {
-                this_string.push_back(sel_text[i]);
-            }
-        }
-    }
-
-    return list; 
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//                                                                                                          //
 // This function makes an atom selection by the atom id                                                     //
 //                                                                                                          //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-iv1d select_by_atom_id(Trajectory traj,int min,int max)
+iv1d select_by_atom_id(Trajectory traj,sv1d &list)
 {
     int i = 0;
+    int j = 0;
  
     iv1d selection(0,0);
 
-    for(i=0; i<traj.atoms(); i++) //loop over atoms
+    for(i=0; i<list.size(); i++)
     {
-        if(traj.atom_nr[i] >= min && traj.atom_nr[i] <= max) 
+        int min = 0;
+        int max = 0;
+
+        get_sel_bounds(&min,&max,list[i]);
+
+        if(min > max)
         {
-            selection.push_back(traj.atom_nr[i]);
+            printf("An incomplatible range was selected with min (%d) greater than max (%d).",min,max);
+            terminate_program();
+        }
+
+        for(j=0; j<traj.atoms(); j++) //loop over atoms
+        {
+            if(traj.atom_nr[j] >= min && traj.atom_nr[j] <= max)
+            {
+                selection.push_back(traj.atom_nr[j]);
+            }
         }
     }
 
@@ -282,17 +323,32 @@ iv1d select_by_atom_id(Trajectory traj,int min,int max)
 // This function makes an atom selection by the res id                                                      //
 //                                                                                                          //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-iv1d select_by_res_id(Trajectory traj,int min,int max)
+iv1d select_by_res_id(Trajectory traj,sv1d &list)
 {
     int i = 0;
+    int j = 0; 
 
     iv1d selection(0,0);
 
-    for(i=0; i<traj.atoms(); i++) //loop over atoms
+    for(i=0; i<list.size(); i++)
     {
-        if(traj.res_nr[i] >= min && traj.res_nr[i] <= max)
+        int min = 0;
+        int max = 0;
+
+        get_sel_bounds(&min,&max,list[i]);
+
+        if(min > max)
         {
-            selection.push_back(traj.atom_nr[i]);
+            printf("An incomplatible range was selected with min (%d) greater than max (%d).",min,max);
+            terminate_program();       
+        }
+        
+        for(j=0; j<traj.atoms(); j++) //loop over atoms
+        {
+            if(traj.res_nr[j] >= min && traj.res_nr[j] <= max)
+            {
+                selection.push_back(traj.atom_nr[j]);
+            }
         }
     }
 
@@ -629,21 +685,17 @@ iv1d grab_atoms(Trajectory traj,sv1d sel_text)
      
                 if(s_type == 0 && next_s_type == 4) //select by atom id
                 {
-                    int min = 0;
-                    int max = 0;
-                    get_sel_bounds(&min,&max,sel_text[i+1]);
+                    sv1d list   = get_sel_list(sel_text[i+1]);
 
-                    current_sel = select_by_atom_id(traj,min,max);
+                    current_sel = select_by_atom_id(traj,list);
 
                     update_selection(traj,&b_invert,op,current_sel,this_selection);
                 }
                 else if(s_type == 1 && next_s_type == 4) //select by res id
                 {
-                    int min = 0;
-                    int max = 0;
-                    get_sel_bounds(&min,&max,sel_text[i+1]);
+                    sv1d list   = get_sel_list(sel_text[i+1]);
 
-                    current_sel = select_by_res_id(traj,min,max);
+                    current_sel = select_by_res_id(traj,list);
 
                     update_selection(traj,&b_invert,op,current_sel,this_selection);
                 }
