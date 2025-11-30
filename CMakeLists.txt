@@ -40,6 +40,7 @@ foreach(CMD
     contact_rmsf
     dihedrals
     distances
+    fragment_mapping
     h_bond_kinetics
     interdigitation
     inter_leaflet_contacts
@@ -66,6 +67,7 @@ foreach(CMD
     mean_lipid_coords_3d
     mean_protein_coords
     membrane_thickness
+    mosaics_to_charmm_card
     mosat
     nearest_neighbors
     nearest_neighbors_3d
@@ -80,6 +82,7 @@ foreach(CMD
     protein_orientation
     protein_residue_enrichment
     protein_translator
+    rmsd
     surface_residue_finder
     symmetry_enforcer
     system_translator
