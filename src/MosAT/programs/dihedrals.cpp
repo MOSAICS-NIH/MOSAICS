@@ -35,6 +35,61 @@ using namespace std;
 #include "headers/protein.h"                                 //This has routines used for working with protein data
 #include "headers/force_serial.h"                            //This has routines used for forcing the code to run on a single mpi process
 #include "headers/histo.h"                                   //This has routines used for making a histogram
+#include "headers/file_io_variable.h"                        //This has routines used for reading data files with varying columns for each row
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function reads the residue section from a psf file giving res_nr                                     //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+iv1d read_psf_res_nr(Trajectory &traj,system_variables &s,program_variables &p,string &psf_file_name)
+{
+    int i = 0;       //standard variable used in loops
+    int j = 0;       //standard variable used in loops
+
+    iv1d res_nr_psf(0,0);
+
+    //create object to store psf data
+    Data_file_vari data;
+    int psf_read_result = data.get_data(psf_file_name);
+    if(psf_read_result == 0)
+    {
+       printf("Could not open file %s. Will terminate program! \n",psf_file_name.c_str());
+       MPI_Finalize();
+       exit(EXIT_SUCCESS);
+    }
+
+    //check psf file for a !NATOM: section
+    for(i=0; i<data.data_s.size(); i++) //loop over lines of psf file
+    {
+        if(data.data_s[i].size() > 1) //check that line has at least 2 entries
+        {
+            if(strcmp(data.data_s[i][1].c_str(), "!NATOM" ) == 0) //atoms section found
+            {
+                int num_atoms = atoi(data.data_s[i][0].c_str());
+
+                i++; //move to the next line
+
+                for(j=0; j<num_atoms; j++)
+                {
+                    res_nr_psf.push_back(atoi(data.data_s[i+j][2].c_str())); 
+                }
+            }
+        }
+    }
+
+    if(res_nr_psf.size() != traj.res_nr.size())
+    {
+	if(s.world_rank == 0)
+	{ 
+            printf("number of atoms in psf file (%d) is incompatible with ref file (%d) \n",res_nr_psf.size(),traj.res_nr.size());
+        }
+	MPI_Finalize();
+        exit(EXIT_SUCCESS);
+    }
+
+    return res_nr_psf;
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                           //
@@ -547,7 +602,7 @@ void dihedrals(Trajectory &traj,system_variables &s,program_variables &p,Index &
 //                                                                                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 double finalize_analysis(Trajectory &traj,Trajectory &traj_b,system_variables &s,program_variables &p,Index &target_res,
-                         Index &target_res_cmp,dv2d &dih,dv2d &dih_b,dv2d &dih_cmp)
+                         Index &target_res_cmp,dv2d &dih,dv2d &dih_b,dv2d &dih_cmp,Index &anton_param,iv1d &res_nr_psf)
 {
     int i             = 0;         //standard variable used in loops  
     int j             = 0;         //standard variable used in loops 
@@ -794,6 +849,80 @@ double finalize_analysis(Trajectory &traj,Trajectory &traj_b,system_variables &s
                 fclose(freq_file);
             }
         }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //                                                                                                           //
+        // Write Anton Restraints                                                                                    //
+        //                                                                                                           //
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////// 
+        if(p.b_anton == 1)
+        {
+            FILE *anton_file = fopen(anton_param.index_s[0].c_str(),"w");
+
+            p.anton_force_k = anton_param.index_d[1];
+
+            if(anton_file == NULL)
+            {
+                printf("failure opening %s. Make sure the file exists. \n",anton_param.index_s[0].c_str());
+            }
+            else
+            {
+                printf("Writing dehedrals restraints data to %s \n",anton_param.index_s[0].c_str());
+
+                fprintf(anton_file,"%s\n","python apply_patch.py -v 4 \\");
+
+		if(p.type == 0) //phi
+                {
+		    for(j=0; j<target_res.index_s.size(); j++) //loop over angles
+                    {
+                        int current_res = res_nr_psf[traj.res_start[target_res.index_i[j]-2]];
+                        int next_res    = res_nr_psf[traj.res_start[target_res.index_i[j]-1]];
+
+                        if(next_res == current_res + 1)
+                        {
+                            fprintf(anton_file," -p %10d %10f %10f %s\n",current_res,dih[j][0],p.anton_force_k,"\\");
+                        }
+                        else 
+                        {
+                            printf("  Next residue (%d) is not a one up from the current (%d) indicating a possible gap in the structure. The current residue will be ignored. \n",next_res,current_res);
+                        }
+                    }
+                }
+                else if(p.type == 1 || p.type == 2) //psi chi
+                {
+                    for(j=0; j<target_res.index_s.size(); j++) //loop over angles
+                    {
+                        int current_res = res_nr_psf[traj.res_start[target_res.index_i[j]-1]];
+                        int next_res    = res_nr_psf[traj.res_start[target_res.index_i[j]-0]];
+
+                        if(next_res == current_res + 1 || p.type == 2)
+                        {
+                            fprintf(anton_file," -p %10d %10f %10f %s\n",current_res,dih[j][0],p.anton_force_k,"\\");
+                        }
+                        else 
+                        {
+                            printf("  Next residue (%d) is not a one up from the current (%d) indicating a possible gap in the structure. The current residue will be ignored. \n",next_res,current_res);
+                        }
+                    }
+                }
+
+                //print bottom line
+                if(p.type == 0) //phi
+                {
+                    fprintf(anton_file," ${1}.dms ${1}_phi.dms phi \n");
+                }
+                else if(p.type == 1) //psi
+                {
+                    fprintf(anton_file," ${1}.dms ${1}_psi.dms psi \n");
+                }
+                else if(p.type == 2) //chi
+                {
+                    fprintf(anton_file," ${1}.dms ${1}_chi.dms chi \n");
+                }
+
+                fclose(anton_file);
+            }
+        } 
     }
 
     //compute and return time spent in function
@@ -853,6 +982,7 @@ int main(int argc, const char * argv[])
     add_argument_mpi_s(argc,argv,"-rescmp", p.target_res_cmp_file_name,   "Selection card with target residue id's that dihedral angles (-res) should be compared to (crd)",s.world_rank, s.cl_tags, &p.b_cmp,     0);
     add_argument_mpi_i(argc,argv,"-test",   &p.b_test,                    "Print info for checking angles? (0:no 1:yes)",                                                   s.world_rank, s.cl_tags, nullptr,      0);
     add_argument_mpi_s(argc,argv,"-ex",     p.exclude_file_name,          "Selection card with residue names to be removed from target res list (crd)",                     s.world_rank, s.cl_tags, &p.b_ex,      0);
+    add_argument_mpi_s(argc,argv,"-anton",  p.anton_card_name,            "Selection card for Anton restraints (crd)",                                                      s.world_rank, s.cl_tags, &p.b_anton,   0);
     conclude_input_arguments_mpi(argc,argv,s.world_rank,s.program_name,s.cl_tags);
 
     //create a trajectory
@@ -890,7 +1020,10 @@ int main(int argc, const char * argv[])
     check_extension_mpi(s.world_rank,"-dih",p.dih_file_name,".dat");
     check_extension_mpi(s.world_rank,"-def",p.dihedrals_file_name,".crd");
     check_extension_mpi(s.world_rank,"-res",p.target_res_file_name,".crd");
-    check_extension_mpi(s.world_rank,"-ex",p.exclude_file_name,".crd");
+    if(p.b_ex == 1)
+    {	     
+        check_extension_mpi(s.world_rank,"-ex",p.exclude_file_name,".crd");
+    }
     if(p.b_pf_pdb == 1)
     {
         check_extension_mpi(s.world_rank,"-pf_pdb",p.pf_pdb_file_name,".pdb");
@@ -898,6 +1031,10 @@ int main(int argc, const char * argv[])
     if(p.b_pf_param == 1)
     {
         check_extension_mpi(s.world_rank,"-pf_prm",p.protein_finder_param_name,".prm");
+    }
+    if(p.b_anton == 1)
+    {
+        check_extension_mpi(s.world_rank,"-anton",p.anton_card_name,".crd");
     }
 
     //generate new target res list that excludes specified residue types
@@ -914,6 +1051,7 @@ int main(int argc, const char * argv[])
     Index target_res;
     Index target_res_cmp;
     Index def;
+    Index anton_param;
 
     //read the index files
     target_res.get_index(p.target_res_file_name);
@@ -922,6 +1060,11 @@ int main(int argc, const char * argv[])
         target_res_cmp.get_index(p.target_res_cmp_file_name);
     }
     def.get_index(p.dihedrals_file_name);
+
+    if(p.b_anton == 1)
+    {
+        anton_param.get_index(p.anton_card_name);
+    }
 
     //run proten finder
     traj.get_protein(p.protein_finder_param_name,p.b_pf_param);
@@ -948,6 +1091,14 @@ int main(int argc, const char * argv[])
             exit(EXIT_SUCCESS);
         }
     }
+
+
+    iv1d res_nr_psf(0,0);    //hold res_id from psf file
+    if(p.b_anton == 1)
+    {
+        res_nr_psf = read_psf_res_nr(traj,s,p,anton_param.index_s[2]);
+    }
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     //print info about the worlk load distribution
@@ -989,7 +1140,7 @@ int main(int argc, const char * argv[])
     perf.log_time((clock() - s.t)/CLOCKS_PER_SEC,"Main Loop");
 
     //collect dihedral angles from mpi processes and write output
-    perf.log_time(finalize_analysis(traj,traj_b,s,p,target_res,target_res_cmp,dih,dih_b,dih_cmp),"Fin Ana");
+    perf.log_time(finalize_analysis(traj,traj_b,s,p,target_res,target_res_cmp,dih,dih_b,dih_cmp,anton_param,res_nr_psf),"Fin Ana");
 
     //splice temporary traj file together (log time spent)
     perf.log_time(traj.finalize_trajectory(),"Finalize Trajectory");

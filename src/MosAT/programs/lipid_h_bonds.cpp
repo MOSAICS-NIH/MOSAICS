@@ -1416,7 +1416,7 @@ int main(int argc, const char * argv[])
     check_extension_mpi(s.world_rank,"-lip_d",p.lip_d_file_name,".crd");
     check_extension_mpi(s.world_rank,"-prot_a",p.prot_a_file_name,".crd");
     check_extension_mpi(s.world_rank,"-prot_d",p.prot_d_file_name,".crd");
-    check_extension_mpi(s.world_rank,"-bond",p.prot_d_file_name,".crd");
+    check_extension_mpi(s.world_rank,"-bond",p.bond_file_name,".crd");
 
     if(p.b_exclude == 1)
     {

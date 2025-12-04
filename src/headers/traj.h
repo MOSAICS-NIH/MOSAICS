@@ -1155,7 +1155,8 @@ void write_frame_pdb(matrix box,int num_atoms,vector<int> &atom_nr,vector<int> &
     fprintf(*out_file,"%-6s    %s","TITLE",title);
 
     //print the box
-    gmx_write_pdb_box(*out_file,-1,box);
+    //gmx_write_pdb_box(*out_file,-1,box);
+    gmx_write_pdb_box(*out_file,0,box);   //changed to always write a line for box even if all zeros
 
     //print the model number
     fprintf(*out_file,"MODEL%9d\n",global_frame);    

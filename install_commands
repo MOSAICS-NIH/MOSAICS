@@ -26,6 +26,7 @@ $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/dihedrals.cpp                
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/distances.cpp                  src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/distances_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/fragment_mapping.cpp           src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/fragment_mapping_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/h_bond_kinetics.cpp            src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/h_bond_kinetics_mpi
+$MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/h_bonds.cpp                    src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/h_bonds_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/interdigitation.cpp            src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/interdigitation_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/inter_leaflet_contacts.cpp     src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/inter_leaflet_contacts_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/inter_leaflet_contacts_3d.cpp  src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/inter_leaflet_contacts_3d_mpi
@@ -114,6 +115,7 @@ $CPP_COMP  -I src -std=c++11 src/other_tools/nan_selector.cpp                   
 $CPP_COMP  -I src -std=c++11 src/other_tools/orientation_histogram.cpp                    -o build/orientation_histogram
 $CPP_COMP  -I src -std=c++11 src/other_tools/protein_mask.cpp                             -o build/protein_mask
 $CPP_COMP  -I src -std=c++11 src/other_tools/protein_mask_grower.cpp                      -o build/protein_mask_grower
+$CPP_COMP  -I src -std=c++11 src/other_tools/running_average.cpp                          -o build/running_average
 
 #########################################################################################
 #                                                                                       #

@@ -14,7 +14,7 @@ class Index
     private:
         FILE   *index_file;                          //file for reading index       
         string index_file_name;                      //name of the index file
-        char   my_string[200];                        //c-string for reading in data
+        char   my_string[2000];                      //c-string for reading in data
         int    i = 0;                                //standard variable used in loops
 
     public:

@@ -29,6 +29,8 @@ struct program_variables
     string traj_2_file_name;                      //Input trajectory file with the target dihedral angles
     string target_res_cmp_file_name;              //List of dihedral angles that should be compared to the list in -res
     string exclude_file_name;                     //List of residues to be removed from target residues list
+    string anton_card_name;                       //Selection card with info about anton restraints
+    double anton_force_k;                         //Force constant for dihedral restraints on Anton
     int b_pf_param;                               //Tells if the user included a protein types parameter file
     int b_pf_pdb;                                 //Print the protein finder pdb?
     int type;                                     //Which dihedral angle to measure?
@@ -37,6 +39,7 @@ struct program_variables
     int b_cmp;                                    //Compare 2 sets of angles?
     int b_test;                                   //Print Pymol commands to check angles
     int b_ex;                                     //Tells whether a new list should be generated or not
+    int b_anton;                                  //Tells if we should create restraints for an Anton simulation
 };
 
 
@@ -64,6 +67,9 @@ void initialize_program_variables(program_variables *p)
     p->b_traj_b        = 0;
     p->b_cmp           = 0;
     p->b_ex            = 0;
+    p->b_anton         = 0;
+    p->anton_force_k   = 1.0;
+    p->b_test          = 0;
 
     //here we set the program description
     p->program_description = p->program_description + "Dihedrals is an analysis tool used for measuring dihedral angels in a ";

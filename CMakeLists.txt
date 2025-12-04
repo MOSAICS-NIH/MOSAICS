@@ -42,6 +42,7 @@ foreach(CMD
     distances
     fragment_mapping
     h_bond_kinetics
+    h_bonds
     interdigitation
     inter_leaflet_contacts
     inter_leaflet_contacts_3d
@@ -134,6 +135,7 @@ foreach(CMD
     orientation_histogram  
     protein_mask            
     protein_mask_grower     
+    running_average
     )
   add_executable(${CMD} src/other_tools/${CMD}.cpp)
 endforeach()
