@@ -29,6 +29,9 @@ Alternatively, the user can try the following CMake recipe:
 ## Getting started
 Detailed instructions for using each tool can be found in the user manual, i.e., "mosaics_user_manual.pdf". Note that we provide a sample trajectory in the "examples/membrane_thickness/" folder so the user can reproduce much of the analysis shown in the user manual. Example input files, such as selection cards and parameter files, are also included in the "examples/" folder. We also include scripts, mainly used for ploting grid data, in the "scripts/" folder.
 
+## Example Workflow
+An example workflow is available in the examples/mosaics_work_flow.zip file. This item contains input files for performing a variety of MOSAICS analyses, including preparing the trajectory with Traj Prep and more. Detailed input files are included for each case, and the user is encouraged to reference them as needed. A helper script (do_analysis.sh) is also included to automate the workflow, enabling a full analysis with minimal effort. See mosaics_workflow.pdf after unpackaging mosaics_work_flow.zip for a more detailed description of the analysis covered.
+
 ## Code layout
 The MOSAICS source code is organized as follows: 
 - Source code for MosAT-based tools is located in "src/MosAT/" 
