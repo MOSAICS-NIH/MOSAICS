@@ -265,7 +265,7 @@ int main(int argc, const char * argv[])
         // loop over the grid                                                                                        //
         //                                                                                                           //
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        for(i=0; i<=events_ref.num_g_x; i++) //loop over x
+        for(i=0; i<events_ref.num_g_x; i++) //loop over x
         {
             for(j=0; j<events_ref.num_g_y; j++) //loop over y
             {

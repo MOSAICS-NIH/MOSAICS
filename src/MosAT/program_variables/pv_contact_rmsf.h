@@ -49,6 +49,7 @@ struct program_variables
     int norm_factor;                              //Used to get the average
     double contact_cutoff;                        //Cutoff for counting contacts
     double cutoff;                                //Cutoff factor for counting members
+    double contact_cutoff_alt;                    //Cutoff distance for counting contacts for percent of frames with no contacts
 };
 
 
@@ -68,27 +69,28 @@ void initialize_program_variables(program_variables *p)
     p->lsq_ref     = 0;
 
     //initialize program variables here
-    p->b_pf_pdb        = 0;
-    p->contact_cutoff  = 0.6;
-    p->size_x          = 0;
-    p->size_y          = 0;
-    p->cutoff          = 0.8;
-    p->frag_size       = 100; 
-    p->clean           = 0;
-    p->test            = 0;
-    p->tier            = 100;
-    p->resi            = 0;
-    p->b_be            = 0;
-    p->min             = -1;
-    p->max             = -1;
-    p->norm_factor     = 0;
-    p->resi_size       = 0;
-    p->b_be            = 0;
-    p->b_x             = 0;
-    p->b_y             = 0;
-    p->target_x        = -1;
-    p->target_y        = -1;
- 
+    p->b_pf_pdb           = 0;
+    p->contact_cutoff     = 0.6;
+    p->size_x             = 0;
+    p->size_y             = 0;
+    p->cutoff             = 0.8;
+    p->frag_size          = 100; 
+    p->clean              = 0;
+    p->test               = 0;
+    p->tier               = 100;
+    p->resi               = 0;
+    p->b_be               = 0;
+    p->min                = -1;
+    p->max                = -1;
+    p->norm_factor        = 0;
+    p->resi_size          = 0;
+    p->b_be               = 0;
+    p->b_x                = 0;
+    p->b_y                = 0;
+    p->target_x           = -1;
+    p->target_y           = -1;
+    p->contact_cutoff_alt = 0.0;
+
     //here we set the program description
     p->program_description = "Contact RMSF is an analysis tool used to characterize fluctuations in the contacts made between a bound lipid and the protein atoms. This is done by computing the equivalence of the RMSF for each atom but in a contacts space";   
 }

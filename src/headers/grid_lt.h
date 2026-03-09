@@ -449,8 +449,8 @@ class Grid_lt
         double nan     = 0.0;    //Value added to grid when NaN is encountered
 
     public:
-        dv4d grid{};                  //vector holding grid data 
-        
+        dv4d grid{};             //vector holding grid data 
+  
     public:
         void set_format(int format);                                                                              //set the grid format
         void get_grid(string grid_file_name);                                                                     //read in grid data
