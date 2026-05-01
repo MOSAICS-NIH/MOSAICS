@@ -25,6 +25,7 @@ $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/contact_rmsf.cpp             
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/dihedrals.cpp                  src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/dihedrals_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/distances.cpp                  src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/distances_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/fragment_mapping.cpp           src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/fragment_mapping_mpi
+$MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/group_contacts.cpp             src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/group_contacts_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/h_bond_kinetics.cpp            src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/h_bond_kinetics_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/h_bonds.cpp                    src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/h_bonds_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/interdigitation.cpp            src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/interdigitation_mpi

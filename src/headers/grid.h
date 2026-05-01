@@ -252,7 +252,8 @@ void broadcast_grid_d(int world_size,int world_rank,vector<vector <double>> &dat
     MPI_Status status;                    //Used for mpi_recv
     int num_g_y = data_vec.size();
     int num_g_x = data_vec[0].size();
-    double weights[num_g_x][num_g_y];     //An array to hold the grid being collected
+    double weights[num_g_y][num_g_x];     //An array to hold the grid being collected
+
     double data[num_g_y][num_g_x];
 
     //copy vector data to an array.
@@ -303,7 +304,7 @@ void broadcast_grid_i(int world_size,int world_rank,vector<vector <int>> &data_v
     MPI_Status status;                    //Used for mpi_recv
     int num_g_y = data_vec.size();
     int num_g_x = data_vec[0].size();
-    int weights[num_g_x][num_g_y];     //An array to hold the grid being collected
+    int weights[num_g_y][num_g_x];     //An array to hold the grid being collected
     int data[num_g_y][num_g_x];
 
     //copy vector data to an array.
