@@ -614,7 +614,9 @@ int main(int argc, const char * argv[])
                 }
                 else //end of molecules section reached (empty line)
                 {
-                    i=data.data_s.size();
+                    //dont move to end, there could be empty lines between molecule types, the simulation will run but any molecules
+                    //following the empty line would be spipped when making a bonds list. just let i++ and continue. 
+                    //i=data.data_s.size();
                 }
             }
         }
