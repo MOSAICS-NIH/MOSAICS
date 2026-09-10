@@ -13,6 +13,51 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                           //
+// This function checks if the title is empty and generates one if needed                                    //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void check_title(char title[])
+{
+    //check if the title is empty
+    int i = 0;
+    int empty = 1;
+    for(i=0; i<200; i++)
+    {
+        if(title[i] != ' ')
+        {
+            empty = 0;
+        }
+    }
+    if(empty == 1)
+    {
+        printf("Empty title detected! \n");
+        title[0]  = 'E';
+        title[1]  = 'm';
+        title[2]  = 'p';
+        title[3]  = 't';
+        title[4]  = 'y';
+        title[5]  = ' ';
+        title[6]  = 't';
+        title[7]  = 'i';
+        title[8]  = 't';
+        title[9]  = 'l';
+        title[10] = 'e';
+        title[11] = ' ';
+        title[12] = 'd';
+        title[13] = 'e';
+        title[14] = 't';
+        title[15] = 'e';
+        title[16] = 'c';
+        title[17] = 't';
+        title[18] = 'e';
+        title[19] = 'd';
+        title[20] = '\n';
+        title[21] = '\0';
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
 // This function converts a string into an array of chars for use with c-based functions                     //
 //                                                                                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -174,7 +219,7 @@ void analyze_pdb_file(FILE **in_file,int *num_atoms,int *frames,int world_rank,s
             {
                 *num_atoms = *num_atoms + 1;
             }
-            else if(strcmp(my_string, "ENDMDL") == 0) //end of frame
+            else if(strcmp(my_string, "ENDMDL") == 0 || strcmp(my_string, "END") == 0) //end of frame
             {
                 break;
             }
@@ -189,7 +234,7 @@ void analyze_pdb_file(FILE **in_file,int *num_atoms,int *frames,int world_rank,s
         {
             line_offset = 0;
             result = next_string(world_rank,200,line,my_string,200,&line_offset);
-            if(strcmp(my_string, "ENDMDL") == 0) //end of frame
+            if(strcmp(my_string, "ENDMDL") == 0 || strcmp(my_string, "END") == 0) //end of frame
             {
                 pos.push_back(ftell(*in_file));
                 *frames = *frames +1;
@@ -235,7 +280,7 @@ void analyze_pdb_file_ref(FILE **in_file,int *num_atoms,int *frames,int world_ra
         {
             *num_atoms = *num_atoms + 1;
         }
-        else if(strcmp(my_string, "ENDMDL") == 0) //end of frame
+        else if(strcmp(my_string, "ENDMDL") == 0 || strcmp(my_string, "END") == 0) //end of frame
         {
             break;
         }
@@ -247,7 +292,7 @@ void analyze_pdb_file_ref(FILE **in_file,int *num_atoms,int *frames,int world_ra
     {
         line_offset = 0;
         result = next_string(world_rank,200,line,my_string,200,&line_offset);
-        if(strcmp(my_string, "ENDMDL") == 0) //end of frame
+        if(strcmp(my_string, "ENDMDL") == 0 || strcmp(my_string, "END") == 0) //end of frame
         {
             *frames = *frames +1;
         }
@@ -844,7 +889,7 @@ void read_pdb_frame_by_char(FILE **in_file,matrix box,vector<int> &atom_nr,vecto
                 get_step_and_time(title,world_rank,time,step);
             }
         }
-        else if(strcmp(my_string, "ENDMDL") == 0) //end of frame
+        else if(strcmp(my_string, "ENDMDL") == 0 || strcmp(my_string, "END") == 0) //end of frame
         {
             break;
         }
@@ -1096,6 +1141,9 @@ void write_frame_gro(matrix box,int num_atoms,vector<int> &atom_nr,vector<int> &
     int adjusted_atom_nr = 0;              //adjusted atom id (99999 max)
     int adjusted_res_nr  = 0;              //adjusted res id (99999 max)
 
+    //check if the title is empty
+    check_title(title);
+
     for(i=0; i<num_atoms+3; i++) //loop over the current frame
     {
         if(i >= 2)
@@ -1150,6 +1198,9 @@ void write_frame_pdb(matrix box,int num_atoms,vector<int> &atom_nr,vector<int> &
                      vector<string> &element,vector<char> &chain_id,int global_frame)
 {
     int i = 0;  //standared variable used in loops
+
+    //check if the title is empty
+    check_title(title);
 
     //print the title
     fprintf(*out_file,"%-6s    %s","TITLE",title);
@@ -1370,7 +1421,7 @@ void finalize_traj(int world_rank,XDRFILE *xd_r,XDRFILE *xd_w,string out_file_na
 
                     int line_offset = 0;
                     int result      = next_string(world_rank,20,line,my_string,20,&line_offset);
-                    if(strcmp(my_string, "ENDMDL") == 0) //end of frame
+                    if(strcmp(my_string, "ENDMDL") == 0 || strcmp(my_string, "END") == 0) //end of frame
                     {
                         out_pos.push_back(ftell(*out_file));
                         out_filesize = ftell(*out_file);
@@ -1882,7 +1933,9 @@ class Trajectory
         char title[200];                              //System title. The first line of a gro file. Also added to pdb files
         vector <int>    atom_nr{};                    //Stores the atom number
         vector <int>    res_nr{};                     //Stores the residue number
-        vector <string> res_name{};                   //Stores the reisdue name
+        vector <int>    atom_nr_init{};               //Stores the atom number before making them sequential
+        vector <int>    res_nr_init{};                //Stores the residue number before making them sequential
+	vector <string> res_name{};                   //Stores the reisdue name
         vector <string> atom_name{};                  //Stores the atom name
         vector <double> beta{};                       //Beta factor for pdb files
         vector <double> weight{};                     //Weight used for pdb files
@@ -2853,6 +2906,8 @@ double Trajectory::build()
     //atom and residue names and numbers
     atom_nr.resize(num_atoms,0);
     res_nr.resize(num_atoms,0);
+    atom_nr_init.resize(num_atoms,0);
+    res_nr_init.resize(num_atoms,0);
     res_name.resize(num_atoms);
     atom_name.resize(num_atoms);
 
@@ -3010,6 +3065,10 @@ double Trajectory::build()
         read_gro_frame_by_char(&ref_file,box_ref,&num_atoms_ref,atom_nr,res_nr,res_name,atom_name,r_ref,v_ref,
                                title,world_rank,&time,&step,ref_frames,&bV_ref);
 
+        //get a copy of anom and residue numbers before making sequential
+        atom_nr_init = atom_nr; 
+	res_nr_init  = res_nr; 
+
         //adjust the atom and residue number to be continuous and start at 1 
         get_cont_indices(num_atoms,atom_nr,res_nr);
 
@@ -3037,6 +3096,10 @@ double Trajectory::build()
 
         //read a single frame of the reference pdb file to get the atom names and numbers etc. The box dimensions are also acquired here.
         read_pdb_frame_by_char(&ref_file,box_ref,atom_nr,res_nr,res_name,atom_name,r_ref,title,world_rank,&time,&step,ref_frames,beta,weight,element,chain_id,&bBox);
+
+        //get a copy of anom and residue numbers before making sequential
+        atom_nr_init = atom_nr;
+        res_nr_init  = res_nr;
 
         //adjust the atom and residue number to be continuous and start at 1 
         get_cont_indices(num_atoms,atom_nr,res_nr);

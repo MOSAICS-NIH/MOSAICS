@@ -39,6 +39,16 @@ using namespace std;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                           //
+// This function computes the magnitude of delta z                                                           //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+double mag_z(double z,double z_prev)
+{
+    return sqrt(pow((z - z_prev),2.0));
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
 // This function counts the number of target residues                                                        //
 //                                                                                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -618,6 +628,50 @@ double finalize_analysis(Trajectory &traj,system_variables &s,program_variables 
             }
             fclose(z_file);
         }
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //                                                                                                                 //
+        // Compute average delta z of ions between trajectory frames                                                       //
+        //                                                                                                                 //
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        double delta = 0.0;
+	double avg   = 0.0;
+        int count = 0;
+        int total = 0;
+	for(i=1; i<z_coord.size(); i++) //loop over frames
+        {
+            for(j=0; j<z_coord[0].size(); j++) //loop over ions
+            {
+		delta = mag_z(z_coord[i][j],z_coord[i-1][j]);
+
+                if(delta < 0.5*traj.box[ZZ][ZZ]) //exclude jumps across the box
+                {
+ 		    avg   = avg + delta; 
+                    count++;
+                }
+		total++;
+            }
+        }
+        avg = avg/(double)count;
+
+        //compute the standard deviation
+        double stdev = 0.0;
+        for(i=1; i<z_coord.size(); i++) //loop over frames
+        {
+            for(j=0; j<z_coord[0].size(); j++) //loop over ions
+            {
+                delta = mag_z(z_coord[i][j],z_coord[i-1][j]);
+
+		if(delta < 0.5*traj.box[ZZ][ZZ]) //exclude jumps across the box
+                {
+                    stdev = stdev + delta*delta; 
+                }
+            }
+        }
+        stdev = sqrt(stdev/((double)(count-1)));
+
+        printf("\nDelta z between trajectory frames: %f +/- %f (nm) \n",avg,stdev);
+        printf("Data averaged over %d samples composing %f %% of all samples. Jumps acrross periodic boundaries were excluded. \n",count,100.0*(double)count/(double)total);
     }
 
     //compute and return time spent in function

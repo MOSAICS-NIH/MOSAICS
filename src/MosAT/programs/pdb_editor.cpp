@@ -77,6 +77,10 @@ void set_factor(Trajectory &traj,system_variables &s,program_variables &p,iv1d &
             {
                 traj.element[i] = p.element; 
             }
+            if(p.b_res_nr == 1)
+            {
+                traj.res_nr[i] = p.this_res_nr; 
+            }
         }
     }
 }
@@ -123,6 +127,7 @@ int main(int argc, const char * argv[])
     add_argument_mpi_s(argc,argv,"-lsq",    p.lsq_index_file_name,        "Index for lsq fitting",                                       s.world_rank, s.cl_tags, &p.b_lsq,       0);
     add_argument_mpi_i(argc,argv,"-lsq_d",  &p.lsq_dim,                   "Dimension for lsq fitting (3:x,y,z 2:x,y)",                   s.world_rank, s.cl_tags, nullptr,        0);
     add_argument_mpi_i(argc,argv,"-lsq_r",  &p.lsq_ref,                   "Reference structure for lsq fitting (0:ref 1:first_frame)",   s.world_rank, s.cl_tags, nullptr,        0);
+    add_argument_mpi_i(argc,argv,"-res_id", &p.this_res_nr,               "Desired value for residue id",                                s.world_rank, s.cl_tags, &p.b_res_nr,    0);
     add_argument_mpi_s(argc,argv,"-r_name", p.this_res_name,              "Desired value for residue name",                              s.world_rank, s.cl_tags, &p.b_res_name,  0);
     add_argument_mpi_s(argc,argv,"-a_name", p.this_atom_name,             "Desired value for atom name",                                 s.world_rank, s.cl_tags, &p.b_atom_name, 0);
     add_argument_mpi_d(argc,argv,"-B",      &p.b_factor,                  "Desired value for B factor",                                  s.world_rank, s.cl_tags, &p.b_b_factor,  0);

@@ -262,7 +262,7 @@ int main(int argc, const char * argv[])
         }
         else 
         {
-            fprintf(out_file,"# %20s %10s \n","trajectory frame","error");
+            fprintf(out_file,"# %20s %10s \n","trajectory_frame","error");
             for(i=0; i<num_frames; i++)
             {
                 if(global_error[i] < smallest_error)

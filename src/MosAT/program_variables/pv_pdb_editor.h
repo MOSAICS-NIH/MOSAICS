@@ -47,6 +47,8 @@ struct program_variables
     int b_element;                                //Is the element modified
     int b_res_name;                               //Is the res_name modified
     int b_atom_name;                              //Is the atom_name modified
+    int b_res_nr;                                 //Is the residue number modified
+    int this_res_nr;                              //Gives the residue number to use
     double b_factor;                              //Desired value for B factor
     double occupancy;                             //Desired value for the occupancy
 };

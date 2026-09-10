@@ -50,6 +50,7 @@ struct program_variables
     double contact_cutoff;                        //Cutoff for counting contacts
     double cutoff;                                //Cutoff factor for counting members
     double contact_cutoff_alt;                    //Cutoff distance for counting contacts for percent of frames with no contacts
+    double dist_cutoff;                           //Cutoff distance for finding atom pairs when finding frame most like the time average coords
 };
 
 
@@ -90,6 +91,7 @@ void initialize_program_variables(program_variables *p)
     p->target_x           = -1;
     p->target_y           = -1;
     p->contact_cutoff_alt = 0.0;
+    p->dist_cutoff        = 1.0;
 
     //here we set the program description
     p->program_description = "Contact RMSF is an analysis tool used to characterize fluctuations in the contacts made between a bound lipid and the protein atoms. This is done by computing the equivalence of the RMSF for each atom but in a contacts space";   
