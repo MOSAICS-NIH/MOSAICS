@@ -945,10 +945,6 @@ void read_frame(FILE **in_file,matrix box,int *num_atoms,vector<int> &atom_nr,ve
 
     if(in_f == 0) //gro
     {
-        //read in the trajectory frame (overrides ref file resid,atomid etc.)
-        //read_gro_frame_by_char(in_file,box,num_atoms,atom_nr,res_nr,res_name,
-        //                       atom_name,r,v,title,world_rank,time,step,frames,bV);
-
         //send dummyy arguments so we dont over-write data from the ref structure
         vector<int> dummy_atom_nr(atom_nr.size());
         vector<int> dummy_res_nr(res_nr.size());
@@ -957,9 +953,6 @@ void read_frame(FILE **in_file,matrix box,int *num_atoms,vector<int> &atom_nr,ve
 
         read_gro_frame_by_char(in_file,box,num_atoms,dummy_atom_nr,dummy_res_nr,dummy_res_name,
                                dummy_atom_name,r,v,title,world_rank,time,step,frames,bV);
-
-        //make the atoms and residue id continuous
-        //get_cont_indices(*num_atoms,atom_nr,res_nr);
 
         //set values needed to write data to pdb format
         for(i=0; i<(*num_atoms); i++)
@@ -979,11 +972,6 @@ void read_frame(FILE **in_file,matrix box,int *num_atoms,vector<int> &atom_nr,ve
     }
     else if(in_f == 1) //pdb
     {
-        //read in the trajectory frame
-        //read_pdb_frame_by_char(in_file,box,atom_nr,res_nr,res_name,
-        //                       atom_name,r,title,world_rank,time,step,frames,
-        //                       beta,weight,element,chain_id,bBox);
-
         //send dummyy arguments so we dont over-write data from the ref structure
         vector<int> dummy_atom_nr(atom_nr.size());
         vector<int> dummy_res_nr(res_nr.size());
@@ -994,9 +982,6 @@ void read_frame(FILE **in_file,matrix box,int *num_atoms,vector<int> &atom_nr,ve
         read_pdb_frame_by_char(in_file,box,dummy_atom_nr,dummy_res_nr,dummy_res_name,
                                dummy_atom_name,r,title,world_rank,time,step,frames,
                                beta,weight,element,chain_id,bBox);
-
-        //make the atoms and residue id continuous (overrides ref file resid,atomid etc.)
-        //get_cont_indices(*num_atoms,atom_nr,res_nr);
 
         //get the global frame number
         *global_frame = get_global_frame(world_frames,world_rank,current_frame,block_parallel);
