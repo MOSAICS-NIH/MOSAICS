@@ -5,6 +5,7 @@
 #include "gmx_lib/gmx_vec.h"
 #include "gmx_lib/gmx_fit.h"
 #include "gmx_lib/gmx_pdb.h"
+#include <unistd.h>
 
 #ifdef __APPLE__
 #  define off64_t off_t
@@ -945,11 +946,20 @@ void read_frame(FILE **in_file,matrix box,int *num_atoms,vector<int> &atom_nr,ve
     if(in_f == 0) //gro
     {
         //read in the trajectory frame (overrides ref file resid,atomid etc.)
-        read_gro_frame_by_char(in_file,box,num_atoms,atom_nr,res_nr,res_name,
-                               atom_name,r,v,title,world_rank,time,step,frames,bV);
+        //read_gro_frame_by_char(in_file,box,num_atoms,atom_nr,res_nr,res_name,
+        //                       atom_name,r,v,title,world_rank,time,step,frames,bV);
+
+        //send dummyy arguments so we dont over-write data from the ref structure
+        vector<int> dummy_atom_nr(atom_nr.size());
+        vector<int> dummy_res_nr(res_nr.size());
+        vector<std::string> dummy_res_name(res_name.size());
+        vector<std::string> dummy_atom_name(atom_name.size());
+
+        read_gro_frame_by_char(in_file,box,num_atoms,dummy_atom_nr,dummy_res_nr,dummy_res_name,
+                               dummy_atom_name,r,v,title,world_rank,time,step,frames,bV);
 
         //make the atoms and residue id continuous
-        get_cont_indices(*num_atoms,atom_nr,res_nr);
+        //get_cont_indices(*num_atoms,atom_nr,res_nr);
 
         //set values needed to write data to pdb format
         for(i=0; i<(*num_atoms); i++)
@@ -970,12 +980,23 @@ void read_frame(FILE **in_file,matrix box,int *num_atoms,vector<int> &atom_nr,ve
     else if(in_f == 1) //pdb
     {
         //read in the trajectory frame
-        read_pdb_frame_by_char(in_file,box,atom_nr,res_nr,res_name,
-                               atom_name,r,title,world_rank,time,step,frames,
+        //read_pdb_frame_by_char(in_file,box,atom_nr,res_nr,res_name,
+        //                       atom_name,r,title,world_rank,time,step,frames,
+        //                       beta,weight,element,chain_id,bBox);
+
+        //send dummyy arguments so we dont over-write data from the ref structure
+        vector<int> dummy_atom_nr(atom_nr.size());
+        vector<int> dummy_res_nr(res_nr.size());
+        vector<std::string> dummy_res_name(res_name.size());
+        vector<std::string> dummy_atom_name(atom_name.size());
+
+        //read in the trajectory frame
+        read_pdb_frame_by_char(in_file,box,dummy_atom_nr,dummy_res_nr,dummy_res_name,
+                               dummy_atom_name,r,title,world_rank,time,step,frames,
                                beta,weight,element,chain_id,bBox);
 
         //make the atoms and residue id continuous (overrides ref file resid,atomid etc.)
-        get_cont_indices(*num_atoms,atom_nr,res_nr);
+        //get_cont_indices(*num_atoms,atom_nr,res_nr);
 
         //get the global frame number
         *global_frame = get_global_frame(world_frames,world_rank,current_frame,block_parallel);
@@ -1274,6 +1295,12 @@ void write_frame(matrix box,int num_atoms,vector<int> &atom_nr,vector<int> &res_
         }
         else if(out_f == 1) //pdb
         {
+            int i=0;
+            for(i=0; i<num_atoms; i++) //set the element to first atom letter
+            {
+                element[i] = atom_name[i].at(0); 
+            }
+
             write_frame_pdb(box,num_atoms,atom_nr,res_nr,res_name,atom_name,r,title,
                       world_rank,out_file,beta,weight,element,chain_id,*global_frame);
         }
@@ -2766,9 +2793,25 @@ double Trajectory::build()
     //                                                                                                          //
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //check if trajectory info file exists
+    int have_info_file = 0;
     string info_file_name = traj_file_name + ".info";
-    FILE *info_file = fopen(info_file_name.c_str(),"r");
-    if(info_file == NULL)
+ 
+    if(world_rank == 0) //check if an info file exists
+    {
+        FILE *info_file = fopen(info_file_name.c_str(), "r");
+        if(info_file != NULL)
+        {
+            have_info_file = 1;
+            fclose(info_file);
+        }
+        else
+        {
+            have_info_file = 0;
+        }
+    }
+    MPI_Bcast(&have_info_file, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    if(have_info_file == 0)
     {
         if(world_rank == 0)
         {
@@ -2809,46 +2852,74 @@ double Trajectory::build()
             {
                 fprintf(info_file," %ld \n",pos[i]);
             }
-            fclose(info_file);
+
+            if(fflush(info_file) != 0)
+            {
+                perror("fflush failed for info file");
+                MPI_Abort(MPI_COMM_WORLD, 1);
+            }
+
+            int fd = fileno(info_file);
+            if(fd == -1)
+            {
+                perror("fileno failed for info file");
+                MPI_Abort(MPI_COMM_WORLD, 1);
+            }
+
+            if(fsync(fd) != 0)
+            {
+                perror("fsync failed for info file");
+                MPI_Abort(MPI_COMM_WORLD, 1);
+            }
+
+            if(fclose(info_file) != 0)
+            {
+                perror("fclose failed for info file");
+                MPI_Abort(MPI_COMM_WORLD, 1);
+            }
         }
     }
-    else //read the .info file 
+    else if(have_info_file == 1) //read the .info file 
     {
-        char my_string[20];   //used to read in each item in the info file
-        int line_count = 0;   //count the lines as they are read
-
         if(world_rank == 0)
         {
+            FILE *info_file = fopen(info_file_name.c_str(), "r");
+
+            char my_string[20];   //used to read in each item in the info file
+            int line_count = 0;   //count the lines as they are read
+
             printf("Analyzing %s. \n",info_file_name.c_str());
-        }
 
-        while(fscanf(info_file, "%s,", my_string) == 1)
-        {
-            if(line_count == 0) //file size
+            while(fscanf(info_file, "%s", my_string) == 1)
             {
-                filesize = atol(my_string);
+                if(line_count == 0) //file size
+                {
+                    filesize = atol(my_string);
+                }
+                else if(line_count == 1) //num_atoms
+                {
+                    num_atoms = atoi(my_string);
+                }
+                else if(line_count == 2) //frames
+                {
+                    frames = atoi(my_string);
+                }
+                else //position of each frame
+                {
+                    pos.push_back(atol(my_string));
+                }
+                line_count++;
             }
-            else if(line_count == 1) //num_atoms
-            {
-                num_atoms = atoi(my_string);
-            }
-            else if(line_count == 2) //frames
-            {
-                frames = atoi(my_string);
-            }
-            else //position of each frame
-            {
-                pos.push_back(atol(my_string));
-            }
-            line_count++;
-        }
-        fclose(info_file);
+            fclose(info_file);
 
-        if(world_rank == 0)
-        {
             printf("Finished analyzing %s. \n",info_file_name.c_str());
             printf("Trajectory frames: %-20d \n\n",frames);
         }
+
+	//broadcast info file data
+        MPI_Bcast(&filesize, 1, MPI_LONG, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&num_atoms, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&frames, 1, MPI_INT, 0, MPI_COMM_WORLD);
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2860,32 +2931,7 @@ double Trajectory::build()
     {
         pos.resize(frames,0);
     }
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //                                                                                                          //
-    // Broadcast pos data. We copy data to an array and then broadcast the array. Could proably broadcast the   //
-    // vector directly but not certain how.                                                                     //
-    //                                                                                                          //
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    int64_t pos_ary[frames];      //array to hold frame position data
-
-    //copy trajectory frame position data to array
-    if(world_rank == 0)
-    {
-        for(i=0; i<frames; i++)
-        {
-            pos_ary[i] = pos[i];
-        }
-    }
-
-    //broadcast trajectory frame position data
-    MPI_Bcast(pos_ary, frames, MPI_LONG, 0, MPI_COMM_WORLD);
-
-    //copy trajectory frame position back to the vector
-    for(i=0; i<frames; i++)
-    {
-        pos[i] = pos_ary[i];
-    }
+    MPI_Bcast(pos.data(), frames, MPI_INT64_T, 0, MPI_COMM_WORLD);
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                                          //

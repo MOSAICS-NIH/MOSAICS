@@ -1601,6 +1601,10 @@ int main(int argc, const char * argv[])
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //check file extensions                                                                                     
     check_extension_mpi(s.world_rank,"-crd",p.param_file_name,".crd");
+    if(p.b_slim == 1)
+    {
+        check_extension_mpi(s.world_rank,"-slim",p.slim_index_file_name,".ndx");
+    }
 
     //create parameter files
     Param param;
