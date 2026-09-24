@@ -146,13 +146,12 @@ void get_contacts(Trajectory &traj,system_variables &s,program_variables &p,Para
         //jump to the next lipid
         i = traj.next_target_lipid(i);
  
-        int counter_b = 0;
-
         for(j=0; j<param_1.main_size_y(); j++) //loop over lipid types 1
         {
             if(strcmp(traj.res_name[min].c_str(), param_1.param_main_s[j][0].c_str() ) == 0) //lipid 1 type is correct
             {
                 int contact_count = 0;
+                int counter_b     = 0;
 
                 for(k=0; k<traj.opposing_leaflet.size(); k++) //loop over the opposing membrane atoms
                 {
