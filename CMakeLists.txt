@@ -59,6 +59,7 @@ foreach(CMD
     lipid_immobilization
     lipid_mixing
     lipid_msd
+    lipid_neighbor_content
     lipid_orientation
     lipid_orientation_3d
     lipid_protein_min_dist
@@ -120,6 +121,7 @@ endforeach()
 foreach(CMD
     bilayer_free_energy     
     bonds_generator        
+    contact_editor
     data_averager           
     delta_plot              
     grid_addition           

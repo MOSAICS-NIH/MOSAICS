@@ -2022,6 +2022,12 @@ class Trajectory
         vector <int>    world_num_g{};                //How many grid points in xy is the mpi process responsible for (world)
         vector <int>    world_gi{};                   //The start grid point for each mpi process
         vector <int>    world_gf{};                   //The end grid point for each mpi process
+        int             my_frames_alt   = 0;          //How many framess is the mpi process responsible for
+        int             frame_start_alt = 0;          //First frame the mpi process is responsible for
+        int             frame_end_alt   = 0;          //Last frame the mpi process is responsible for
+        vector <int>    world_frames_alt{};           //How many frames is the mpi process responsible for (world)
+        vector <int>    world_frame_start_alt{};      //The first frame the mpi process is reponsible for (world)
+        vector <int>    world_frame_end_alt{};        //The last frame the mpi process is responsible for (world)
 
     public:
         void        set_input_arguments(int argc, const char * argv[]);                                 //give the traj the command line args
@@ -2131,6 +2137,8 @@ class Trajectory
         void        workload_sel();                                                                     //prints the workload distribution for custom atom selections
         void        parallelize_by_grid_alt(int num_g_x,int num_g_y);                                   //distribute the workload by the grid points (num_g_x and num_g_y)
         void        workload_grid_alt();                                                                //prints the workload distribution for grid point (num_g_x and num_g_y)
+        void        parallelize_by_frames(int num_frames);                                              //distribute the workload by the trajectory frames 
+        void        workload_frames();                                                                  //prints the workload distribution for trajectory frames
 
         const char **argv;                                                                              //The command line arguments
 };

@@ -44,6 +44,7 @@ $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/lipid_h_bonds.cpp            
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/lipid_immobilization.cpp       src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/lipid_immobilization_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/lipid_mixing.cpp               src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/lipid_mixing_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/lipid_msd.cpp                  src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/lipid_msd_mpi
+$MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/lipid_neighbor_content.cpp     src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/lipid_neighbor_content_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/lipid_orientation.cpp          src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/lipid_orientation_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/lipid_orientation_3d.cpp       src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/lipid_orientation_3d_mpi
 $MPI_CPP_COMP -I src -std=c++11 src/MosAT/programs/lipid_protein_min_dist.cpp     src/xdr/src/xdrfile_xtc.cpp src/xdr/src/xdrfile.cpp src/xdr/src/xdrfile_trr.cpp src/xdr/src/xdr_seek.cpp -o build/lipid_protein_min_dist_mpi
@@ -101,6 +102,7 @@ $MPI_CPP_COMP -I src -std=c++11 src/other_tools/solvation_shells.cpp            
 #non MosAT serial
 $CPP_COMP  -I src -std=c++11 src/other_tools/bilayer_free_energy.cpp                      -o build/bilayer_free_energ
 $CPP_COMP  -I src -std=c++11 src/other_tools/bonds_generator.cpp                          -o build/bonds_generator
+$CPP_COMP  -I src -std=c++11 src/other_tools/contact_editor.cpp                           -o build/contact_editor
 $CPP_COMP  -I src -std=c++11 src/other_tools/data_averager.cpp                            -o build/data_averager
 $CPP_COMP  -I src -std=c++11 src/other_tools/delta_plot.cpp                               -o build/delta_plot
 $CPP_COMP  -I src -std=c++11 src/other_tools/grid_addition.cpp                            -o build/grid_addition

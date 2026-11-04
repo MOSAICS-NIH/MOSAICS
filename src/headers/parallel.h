@@ -965,3 +965,137 @@ void Trajectory::workload_sel()
     print_work_load_stats_sel(world_rank,world_size,world_atoms,world_atom_start,world_atom_end);
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function determines how many frames each core is responsible for                                     //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int compute_workload_frames(int num_frames,int world_rank,int world_size)
+{
+    int i             = 0;
+    int my_frames_alt = 0;
+
+    for(i=0; i<num_frames; i++)
+    {
+        if(i%world_size == world_rank)
+        {
+            my_frames_alt = my_frames_alt + 1;
+        }
+    }
+
+    return my_frames_alt;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function determines which frames each core is responsible for                                        //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void distribute_work_load_frames(int num_frames,int world_rank,int world_size,int my_frames_alt,vector <int> &world_frames_alt,int *frame_start_alt,
+                                 int *frame_end_alt,vector <int> &world_frame_start_alt,vector <int> &world_frame_end_alt)
+{
+    int i             = 0;
+    int running_count = 0;
+    int world_frame_start_ary[world_size];
+    int world_frame_end_ary[world_size];
+
+    for(i=0; i<world_size; i++)
+    {
+        if(world_rank == i)
+        {
+            *frame_start_alt = running_count;
+            *frame_end_alt   = running_count + world_frames_alt[i] - 1;
+        }
+        running_count = running_count + world_frames_alt[i];
+    }
+
+    MPI_Allgather(frame_start_alt, 1, MPI_INT, world_frame_start_ary, 1, MPI_INT,MPI_COMM_WORLD);
+    MPI_Allgather(frame_end_alt,   1, MPI_INT, world_frame_end_ary,   1, MPI_INT,MPI_COMM_WORLD);
+
+    for(i=0; i<world_size; i++)
+    {
+        world_frame_start_alt[i] = world_frame_start_ary[i];
+        world_frame_end_alt[i]   = world_frame_end_ary[i];
+    }
+
+    //printf("world_rank %3d num_frame %5d frame_start_alt %5d frame_end_alt %5d \n",world_rank,num_frame,*frame_start_alt,*frame_end_alt);    
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function prints information about the work load distribution                                         //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void print_work_load_stats_frames(int world_rank,int world_size,vector <int> &world_frames_alt,vector <int> &world_frame_start_alt,vector <int> &world_frame_end_alt)
+{
+    int i = 0;
+
+    if(world_rank == 0)
+    {
+        printf("Distributing the workload (the frames) accross %d mpi processes. \n",world_size);
+        printf(" %10s %10s %20s %20s \n","Rank","Frames","Frame_Start","Frame_End");
+        printf(" %10s-%10s-%20s-%20s \n","----------","----------","--------------------","--------------------");
+        for(i=0; i<world_size; i++)
+        {
+            printf(" %10d %10d %20d %20d \n",i,world_frames_alt[i],world_frame_start_alt[i],world_frame_end_alt[i]);
+        }
+        printf("\n");
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function breaks up the workload by frame                                                             //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void Trajectory::parallelize_by_frames(int num_frames)
+{
+    int i = 0;
+
+    //count the number of frames the mpi process is responsible for
+    my_frames_alt = compute_workload_frames(num_frames,world_rank,world_size);
+
+    //create an array for collecting my_frames_alt. then copy to the vector
+    int world_frames_ary[world_size];
+    MPI_Allgather(&my_frames_alt, 1, MPI_INT, world_frames_ary, 1, MPI_INT,MPI_COMM_WORLD);
+
+    //allocate memory for world_frames_alt and copy world_frames_ary 
+    world_frames_alt.resize(world_size,0);
+    for(i=0; i<world_size; i++)
+    {
+        world_frames_alt[i] = world_frames_ary[i];
+    }
+
+    //allocate memory for world_frame_start_alt and world_frame_end_alt
+    world_frame_start_alt.resize(world_size,0);
+    world_frame_end_alt.resize(world_size,0);
+
+    //compute each mpi processes start and end frame
+    distribute_work_load_frames(num_frames,world_rank,world_size,my_frames_alt,world_frames_alt,&frame_start_alt,&frame_end_alt,world_frame_start_alt,world_frame_end_alt);
+
+    //print_work_load_stats(s.world_rank,s.world_size,world_frames_alt,world_frame_start_alt,world_frame_end_alt);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                           //
+// This function prints the workload distribution for frame                                                  //
+//                                                                                                           //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void Trajectory::workload_frames()
+{
+    print_work_load_stats_frames(world_rank,world_size,world_frames_alt,world_frame_start_alt,world_frame_end_alt);
+}
+
