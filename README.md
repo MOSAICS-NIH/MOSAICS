@@ -59,6 +59,14 @@ Please cite Bernhardt N, Faraldo-Gómez JD, MOSAICS: A Software Suite for Analys
 }
 ```
 
+## mosAIcs
+Need a membrane analysis tool that MOSAICS doesn’t yet offer? mosAIcs helps you turn your analysis idea into a new tool with ChatGPT or another AI chatbot with coding capabilities.
+
+To get started, download mosAIcs_template.docx and complete the sections highlighted in turquoise: describe your desired analysis tool and set any control options if needed. Then upload the completed template, along with a ZIP archive of the MOSAICS GitHub repository, to your chosen chatbot.
+
+The template provides MOSAICS-specific instructions that guide the chatbot through building custom tools for grid-based analysis, with an emphasis on preserving the standard functionality and meeting the performance standards of MOSAICS tools.
+
+
 ## Feedback
 Please report bugs identified within the source code and other errors like typos found in the user manual using the [issues](https://github.com/MOSAICS-NIH/MOSAICS/issues) feature. Other comments and suggestions are always welcome. Thank you for your help. 
 
